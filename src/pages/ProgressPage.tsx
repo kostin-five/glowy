@@ -1,9 +1,7 @@
-// import React from "react";
-
-import { useTaskStore } from "../store/useTaskStore";
+import { useTasks } from "../store/useTaskStore";
 
 const ProgressPage = () => {
-  const tasks = useTaskStore((state) => state.tasks);
+  const tasks = useTasks();
 
   return (
     <section className="flex flex-col gap-6 px-16 mt-10">

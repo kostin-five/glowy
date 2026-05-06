@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import type { Task } from "../types";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { StateCreator } from "zustand";
 
 interface TaskStore {
   tasks: Task[];
@@ -27,7 +29,7 @@ const initialTasks: Task[] = [
   },
 ];
 
-export const useTaskStore = create<TaskStore>()((set) => ({
+const taskStore: StateCreator<TaskStore> = (set) => ({
   tasks: initialTasks,
   createTask: (newTask: Task) =>
     set((state) => ({
@@ -43,4 +45,16 @@ export const useTaskStore = create<TaskStore>()((set) => ({
         (t: Task): Task => (t.id === id ? { ...t, completed: !t.completed } : t)
       ),
     })),
-}));
+});
+
+const useTaskStore = create<TaskStore>()(
+  persist(taskStore, {
+    name: "tasks-storage",
+    storage: createJSONStorage(() => localStorage),
+  })
+);
+
+export const useTasks = () => useTaskStore((state) => state.tasks);
+export const useCreateTask = () => useTaskStore.getState().createTask;
+export const useDeleteTask = () => useTaskStore.getState().deleteTask;
+export const useToggleTask = () => useTaskStore.getState().toggleTask;

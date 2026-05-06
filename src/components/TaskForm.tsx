@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTaskStore } from "../store/useTaskStore";
+import { useCreateTask } from "../store/useTaskStore";
 
 const TaskForm = () => {
   type Priority = "Важно" | "Нормально" | "Не срочно";
@@ -15,7 +15,7 @@ const TaskForm = () => {
     setCategory("");
   };
 
-  const create = useTaskStore((state) => state.createTask);
+  const create = useCreateTask()
 
   const sendTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

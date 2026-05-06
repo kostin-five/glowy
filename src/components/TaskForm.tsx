@@ -1,32 +1,39 @@
 import { useState } from "react";
 import { useCreateTask } from "../store/useTaskStore";
+import { schemaTask, type Task } from "../types";
 
 const TaskForm = () => {
+  const [values, setValues] = useState<Task>({
+    id: 0,
+    title: "",
+    date: "",
+    priority: "Нормально",
+    category: "",
+    completed: false,
+  });
   type Priority = "Важно" | "Нормально" | "Не срочно";
-  const [title, setTitle] = useState<string>("");
-  const [date, setDate] = useState<string>("");
-  const [priority, setPriority] = useState<Priority>("Нормально");
-  const [category, setCategory] = useState<string>("");
 
   const clean = () => {
-    setTitle("");
-    setDate("");
-    setPriority("Нормально");
-    setCategory("");
+    setValues({
+      id: 0,
+      title: "",
+      date: "",
+      priority: "Нормально",
+      category: "",
+      completed: false,
+    });
   };
 
-  const create = useCreateTask()
+  const create = useCreateTask();
 
   const sendTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    create({
-      id: Date.now(),
-      title: title,
-      date: date,
-      priority: priority,
-      category: category,
-      completed: false,
-    });
+    const parsedValues = schemaTask.safeParse(values);
+    if (parsedValues.success) {
+      create({ ...parsedValues.data, id: Date.now() });
+    } else {
+      alert("Название задачи не может быть пустым!");
+    }
     clean();
   };
 
@@ -41,19 +48,21 @@ const TaskForm = () => {
         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
         type="text"
         placeholder="Введите задачу"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        value={values.title}
+        onChange={(e) => setValues({ ...values, title: e.target.value })}
       />
       <input
         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors scheme-dark"
         type="date"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
+        value={values.date}
+        onChange={(e) => setValues({ ...values, date: e.target.value })}
       />
       <select
         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-        value={priority}
-        onChange={(e) => setPriority(e.target.value as Priority)}
+        value={values.priority}
+        onChange={(e) =>
+          setValues({ ...values, priority: e.target.value as Priority })
+        }
       >
         <option value="" disabled>
           Выберете категорию
@@ -64,8 +73,8 @@ const TaskForm = () => {
       </select>
       <input
         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
+        value={values.category}
+        onChange={(e) => setValues({ ...values, category: e.target.value })}
         type="text"
         placeholder="Напишите категорию задачи"
       />

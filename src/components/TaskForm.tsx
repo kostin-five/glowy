@@ -1,12 +1,21 @@
 import { useState } from "react";
-import type { Task } from "../types";
+import { useTaskStore } from "../store/useTaskStore";
 
-const TaskForm = ({ create }: { create: (task: Task) => void }) => {
+const TaskForm = () => {
   type Priority = "Важно" | "Нормально" | "Не срочно";
   const [title, setTitle] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [priority, setPriority] = useState<Priority>("Нормально");
   const [category, setCategory] = useState<string>("");
+
+  const clean = () => {
+    setTitle("");
+    setDate("");
+    setPriority("Нормально");
+    setCategory("");
+  };
+
+  const create = useTaskStore((state) => state.createTask);
 
   const sendTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -18,15 +27,14 @@ const TaskForm = ({ create }: { create: (task: Task) => void }) => {
       category: category,
       completed: false,
     });
-    setTitle("");
-    setDate("");
-    setPriority("Нормально");
-    setCategory("");
+    clean();
   };
 
   return (
     <form
-      className="flex flex-col mx-auto rounded w-full gap-4 mt-10 bg-slate-800/50 backdrop-blur-sm border border-slate-700 p-6 shadow-lg"
+      className="flex flex-col mx-auto rounded
+       w-full gap-4 mt-10 bg-slate-800/50
+       backdrop-blur-sm border border-slate-700 p-6 shadow-lg"
       onSubmit={sendTask}
     >
       <input
@@ -37,10 +45,9 @@ const TaskForm = ({ create }: { create: (task: Task) => void }) => {
         onChange={(e) => setTitle(e.target.value)}
       />
       <input
-        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+        className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors scheme-dark"
         type="date"
         value={date}
-        placeholder="Выбирете дату"
         onChange={(e) => setDate(e.target.value)}
       />
       <select
@@ -49,7 +56,7 @@ const TaskForm = ({ create }: { create: (task: Task) => void }) => {
         onChange={(e) => setPriority(e.target.value as Priority)}
       >
         <option value="" disabled>
-          Выбирете категорию
+          Выберете категорию
         </option>
         <option value="Важно">Важно</option>
         <option value="Нормально">Нормально</option>

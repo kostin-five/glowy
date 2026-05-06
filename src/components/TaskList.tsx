@@ -1,16 +1,13 @@
 // import React from "react";
+import { useTaskStore } from "../store/useTaskStore";
 import type { Task } from "../types";
 import TaskItem from "./TaskItem";
 
-const TaskList = ({
-  tasks,
-  remove,
-  toggle,
-}: {
-  tasks: Task[];
-  remove: (id: number) => void;
-  toggle: (id: number) => void;
-}) => {
+const TaskList = () => {
+  const tasks = useTaskStore((state) => state.tasks);
+  const remove = useTaskStore((state) => state.deleteTask);
+  const toggle = useTaskStore((state) => state.toggleTask);
+
   return (
     <ul className="flex flex-col list-none">
       {tasks.map((task: Task) => (

@@ -1,7 +1,12 @@
+import { useMemo } from "react";
 import { useTasks } from "../store/useTaskStore";
 
 const ProgressPage = () => {
   const tasks = useTasks();
+
+  const calcCompletedTasks = useMemo(() => {
+    return tasks.filter((task) => task.completed).length;
+  }, [tasks]);
 
   return (
     <section className="flex flex-col gap-6 px-16 mt-10">
@@ -15,7 +20,7 @@ const ProgressPage = () => {
         <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
           Выполнено:{" "}
           <span className="text-5xl font-bold text-indigo-400">
-            {tasks.filter((task) => task.completed).length}
+            {calcCompletedTasks}
           </span>
         </div>
       </section>

@@ -18,6 +18,7 @@ const initialTasks: Task[] = [
     priority: "Важно",
     category: "Разработка",
     completed: false,
+    energyLevel: "med",
   },
   {
     id: 2,
@@ -26,6 +27,7 @@ const initialTasks: Task[] = [
     priority: "Нормально",
     category: "Git",
     completed: false,
+    energyLevel: "high",
   },
 ];
 

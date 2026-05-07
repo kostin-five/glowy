@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useCreateTask } from "../store/useTaskStore";
 import { schemaTask, type Task } from "../types";
 
+type Priority = "Важно" | "Нормально" | "Не срочно";
+type EnergyLevel = "low" | "med" | "high";
+
 const TaskForm = () => {
   const [values, setValues] = useState<Task>({
     id: 0,
@@ -10,8 +13,8 @@ const TaskForm = () => {
     priority: "Нормально",
     category: "",
     completed: false,
+    energyLevel: "med",
   });
-  type Priority = "Важно" | "Нормально" | "Не срочно";
 
   const clean = () => {
     setValues({
@@ -21,6 +24,7 @@ const TaskForm = () => {
       priority: "Нормально",
       category: "",
       completed: false,
+      energyLevel: "med",
     });
   };
 
@@ -71,6 +75,61 @@ const TaskForm = () => {
         <option value="Нормально">Нормально</option>
         <option value="Не срочно">Не срочно</option>
       </select>
+      <div className="text-slate-200">
+        <p>Уровень энергии:</p>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <input
+              className="accent-indigo-500"
+              type="radio"
+              value={"low"}
+              name="energy"
+              checked={values.energyLevel === "low"}
+              onChange={(e) =>
+                setValues({
+                  ...values,
+                  energyLevel: e.target.value as EnergyLevel,
+                })
+              }
+            />
+            Низкий
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <input
+              className="accent-indigo-500"
+              type="radio"
+              value={"med"}
+              name="energy"
+              checked={values.energyLevel === "med"}
+              onChange={(e) =>
+                setValues({
+                  ...values,
+                  energyLevel: e.target.value as EnergyLevel,
+                })
+              }
+            />
+            Средний
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <input
+              className="accent-indigo-500"
+              type="radio"
+              value={"high"}
+              name="energy"
+              checked={values.energyLevel === "high"}
+              onChange={(e) =>
+                setValues({
+                  ...values,
+                  energyLevel: e.target.value as EnergyLevel,
+                })
+              }
+            />
+            Высокий
+          </label>
+        </div>
+      </div>
       <input
         className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
         value={values.category}

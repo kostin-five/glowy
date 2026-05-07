@@ -18,6 +18,12 @@ const TaskItem = ({
     ? "line-through text-slate-500 opacity-50"
     : "text-slate-200";
 
+  const energyIcons = {
+    low: "🔵",
+    med: "🟡",
+    high: "🔴",
+  };
+
   return (
     <li className="flex justify-between items-center bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors">
       <label className="flex items-center gap-4 cursor-pointer group">
@@ -54,6 +60,11 @@ const TaskItem = ({
       </label>
 
       <div className="flex items-center gap-4 text-sm text-slate-300 ml-auto mr-4">
+        <span
+          className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
+        >
+          {energyIcons[task.energyLevel]}
+        </span>
         <span
           className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
         >

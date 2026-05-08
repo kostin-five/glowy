@@ -29,6 +29,7 @@ export const useProcessedTasks = () => {
   const sortField = useSortField();
   const sortDirection = useSortDirection();
   const filteredTasks = useFilteredTasks();
+  const energyWeights = { low: 1, med: 2, high: 3 };
 
   const sortedTasks = useMemo(() => {
     if (!sortField) {
@@ -38,7 +39,8 @@ export const useProcessedTasks = () => {
       let comparison: number;
       switch (sortField) {
         case "energy":
-          comparison = a.energyLevel.localeCompare(b.energyLevel);
+          comparison =
+            energyWeights[a.energyLevel] - energyWeights[b.energyLevel];
           break;
         case "title":
           comparison = a.title.localeCompare(b.title);

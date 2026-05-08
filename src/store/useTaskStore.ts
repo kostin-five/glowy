@@ -13,8 +13,11 @@ interface TaskStore {
   createTask: (newTask: Task) => void;
   deleteTask: (id: number) => void;
   toggleTask: (id: number) => void;
+  updateTask: (id: number, updatedData: Partial<Task>) => void;
 }
 
+export type Priority = "Важно" | "Нормально" | "Не срочно";
+export type EnergyLevel = "low" | "med" | "high";
 export type FilterStatus = "Все" | "Активные" | "Выполненные";
 export type SortField =
   | "date"
@@ -55,6 +58,12 @@ const taskStore: StateCreator<TaskStore> = (set) => ({
         (t: Task): Task => (t.id === id ? { ...t, completed: !t.completed } : t)
       ),
     })),
+  updateTask: (id: number, updatedData: Partial<Task>) =>
+    set((state) => ({
+      tasks: state.tasks.map(
+        (t: Task): Task => (t.id === id ? { ...t, ...updatedData } : t)
+      ),
+    })),
 });
 
 const useTaskStore = create<TaskStore>()(
@@ -74,3 +83,4 @@ export const useSetSort = () => useTaskStore.getState().setSort;
 export const useCreateTask = () => useTaskStore.getState().createTask;
 export const useDeleteTask = () => useTaskStore.getState().deleteTask;
 export const useToggleTask = () => useTaskStore.getState().toggleTask;
+export const useUpdateTask = () => useTaskStore.getState().updateTask;

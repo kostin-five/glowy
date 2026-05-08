@@ -1,5 +1,7 @@
 // import React from 'react'
+import { useState } from "react";
 import type { Task } from "../../types";
+import EditTaskModal from "./EditTaskModal";
 
 const TaskItem = ({
   task,
@@ -12,6 +14,11 @@ const TaskItem = ({
 }) => {
   const deleteTask = (): void => {
     remove(task.id);
+  };
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const editTask = () => {
+    setIsEditOpen(true);
   };
 
   const contentStyles = task.completed
@@ -58,7 +65,6 @@ const TaskItem = ({
           <span className="text-xs text-slate-400 mt-1">{task.date}</span>
         </div>
       </label>
-
       <div className="flex items-center gap-4 text-sm text-slate-300 ml-auto mr-4">
         <span
           className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
@@ -76,7 +82,6 @@ const TaskItem = ({
           {task.category}
         </span>
       </div>
-
       <button
         onClick={deleteTask}
         type="button"
@@ -84,6 +89,20 @@ const TaskItem = ({
       >
         Удалить
       </button>
+      <button
+        onClick={() => editTask()}
+        type="button"
+        className="cursor-pointer p-2"
+      >
+        ✏️
+      </button>
+      {isEditOpen && (
+        <EditTaskModal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          task={task}
+        />
+      )}
     </li>
   );
 };

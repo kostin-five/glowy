@@ -1,0 +1,150 @@
+import { Dialog, DialogPanel } from "@headlessui/react";
+import type { Task } from "../../types";
+import {
+  useUpdateTask,
+  type EnergyLevel,
+  type Priority,
+} from "../../store/useTaskStore";
+import { useState } from "react";
+
+interface IDialog {
+  isOpen: boolean;
+  onClose: () => void;
+  task: Task;
+}
+
+const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
+  const [values, setValues] = useState<Task>(task);
+  const updateTask = useUpdateTask();
+
+  const handleSave = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    updateTask(task.id, values);
+    setValues(task);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40">
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+          <DialogPanel
+            className={
+              "w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl"
+            }
+          >
+            <form onSubmit={handleSave} className="space-y-4">
+              <input
+                type="text"
+                className="w-full bg-slate-800 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all mb-4"
+                value={values.title}
+                onChange={(e) =>
+                  setValues({ ...values, title: e.target.value })
+                }
+              />
+              <input
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors scheme-dark"
+                type="date"
+                value={values.date}
+                onChange={(e) => setValues({ ...values, date: e.target.value })}
+              />
+              <select
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                value={values.priority}
+                onChange={(e) =>
+                  setValues({ ...values, priority: e.target.value as Priority })
+                }
+              >
+                <option value="" disabled>
+                  Выберете категорию
+                </option>
+                <option value="Важно">Важно</option>
+                <option value="Нормально">Нормально</option>
+                <option value="Не срочно">Не срочно</option>
+              </select>
+              <div className="text-slate-200">
+                <p>Уровень энергии:</p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+                    <input
+                      className="accent-indigo-500"
+                      type="radio"
+                      value={"low"}
+                      name="energy"
+                      checked={values.energyLevel === "low"}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          energyLevel: e.target.value as EnergyLevel,
+                        })
+                      }
+                    />
+                    Низкий
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+                    <input
+                      className="accent-indigo-500"
+                      type="radio"
+                      value={"med"}
+                      name="energy"
+                      checked={values.energyLevel === "med"}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          energyLevel: e.target.value as EnergyLevel,
+                        })
+                      }
+                    />
+                    Средний
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+                    <input
+                      className="accent-indigo-500"
+                      type="radio"
+                      value={"high"}
+                      name="energy"
+                      checked={values.energyLevel === "high"}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          energyLevel: e.target.value as EnergyLevel,
+                        })
+                      }
+                    />
+                    Высокий
+                  </label>
+                </div>
+              </div>
+              <input
+                className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+                value={values.category}
+                onChange={(e) =>
+                  setValues({ ...values, category: e.target.value })
+                }
+                type="text"
+              />
+              <button
+                className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"
+                onClick={() => onClose()}
+                type="button"
+              >
+                Отмена
+              </button>
+              <button
+                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors"
+                onClick={handleSave}
+                type="button"
+              >
+                Сохранить
+              </button>
+            </form>
+          </DialogPanel>
+        </div>
+      </div>
+    </Dialog>
+  );
+};
+
+export default EditTaskModal;

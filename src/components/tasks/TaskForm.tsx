@@ -1,9 +1,6 @@
 import { useState } from "react";
-import { useCreateTask } from "../../store/useTaskStore";
+import { useCreateTask, type EnergyLevel, type Priority } from "../../store/useTaskStore";
 import { schemaTask, type Task } from "../../types";
-
-type Priority = "Важно" | "Нормально" | "Не срочно";
-type EnergyLevel = "low" | "med" | "high";
 
 const TaskForm = () => {
   const [values, setValues] = useState<Task>({

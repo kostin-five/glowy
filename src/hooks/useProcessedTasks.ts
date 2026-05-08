@@ -31,7 +31,7 @@ export const useProcessedTasks = () => {
   const filteredTasks = useFilteredTasks();
 
   const sortedTasks = useMemo(() => {
-    if (!filteredTasks) {
+    if (!sortField) {
       return filteredTasks;
     }
     return [...filteredTasks].sort((a, b) => {

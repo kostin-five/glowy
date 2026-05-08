@@ -16,8 +16,14 @@ interface TaskStore {
 }
 
 export type FilterStatus = "Все" | "Активные" | "Выполненные";
-type SortField = "date" | "energy" | "title" | "category" | "priority" | null;
-type SortDirection = "asc" | "desc";
+export type SortField =
+  | "date"
+  | "energy"
+  | "title"
+  | "category"
+  | "priority"
+  | null;
+export type SortDirection = "asc" | "desc";
 
 const initialTasks: Task[] = [];
 

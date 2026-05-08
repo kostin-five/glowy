@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useCreateTask } from "../store/useTaskStore";
-import { schemaTask, type Task } from "../types";
+import { useCreateTask } from "../../store/useTaskStore";
+import { schemaTask, type Task } from "../../types";
 
 type Priority = "Важно" | "Нормально" | "Не срочно";
 type EnergyLevel = "low" | "med" | "high";
@@ -36,7 +36,7 @@ const TaskForm = () => {
     if (parsedValues.success) {
       create({ ...parsedValues.data, id: Date.now() });
     } else {
-      alert("Название задачи не может быть пустым!");
+      alert("Поле не может быть пустым!");
     }
     clean();
   };

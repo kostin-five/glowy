@@ -5,34 +5,36 @@ import type { StateCreator } from "zustand";
 
 interface TaskStore {
   tasks: Task[];
+  filterStatus: FilterStatus;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  setFilterStatus: (filterStatus: FilterStatus) => void;
+  setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: Task) => void;
   deleteTask: (id: number) => void;
   toggleTask: (id: number) => void;
 }
 
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Настроить Zustand для стейта",
-    date: "2026-05-03",
-    priority: "Важно",
-    category: "Разработка",
-    completed: false,
-    energyLevel: "med",
-  },
-  {
-    id: 2,
-    title: "Сделать тег v0.1.0",
-    date: "2026-05-02",
-    priority: "Нормально",
-    category: "Git",
-    completed: false,
-    energyLevel: "high",
-  },
-];
+export type FilterStatus = "Все" | "Активные" | "Выполненные";
+type SortField = "date" | "energy" | "title" | "category" | "priority" | null;
+type SortDirection = "asc" | "desc";
+
+const initialTasks: Task[] = [];
 
 const taskStore: StateCreator<TaskStore> = (set) => ({
   tasks: initialTasks,
+  filterStatus: "Все",
+  sortField: null,
+  sortDirection: "asc",
+  setFilterStatus: (filterStatus: FilterStatus) =>
+    set(() => ({
+      filterStatus: filterStatus,
+    })),
+  setSort: (sortField: SortField, sortDirection: SortDirection) =>
+    set(() => ({
+      sortField: sortField,
+      sortDirection: sortDirection,
+    })),
   createTask: (newTask: Task) =>
     set((state) => ({
       tasks: [...state.tasks, newTask],
@@ -57,6 +59,12 @@ const useTaskStore = create<TaskStore>()(
 );
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
+export const useFilter = () => useTaskStore((state) => state.filterStatus);
+export const useSortField = () => useTaskStore((state) => state.sortField);
+export const useSortDirection = () =>
+  useTaskStore((state) => state.sortDirection);
+export const useSetFilter = () => useTaskStore.getState().setFilterStatus;
+export const useSetSort = () => useTaskStore.getState().setSort;
 export const useCreateTask = () => useTaskStore.getState().createTask;
 export const useDeleteTask = () => useTaskStore.getState().deleteTask;
 export const useToggleTask = () => useTaskStore.getState().toggleTask;

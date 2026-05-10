@@ -2,8 +2,8 @@ import { useDeleteTask, useToggleTask } from "../../store/useTaskStore";
 import type { Task } from "../../types";
 import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
-import SortMenu from "../ui/SortMenu";
-import TaskFilter from "./TaskFilter";
+import { AnimatePresence } from "framer-motion";
+import TaskControls from "./TaskControls";
 
 const TaskList = () => {
   const remove = useDeleteTask();
@@ -13,12 +13,18 @@ const TaskList = () => {
 
   return (
     <>
-      <SortMenu />
-      <TaskFilter />
+      <TaskControls />
       <ul className="flex flex-col list-none">
-        {processedTasks.map((task: Task) => (
-          <TaskItem key={task.id} toggle={toggle} remove={remove} task={task} />
-        ))}
+        <AnimatePresence>
+          {processedTasks.map((task: Task) => (
+            <TaskItem
+              key={task.id}
+              toggle={toggle}
+              remove={remove}
+              task={task}
+            />
+          ))}
+        </AnimatePresence>
       </ul>
     </>
   );

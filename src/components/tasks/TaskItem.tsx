@@ -2,6 +2,13 @@
 import { useState } from "react";
 import type { Task } from "../../types";
 import EditTaskModal from "./EditTaskModal";
+import { motion } from "framer-motion";
+
+const energyIcons = {
+  low: "🔵",
+  med: "🟡",
+  high: "🔴",
+};
 
 const TaskItem = ({
   task,
@@ -25,15 +32,15 @@ const TaskItem = ({
     ? "line-through text-slate-500 opacity-50"
     : "text-slate-200";
 
-  const energyIcons = {
-    low: "🔵",
-    med: "🟡",
-    high: "🔴",
-  };
-
   return (
-    <li className="flex justify-between items-center bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors">
-      <label className="flex items-center gap-4 cursor-pointer group">
+    <motion.li
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      layout
+      className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors"
+    >
+      <label className="flex items-start sm:items-center gap-4 cursor-pointer group w-full sm:w-auto flex-1 min-w-0">
         <input
           className="hidden peer"
           type="checkbox"
@@ -55,55 +62,58 @@ const TaskItem = ({
             />
           </svg>
         </div>
-
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0 overflow-hidden">
           <span
-            className={`font-medium transition-all duration-300 ${contentStyles}`}
+            className={`font-medium transition-all duration-300 block truncate ${contentStyles}`}
           >
             {task.title}
           </span>
           <span className="text-xs text-slate-400 mt-1">{task.date}</span>
         </div>
       </label>
-      <div className="flex items-center gap-4 text-sm text-slate-300 ml-auto mr-4">
-        <span
-          className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
-        >
-          {energyIcons[task.energyLevel]}
-        </span>
-        <span
-          className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
-        >
-          {task.priority}
-        </span>
-        <span
-          className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
-        >
-          {task.category}
-        </span>
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0">
+        <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 shrink-0">
+          <span
+            className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
+          >
+            {energyIcons[task.energyLevel]}
+          </span>
+          <span
+            className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
+          >
+            {task.priority}
+          </span>
+          <span
+            className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
+          >
+            {task.category}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 ml-auto pl-2 shrink-0">
+          <button
+            onClick={deleteTask}
+            type="button"
+            className="text-red-400 hover:text-red-300 cursor-pointer p-2 transition-colors"
+          >
+            Удалить
+          </button>
+          <button
+            onClick={() => editTask()}
+            type="button"
+            className="cursor-pointer p-2"
+          >
+            ✏️
+          </button>
+        </div>
+        {isEditOpen && (
+          <EditTaskModal
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            task={task}
+          />
+        )}
       </div>
-      <button
-        onClick={deleteTask}
-        type="button"
-        className="text-red-400 hover:text-red-300 cursor-pointer p-2 transition-colors"
-      >
-        Удалить
-      </button>
-      <button
-        onClick={() => editTask()}
-        type="button"
-        className="cursor-pointer p-2"
-      >
-        ✏️
-      </button>
-      {isEditOpen && (
-        <EditTaskModal
-          isOpen={isEditOpen}
-          onClose={() => setIsEditOpen(false)}
-          task={task}
-        />
-      )}
-    </li>
+    </motion.li>
   );
 };
 

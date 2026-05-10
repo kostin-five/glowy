@@ -78,9 +78,10 @@ export const useFilter = () => useTaskStore((state) => state.filterStatus);
 export const useSortField = () => useTaskStore((state) => state.sortField);
 export const useSortDirection = () =>
   useTaskStore((state) => state.sortDirection);
-export const useSetFilter = () => useTaskStore.getState().setFilterStatus;
-export const useSetSort = () => useTaskStore.getState().setSort;
-export const useCreateTask = () => useTaskStore.getState().createTask;
-export const useDeleteTask = () => useTaskStore.getState().deleteTask;
-export const useToggleTask = () => useTaskStore.getState().toggleTask;
-export const useUpdateTask = () => useTaskStore.getState().updateTask;
+export const useSetFilter = () =>
+  useTaskStore((state) => state.setFilterStatus);
+export const useSetSort = () => useTaskStore((state) => state.setSort);
+export const useCreateTask = () => useTaskStore((state) => state.createTask);
+export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);
+export const useToggleTask = () => useTaskStore((state) => state.toggleTask);
+export const useUpdateTask = () => useTaskStore((state) => state.updateTask);

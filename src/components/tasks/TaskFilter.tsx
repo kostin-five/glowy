@@ -6,7 +6,7 @@ const TaskFilter = () => {
   const filterTypes: FilterStatus[] = ["Все", "Активные", "Выполненные"];
 
   return (
-    <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl w-fit border border-slate-800">
+    <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl w-fit border border-slate-800 h-full">
       {filterTypes.map((filter: FilterStatus) => (
         <button
           key={filter}

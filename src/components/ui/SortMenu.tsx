@@ -30,7 +30,7 @@ const SortMenu = () => {
 
   const buttonText = currentOption ? currentOption.label : "Сортировка";
   return (
-    <Menu as="div" className="relative inline-block text-left">
+    <Menu as="div" className="relative inline-block text-left h-full">
       <MenuButton
         className={
           "flex items-center gap-2 px-3 py-2 bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 text-slate-300 text-sm rounded-lg transition-all active:scale-95"

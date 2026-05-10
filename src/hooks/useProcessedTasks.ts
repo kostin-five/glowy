@@ -6,6 +6,7 @@ import {
   useTasks,
 } from "../store/useTaskStore";
 import type { Task } from "../types";
+const energyWeights = { low: 1, med: 2, high: 3 };
 
 export const useFilteredTasks = () => {
   const tasks = useTasks();
@@ -29,7 +30,6 @@ export const useProcessedTasks = () => {
   const sortField = useSortField();
   const sortDirection = useSortDirection();
   const filteredTasks = useFilteredTasks();
-  const energyWeights = { low: 1, med: 2, high: 3 };
 
   const sortedTasks = useMemo(() => {
     if (!sortField) {

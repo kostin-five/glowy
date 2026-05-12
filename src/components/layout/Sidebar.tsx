@@ -16,7 +16,7 @@ const SidebarContent = ({
   closeMenu: () => void;
 }) => {
   const menuItems = [
-    { to: "/", label: "Пункт управления", icon: LayoutDashboard },
+    { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
   ];

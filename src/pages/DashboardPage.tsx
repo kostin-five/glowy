@@ -4,18 +4,20 @@ import { useEffect, useState } from "react";
 import useTypewriter from "../hooks/useTypewriter";
 import SuccessStairs from "../dashboard/SuccessStairs";
 import { useUserLevel } from "../store/useTaskStore";
+import { useUserName } from "../store/useAuthStore";
 
 const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
   const [aiMessage, setAIMessage] = useState("");
   const currentLevel = useUserLevel();
+  const username = useUserName();
 
   useEffect(() => {
     setTimeout(() => {
       setIsThinking(false);
-      setAIMessage("Привет, с чего начнем?");
+      setAIMessage(`Привет, ${username}! С чего начнем?`);
     }, 1500);
-  }, []);
+  }, [username]);
 
   const typewriter = useTypewriter(aiMessage, 50);
 

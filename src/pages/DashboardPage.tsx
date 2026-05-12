@@ -2,10 +2,13 @@ import { Link } from "react-router-dom";
 import TaskList from "../components/tasks/TaskList";
 import { useEffect, useState } from "react";
 import useTypewriter from "../hooks/useTypewriter";
+import SuccessStairs from "../dashboard/SuccessStairs";
+import { useUserLevel } from "../store/useTaskStore";
 
 const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
   const [aiMessage, setAIMessage] = useState("");
+  const currentLevel = useUserLevel();
 
   useEffect(() => {
     setTimeout(() => {
@@ -30,9 +33,7 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full min-h-100">
           <h2 className="text-xl font-bold text-slate-200 mb-6">Путь Glowy</h2>
-          <div className="flex-1 border border-dashed border-slate-700 rounded-xl flex items-center justify-center text-slate-500 italic">
-            Здесь будет "Лестница успеха"
-          </div>
+          <SuccessStairs currentLevel={currentLevel} />
         </section>
 
         <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full min-h-100">

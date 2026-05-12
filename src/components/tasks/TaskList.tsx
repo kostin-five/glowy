@@ -1,11 +1,10 @@
-import { useDeleteTask, useToggleTask } from "../../store/useTaskStore";
+import { useToggleTask } from "../../store/useTaskStore";
 import type { Task } from "../../types";
 import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
 
 const TaskList = () => {
-  const remove = useDeleteTask();
   const toggle = useToggleTask();
 
   const processedTasks = useProcessedTasks();
@@ -16,12 +15,7 @@ const TaskList = () => {
         <AnimatePresence>
           {processedTasks.length ? (
             processedTasks.map((task: Task) => (
-              <TaskItem
-                key={task.id}
-                toggle={toggle}
-                remove={remove}
-                task={task}
-              />
+              <TaskItem key={task.id} toggle={toggle} task={task} />
             ))
           ) : (
             <motion.div

@@ -39,6 +39,12 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const sendTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!values.title.trim() || !values.category.trim()) {
+      alert("Название и категория не могут быть пустыми!");
+      return;
+    }
+
     const parsedValues = schemaTask.safeParse(values);
     if (parsedValues.success) {
       create({ ...parsedValues.data, id: Date.now() });

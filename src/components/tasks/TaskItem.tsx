@@ -12,16 +12,11 @@ const energyIcons = {
 
 const TaskItem = ({
   task,
-  remove,
   toggle,
 }: {
   task: Task;
-  remove: (id: number) => void;
   toggle: (id: number) => void;
 }) => {
-  const deleteTask = (): void => {
-    remove(task.id);
-  };
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const editTask = () => {
@@ -90,13 +85,6 @@ const TaskItem = ({
           </span>
         </div>
         <div className="flex items-center gap-1 ml-auto pl-2 shrink-0">
-          <button
-            onClick={deleteTask}
-            type="button"
-            className="text-red-400 hover:text-red-300 cursor-pointer p-2 transition-colors"
-          >
-            Удалить
-          </button>
           <button
             onClick={() => editTask()}
             type="button"

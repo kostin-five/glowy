@@ -8,6 +8,7 @@ interface TaskStore {
   filterStatus: FilterStatus;
   sortField: SortField;
   sortDirection: SortDirection;
+  userLevel: number;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: Task) => void;
@@ -30,11 +31,17 @@ export type SortDirection = "asc" | "desc";
 
 const initialTasks: Task[] = [];
 
+const calculateLevel = (tasks: Task[]) => {
+  const calculatedCount = tasks.filter((t) => t.completed).length;
+  return Math.min(5, calculatedCount + 1);
+};
+
 const taskStore: StateCreator<TaskStore> = (set) => ({
   tasks: initialTasks,
   filterStatus: "Все",
   sortField: null,
   sortDirection: "asc",
+  userLevel: 1,
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
       filterStatus: filterStatus,
@@ -49,15 +56,26 @@ const taskStore: StateCreator<TaskStore> = (set) => ({
       tasks: [...state.tasks, newTask],
     })),
   deleteTask: (id: number) =>
-    set((state) => ({
-      tasks: state.tasks.filter((t: Task): boolean => t.id !== id),
-    })),
+    set((state) => {
+      const updatedTasks = state.tasks.filter(
+        (t: Task): boolean => t.id !== id
+      );
+      return {
+        tasks: updatedTasks,
+        userLevel: Math.max(state.userLevel, calculateLevel(updatedTasks)),
+      };
+    }),
   toggleTask: (id: number) =>
-    set((state) => ({
-      tasks: state.tasks.map(
+    set((state) => {
+      const updatedTasks = state.tasks.map(
         (t: Task): Task => (t.id === id ? { ...t, completed: !t.completed } : t)
-      ),
-    })),
+      );
+
+      return {
+        tasks: updatedTasks,
+        userLevel: calculateLevel(updatedTasks),
+      };
+    }),
   updateTask: (id: number, updatedData: Partial<Task>) =>
     set((state) => ({
       tasks: state.tasks.map(
@@ -80,6 +98,7 @@ export const useSortDirection = () =>
   useTaskStore((state) => state.sortDirection);
 export const useSetFilter = () =>
   useTaskStore((state) => state.setFilterStatus);
+export const useUserLevel = () => useTaskStore((state) => state.userLevel);
 export const useSetSort = () => useTaskStore((state) => state.setSort);
 export const useCreateTask = () => useTaskStore((state) => state.createTask);
 export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);

@@ -1,5 +1,6 @@
-import type { Task } from "../../types";
+import { schemaTask, type Task } from "../../types";
 import {
+  useDeleteTask,
   useUpdateTask,
   type EnergyLevel,
   type Priority,
@@ -16,10 +17,27 @@ interface IDialog {
 const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const [values, setValues] = useState<Task>(task);
   const updateTask = useUpdateTask();
+  const remove = useDeleteTask();
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    updateTask(task.id, values);
+
+    if (!values.title.trim() || !values.category.trim()) {
+      alert("Название и категория не могут быть пустыми!");
+      return;
+    }
+
+    const parsedValues = schemaTask.safeParse(values);
+    if (parsedValues.success) {
+      updateTask(task.id, parsedValues.data);
+      onClose();
+    } else {
+      alert("Поле не может быть пустым!");
+    }
+  };
+
+  const deleteTask = (): void => {
+    remove(task.id);
     onClose();
   };
 
@@ -134,6 +152,13 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
             type="submit"
           >
             Сохранить
+          </button>
+          <button
+            onClick={deleteTask}
+            type="button"
+            className="text-red-400 hover:text-red-300 cursor-pointer p-2 transition-colors"
+          >
+            Удалить
           </button>
         </div>
       </form>

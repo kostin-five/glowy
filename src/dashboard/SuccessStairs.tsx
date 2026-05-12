@@ -7,14 +7,12 @@ interface ISuccessStairs {
 const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
   const steps = [1, 2, 3, 4, 5];
 
-  // Увеличенные размеры лестницы
   const stepWidth = 90;
   const stepHeight = 80;
-  const thickness = 8; // Толщина линий (8px)
+  const thickness = 8;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center pb-12 pt-8">
-      {/* Подзаголовок компонента */}
       <div className="absolute top-0 left-0 w-full text-center">
         <p className="text-[11px] text-slate-500 uppercase tracking-widest font-black">
           Прогресс: 1 уровень = 3 задачи
@@ -28,7 +26,6 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
           height: `${steps.length * stepHeight}px`,
         }}
       >
-        {/* Стикмен */}
         <motion.img
           src="/Runner_stickman.png"
           alt="Стикмен"
@@ -44,14 +41,12 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
           const isReached = currentLevel >= step;
           const isPassed = currentLevel > step;
 
-          // Единый стиль свечения для всех активных линий
           const activeStyle =
             "bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,1)]";
           const inactiveStyle = "bg-slate-800";
 
           return (
             <div key={step}>
-              {/* 0. Начальная вертикальная линия (идет вниз в пол) */}
               {step === 1 && (
                 <div
                   className={`absolute transition-all duration-700 z-0 ${
@@ -59,25 +54,22 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                   }`}
                   style={{
                     width: `${thickness}px`,
-                    height: `40px`, // Сделали короче, чтобы не вылезала за карточку
+                    height: `40px`,
                     left: `0px`,
                     bottom: `-40px`,
-                    // Убрали borderBottomRadius, чтобы она была плоской снизу
                   }}
                 />
               )}
 
-              {/* 1. Горизонтальная линия */}
               <div
                 className={`absolute transition-all duration-700 z-10 ${
                   isReached ? activeStyle : inactiveStyle
                 }`}
                 style={{
                   height: `${thickness}px`,
-                  width: `${stepWidth + thickness}px`, // Прибавляем толщину, чтобы угол закрылся идеально
+                  width: `${stepWidth + thickness}px`,
                   left: `${(step - 1) * stepWidth}px`,
                   bottom: `${(step - 1) * stepHeight}px`,
-                  // Скругляем только внешние края у первой и последней ступени
                   borderTopLeftRadius: step === 1 ? "8px" : "0px",
                   borderTopRightRadius: step === steps.length ? "8px" : "0px",
                   borderBottomRightRadius:
@@ -85,7 +77,6 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                 }}
               />
 
-              {/* 2. Номер ступени */}
               <span
                 className={`absolute text-sm font-black transition-colors duration-700 ${
                   isReached ? "text-indigo-300" : "text-slate-600"
@@ -98,7 +89,6 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                 0{step}
               </span>
 
-              {/* 3. Вертикальная линия вверх (убрали у последнего шага) */}
               {step !== steps.length && (
                 <div
                   className={`absolute transition-all duration-700 z-0 ${

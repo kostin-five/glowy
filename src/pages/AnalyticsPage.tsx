@@ -1,10 +1,11 @@
 import useTaskStats from "../hooks/useTaskStats";
 
-const ProgressPage = () => {
+const AnalyticsPage = () => {
   const { countTasks, calcCompletedTasks, progressPercent } = useTaskStats();
 
   return (
-    <section className="flex flex-col gap-6 px-16 mt-10">
+    <section className="flex flex-col gap-6">
+      <h1 className="text-3xl font-bold text-slate-100">Твоя аналитика</h1>
       <section className="grid grid-cols-2 gap-4">
         <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
           Всего задач:{" "}
@@ -29,4 +30,4 @@ const ProgressPage = () => {
   );
 };
 
-export default ProgressPage;
+export default AnalyticsPage;

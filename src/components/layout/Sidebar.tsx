@@ -1,6 +1,7 @@
 // import React from "react";
 import { Link, useLocation, type Location } from "react-router-dom";
 import { Dialog, DialogPanel } from "@headlessui/react";
+import { BarChart3, CheckSquare, LayoutDashboard } from "lucide-react";
 
 interface ISidebar {
   isMenuOpen: boolean;
@@ -14,6 +15,12 @@ const SidebarContent = ({
   location: Location;
   closeMenu: () => void;
 }) => {
+  const menuItems = [
+    { to: "/", label: "Пункт управления", icon: LayoutDashboard },
+    { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
+    { to: "/analytics", label: "Аналитика", icon: BarChart3 },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       <div className="mb-12 px-2 select-none flex items-center gap-3">
@@ -27,28 +34,21 @@ const SidebarContent = ({
         </h2>
       </div>
       <nav className="flex flex-col gap-2">
-        <Link
-          onClick={() => closeMenu()}
-          className={`px-4 py-3 rounded-xl transition-all font-medium ${
-            location.pathname === "/"
-              ? "text-indigo-400 bg-indigo-500/10"
-              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-          }`}
-          to={"/"}
-        >
-          Задачи
-        </Link>
-        <Link
-          onClick={() => closeMenu()}
-          className={`px-4 py-3 rounded-xl transition-all font-medium ${
-            location.pathname === "/progress"
-              ? "text-indigo-400 bg-indigo-500/10"
-              : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-          }`}
-          to={"/progress"}
-        >
-          Прогресс
-        </Link>
+        {menuItems.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            onClick={() => closeMenu()}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium ${
+              location.pathname === item.to
+                ? "text-indigo-400 bg-indigo-500/10"
+                : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            }`}
+          >
+            <item.icon size={20} strokeWidth={2.5} />
+            {item.label}
+          </Link>
+        ))}
       </nav>
       <div className="mt-auto flex items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/50 rounded-2xl">
         {/* <img

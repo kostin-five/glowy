@@ -64,24 +64,25 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           value={values.title}
           onChange={(e) => setValues({ ...values, title: e.target.value })}
         />
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 w-full">
+        <div className="flex sm:flex-row flex-col gap-4 w-full">
+          <div className="flex-1">
             <input
-              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors scheme-dark w-full"
+              className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+                 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
+                 transition-all appearance-none scheme-dark"
               type="date"
               value={values.date}
               onChange={(e) => setValues({ ...values, date: e.target.value })}
             />
           </div>
-          <div className="flex-1 w-full">
+          <div className="flex-1">
             <select
-              className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors w-full"
+              className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+                 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
+                 transition-all appearance-none cursor-pointer"
               value={values.priority}
               onChange={(e) =>
-                setValues({
-                  ...values,
-                  priority: e.target.value as Priority,
-                })
+                setValues({ ...values, priority: e.target.value as Priority })
               }
             >
               <option value="Важно">Важно</option>

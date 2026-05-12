@@ -7,32 +7,33 @@ interface ISuccessStairs {
 const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
   const steps = [1, 2, 3, 4, 5];
 
-  const stepWidth = 90;
-  const stepHeight = 80;
+  // const stepWidth = 90;
+  // const stepHeight = 80;
   const thickness = 8;
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pb-12 pt-8">
+    <div className="relative w-full h-full flex flex-col items-center justify-center pb-10 pt-8">
       <div className="absolute top-0 left-0 w-full text-center">
-        <p className="text-[11px] text-slate-500 uppercase tracking-widest font-black">
-          Прогресс: 1 уровень = 3 задачи
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
+          Прогресс: 1 уровень = 1 задача
         </p>
       </div>
 
-      <div
+      {/* <div
         className="relative mt-8"
         style={{
           width: `${steps.length * stepWidth}px`,
           height: `${steps.length * stepHeight}px`,
         }}
-      >
+      > */}
+      <div className="relative w-full aspect-square max-w-[320px] 2xl:max-w-112.5">
         <motion.img
           src="/Runner_stickman.png"
           alt="Стикмен"
-          className="absolute z-30 w-14 h-14 invert brightness-200 drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]"
+          className="absolute z-30 w-12 h-12 invert brightness-200 drop-shadow-[0_0_15px_rgba(255,255,255,0.8)]"
           animate={{
-            bottom: `${(currentLevel - 1) * stepHeight + 12}px`,
-            left: `${(currentLevel - 1) * stepWidth + 20}px`,
+            bottom: `calc(${(currentLevel - 1) * 20}% + ${thickness}px)`,
+            left: `calc(${(currentLevel - 1) * 20}% + 15px)`,
           }}
           transition={{ type: "spring", stiffness: 120, damping: 14 }}
         />
@@ -67,9 +68,9 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                 }`}
                 style={{
                   height: `${thickness}px`,
-                  width: `${stepWidth + thickness}px`,
-                  left: `${(step - 1) * stepWidth}px`,
-                  bottom: `${(step - 1) * stepHeight}px`,
+                  width: `calc(20% + ${thickness}px)`,
+                  left: `${(step - 1) * 20}%`,
+                  bottom: `${(step - 1) * 20}%`,
                   borderTopLeftRadius: step === 1 ? "8px" : "0px",
                   borderTopRightRadius: step === steps.length ? "8px" : "0px",
                   borderBottomRightRadius:
@@ -82,8 +83,8 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                   isReached ? "text-indigo-300" : "text-slate-600"
                 }`}
                 style={{
-                  left: `${(step - 1) * stepWidth + 35}px`,
-                  bottom: `${(step - 1) * stepHeight - 35}px`,
+                  left: `calc(${(step - 1) * 20}% + 25px)`,
+                  bottom: `calc(${(step - 1) * 20}% - 30px)`,
                 }}
               >
                 0{step}
@@ -96,9 +97,9 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
                   }`}
                   style={{
                     width: `${thickness}px`,
-                    height: `${stepHeight + thickness}px`,
-                    left: `${step * stepWidth}px`,
-                    bottom: `${(step - 1) * stepHeight}px`,
+                    height: `calc(20% + ${thickness}px)`,
+                    left: `${step * 20}%`,
+                    bottom: `${(step - 1) * 20}%`,
                   }}
                 />
               )}

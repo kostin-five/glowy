@@ -33,12 +33,12 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full min-h-100">
-          <h2 className="text-xl font-bold text-slate-200 mb-6">Путь Glowy</h2>
+        <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125 overflow-hidden">
+          <h2 className="text-xl font-bold text-slate-200 mb-6">Лестница успеха</h2>
           <SuccessStairs currentLevel={currentLevel} />
         </section>
 
-        <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full min-h-100">
+        <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125">
           <h2 className="text-xl font-bold text-slate-200 mb-6">
             Хаб выгрузки мыслей
             <span
@@ -67,7 +67,7 @@ const DashboardPage = () => {
           </div>
         </section>
 
-        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full min-h-25 max-h-100">
+        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full h-125">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-200">Твои задачи</h2>
             <Link

@@ -2,6 +2,7 @@
 import { Link, useLocation, type Location } from "react-router-dom";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import { BarChart3, CheckSquare, LayoutDashboard } from "lucide-react";
+import { useUserName } from "../../store/useAuthStore";
 
 interface ISidebar {
   isMenuOpen: boolean;
@@ -20,6 +21,7 @@ const SidebarContent = ({
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
   ];
+  const username = useUserName();
 
   return (
     <div className="flex flex-col h-full">
@@ -56,7 +58,7 @@ const SidebarContent = ({
           alt="аватар"
           className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 shrink-0"
         /> */}
-        <p className="text-sm font-medium text-slate-200">Иван Иванов</p>
+        <p className="text-sm font-medium text-slate-200">{username}</p>
       </div>{" "}
     </div>
   );

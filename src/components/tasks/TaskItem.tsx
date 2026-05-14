@@ -33,9 +33,9 @@ const TaskItem = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       layout
-      className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors"
+      className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors"
     >
-      <label className="flex items-start sm:items-center gap-4 cursor-pointer group w-full sm:w-auto flex-1 min-w-0">
+      <label className="flex items-center gap-4 cursor-pointer group w-full sm:w-auto flex-1 min-w-50">
         <input
           className="hidden peer"
           type="checkbox"
@@ -66,8 +66,8 @@ const TaskItem = ({
           <span className="text-xs text-slate-400 mt-1">{task.date}</span>
         </div>
       </label>
-      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0">
-        <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
           <span
             className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
           >

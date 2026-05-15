@@ -67,7 +67,7 @@ const DashboardPage = () => {
           </div>
         </section>
 
-        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-full h-125">
+        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-125">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-200">Твои задачи</h2>
             <Link

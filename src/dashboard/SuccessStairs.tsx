@@ -19,13 +19,6 @@ const SuccessStairs = ({ currentLevel = 1 }: ISuccessStairs) => {
         </p>
       </div>
 
-      {/* <div
-        className="relative mt-8"
-        style={{
-          width: `${steps.length * stepWidth}px`,
-          height: `${steps.length * stepHeight}px`,
-        }}
-      > */}
       <div className="relative w-full aspect-square max-w-[320px] 2xl:max-w-112.5">
         <motion.img
           src="/Runner_stickman.png"

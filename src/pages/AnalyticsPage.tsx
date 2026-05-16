@@ -36,7 +36,6 @@ const AnalyticsPage = () => {
     <section className="flex flex-col gap-8 max-w-5xl mx-auto w-full px-4 md:px-8">
       <h1 className="text-3xl font-bold text-slate-100">Твоя аналитика</h1>
 
-      {/* Статистика в цифрах */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex flex-col justify-center">
           <span className="text-sm text-slate-400 font-medium mb-1">
@@ -64,7 +63,6 @@ const AnalyticsPage = () => {
         </div>
       </section>
 
-      {/* График Recharts */}
       <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 h-100 flex flex-col">
         <h2 className="text-lg font-bold text-slate-200 mb-4">
           Распределение по энергии

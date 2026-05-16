@@ -5,6 +5,8 @@ import AppLayout from "./layout/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
 import { useIsAuthenticated } from "./store/useAuthStore";
 import LandingPage from "./pages/LandingPage";
+import { useEffect } from "react";
+import { useFetchTasks } from "./store/useTaskStore";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
@@ -16,6 +18,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  const fetchTasks = useFetchTasks();
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
   return (
     <BrowserRouter>
       <Routes>

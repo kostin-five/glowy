@@ -1,4 +1,3 @@
-// import React from "react";
 import { Link, useLocation, type Location } from "react-router-dom";
 import { Dialog, DialogPanel } from "@headlessui/react";
 import { BarChart3, CheckSquare, LayoutDashboard } from "lucide-react";

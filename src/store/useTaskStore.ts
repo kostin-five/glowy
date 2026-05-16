@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import type { Task } from "../types";
-import { createJSONStorage, persist } from "zustand/middleware";
 import type { StateCreator } from "zustand";
+import { TaskApi } from "../api/TaskApi";
+import axios from "axios";
 
 interface TaskStore {
   tasks: Task[];
@@ -11,10 +12,11 @@ interface TaskStore {
   userLevel: number;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
-  createTask: (newTask: Task) => void;
-  deleteTask: (id: number) => void;
-  toggleTask: (id: number) => void;
-  updateTask: (id: number, updatedData: Partial<Task>) => void;
+  createTask: (newTask: Task) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
+  toggleTask: (id: number) => Promise<void>;
+  updateTask: (id: number, updatedData: Partial<Task>) => Promise<void>;
+  fetchTasks: () => Promise<void>;
 }
 
 export type Priority = "Важно" | "Нормально" | "Не срочно";
@@ -36,12 +38,13 @@ const calculateLevel = (tasks: Task[]) => {
   return Math.min(5, calculatedCount + 1);
 };
 
-const taskStore: StateCreator<TaskStore> = (set) => ({
+const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
   filterStatus: "Все",
   sortField: null,
   sortDirection: "asc",
   userLevel: 1,
+
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
       filterStatus: filterStatus,
@@ -51,45 +54,110 @@ const taskStore: StateCreator<TaskStore> = (set) => ({
       sortField: sortField,
       sortDirection: sortDirection,
     })),
-  createTask: (newTask: Task) =>
-    set((state) => ({
-      tasks: [...state.tasks, newTask],
-    })),
-  deleteTask: (id: number) =>
-    set((state) => {
-      const updatedTasks = state.tasks.filter(
-        (t: Task): boolean => t.id !== id
-      );
-      return {
-        tasks: updatedTasks,
-        userLevel: Math.max(state.userLevel, calculateLevel(updatedTasks)),
-      };
-    }),
-  toggleTask: (id: number) =>
-    set((state) => {
-      const updatedTasks = state.tasks.map(
-        (t: Task): Task => (t.id === id ? { ...t, completed: !t.completed } : t)
-      );
 
-      return {
-        tasks: updatedTasks,
-        userLevel: calculateLevel(updatedTasks),
-      };
-    }),
-  updateTask: (id: number, updatedData: Partial<Task>) =>
-    set((state) => ({
-      tasks: state.tasks.map(
-        (t: Task): Task => (t.id === id ? { ...t, ...updatedData } : t)
-      ),
-    })),
+  createTask: async (newTask: Task) => {
+    try {
+      const result = await TaskApi.postTask(newTask);
+      set((state) => {
+        return { tasks: [...state.tasks, result] };
+      });
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
+
+  deleteTask: async (id: number) => {
+    try {
+      const deletedTask = await TaskApi.deleteTask(id);
+      set((state) => {
+        const updatedTasks = state.tasks.filter((task) => task.id !== id);
+
+        return {
+          tasks: updatedTasks,
+          userLevel: Math.max(state.userLevel, calculateLevel(updatedTasks)),
+        };
+      });
+      return deletedTask;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
+
+  toggleTask: async (id: number) => {
+    try {
+      const taskToToggle = get().tasks.find((t) => t.id === id);
+      if (!taskToToggle) return;
+      const updatedData = await TaskApi.putTask(id, {
+        ...taskToToggle,
+        completed: !taskToToggle.completed,
+      });
+      set((state) => {
+        const updatedTasks = state.tasks.map((t) =>
+          t.id === id ? { ...t, completed: !t.completed } : t
+        );
+        return {
+          tasks: updatedTasks,
+          userLevel: calculateLevel(updatedTasks),
+        };
+      });
+      return updatedData;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
+
+  updateTask: async (id: number, updatedData: Partial<Task>) => {
+    try {
+      const taskToUpdate = get().tasks.find((t) => t.id === id);
+      if (!taskToUpdate) return;
+      const updateTask = await TaskApi.putTask(id, {
+        ...taskToUpdate,
+        ...updatedData,
+      });
+      set((state) => {
+        return {
+          tasks: state.tasks.map(
+            (t: Task): Task => (t.id === id ? { ...t, ...updatedData } : t)
+          ),
+        };
+      });
+      return updateTask;
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
+
+  fetchTasks: async () => {
+    try {
+      const response = await TaskApi.getTasks();
+      set({ tasks: response });
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
 });
 
-const useTaskStore = create<TaskStore>()(
-  persist(taskStore, {
-    name: "tasks-storage",
-    storage: createJSONStorage(() => localStorage),
-  })
-);
+const useTaskStore = create<TaskStore>()(taskStore);
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
 export const useFilter = () => useTaskStore((state) => state.filterStatus);
@@ -104,3 +172,4 @@ export const useCreateTask = () => useTaskStore((state) => state.createTask);
 export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);
 export const useToggleTask = () => useTaskStore((state) => state.toggleTask);
 export const useUpdateTask = () => useTaskStore((state) => state.updateTask);
+export const useFetchTasks = () => useTaskStore((state) => state.fetchTasks);

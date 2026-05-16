@@ -1,11 +1,10 @@
-// import React from 'react'
 import { useState } from "react";
 import type { Task } from "../../types";
 import EditTaskModal from "./EditTaskModal";
 import { motion } from "framer-motion";
 
 const energyIcons = {
-  low: "🔵",
+  low: "🟢",
   med: "🟡",
   high: "🔴",
 };

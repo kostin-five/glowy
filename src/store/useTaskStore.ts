@@ -10,6 +10,7 @@ interface TaskStore {
   sortField: SortField;
   sortDirection: SortDirection;
   userLevel: number;
+  isLoading: boolean;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: Task) => Promise<void>;
@@ -44,6 +45,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   sortField: null,
   sortDirection: "asc",
   userLevel: 1,
+  isLoading: false,
 
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
@@ -144,6 +146,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   fetchTasks: async () => {
+    set({ isLoading: true });
     try {
       const response = await TaskApi.getTasks();
       set({ tasks: response });
@@ -153,6 +156,8 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       } else if (e instanceof Error) {
         console.error("Внутренняя ошибка:", e.message);
       }
+    } finally {
+      set({ isLoading: false });
     }
   },
 });
@@ -167,6 +172,7 @@ export const useSortDirection = () =>
 export const useSetFilter = () =>
   useTaskStore((state) => state.setFilterStatus);
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
+export const useIsLoading = () => useTaskStore((state) => state.isLoading);
 export const useSetSort = () => useTaskStore((state) => state.setSort);
 export const useCreateTask = () => useTaskStore((state) => state.createTask);
 export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);

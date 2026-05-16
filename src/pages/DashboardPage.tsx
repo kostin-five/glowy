@@ -3,14 +3,16 @@ import TaskList from "../components/tasks/TaskList";
 import { useEffect, useState } from "react";
 import useTypewriter from "../hooks/useTypewriter";
 import SuccessStairs from "../dashboard/SuccessStairs";
-import { useUserLevel } from "../store/useTaskStore";
+import { useIsLoading, useUserLevel } from "../store/useTaskStore";
 import { useUserName } from "../store/useAuthStore";
+import Spinner from "../components/ui/Spinner";
 
 const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
   const [aiMessage, setAIMessage] = useState("");
   const currentLevel = useUserLevel();
   const username = useUserName();
+  const isLoading = useIsLoading();
 
   useEffect(() => {
     setTimeout(() => {
@@ -34,7 +36,9 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125 overflow-hidden">
-          <h2 className="text-xl font-bold text-slate-200 mb-6">Лестница успеха</h2>
+          <h2 className="text-xl font-bold text-slate-200 mb-6">
+            Лестница успеха
+          </h2>
           <SuccessStairs currentLevel={currentLevel} />
         </section>
 
@@ -79,7 +83,7 @@ const DashboardPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <TaskList />
+            {isLoading ? <Spinner /> : <TaskList />}
           </div>
         </section>
       </div>

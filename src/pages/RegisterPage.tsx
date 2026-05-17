@@ -1,0 +1,116 @@
+import { useState } from "react";
+import { AuthApi } from "../api/AuthApi";
+import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
+import { useIsLoading } from "../store/useTaskStore";
+import { motion } from "framer-motion";
+
+const RegisterPage = () => {
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const isLoading = useIsLoading();
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await AuthApi.registerRequest({ username, password });
+      navigate("/login");
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        setError(e.response?.data?.error || "Неверный логин или пароль");
+      } else {
+        setError("Что-то пошло не так");
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden px-4">
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/20 blur-[120px] pointer-events-none"></div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="z-10 max-w-md w-full flex flex-col items-center"
+      >
+        <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
+          <img src="/Glowy.png" alt="Glowy Logo" className="w-12 h-12" />
+        </div>
+
+        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
+          Начать путь с{" "}
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
+            Glowy
+          </span>
+        </h1>
+        <p className="text-slate-400 text-sm mb-8 text-center px-4">
+          Создай аккаунт, чтобы сохранять свои задачи и отслеживать прогресс
+          энергии.
+        </p>
+
+        <form
+          onSubmit={handleRegister}
+          className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl flex flex-col gap-5 shadow-2xl"
+        >
+          <div>
+            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+              Имя
+            </label>
+            <input
+              type="text"
+              placeholder="Напишите имя"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+              Пароль
+            </label>
+            <input
+              type="password"
+              placeholder="Придумайте пароль"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+              required
+            />
+          </div>
+
+          {error && (
+            <p className="text-red-400 text-sm text-center bg-red-400/10 py-2 rounded-lg">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50"
+          >
+            {isLoading ? "Создание аккаунта..." : "Зарегистрироваться"}
+          </button>
+
+          <div className="mt-4 text-center text-sm text-slate-400">
+            Уже есть аккаунт?{" "}
+            <Link
+              to="/login"
+              className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+            >
+              Войти
+            </Link>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+export default RegisterPage;

@@ -4,14 +4,15 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import AppLayout from "./layout/AppLayout";
 import DashboardPage from "./pages/DashboardPage";
 import { useIsAuthenticated } from "./store/useAuthStore";
-import LandingPage from "./pages/LandingPage";
 import { useEffect } from "react";
 import { useFetchTasks } from "./store/useTaskStore";
+import RegisterPage from "./pages/RegisterPage";
+import LoginPage from "./pages/LoginPage";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -26,7 +27,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
         <Route
           path="/dashboard"

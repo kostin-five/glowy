@@ -2,7 +2,7 @@ import axios from "axios";
 import type { Task } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 
-const url = "https://glowy-backend.onrender.com";
+const url = "https://glowy-backend.onrender.com/api/tasks";
 
 const api = axios.create({
   baseURL: url,

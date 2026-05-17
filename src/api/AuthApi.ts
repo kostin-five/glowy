@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Auth } from "../types";
 
-const url = "https://glowy-backend.onrender.com";
+const url = "https://glowy-backend.onrender.com/api/auth";
 
 export const AuthApi = {
   async registerRequest(data: Auth) {

@@ -2,7 +2,7 @@ import axios from "axios";
 import type { Task } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 
-const url = "http://localhost:3000/api/tasks";
+const url = "http://localhost:3001/api/tasks";
 
 const api = axios.create({
   baseURL: url,

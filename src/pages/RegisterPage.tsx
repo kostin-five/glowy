@@ -14,14 +14,20 @@ const RegisterPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
     try {
       await AuthApi.registerRequest({ username, password });
       navigate("/login");
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        setError(e.response?.data?.error || "Неверный логин или пароль");
-      } else {
-        setError("Что-то пошло не так");
+        const serverError =
+          e.response?.data?.error ||
+          e.response?.data?.message ||
+          "Сервер недоступен (проверь терминал бэкенда)";
+
+        setError(serverError);
+        console.error("Детали ошибки:", e.response?.data);
       }
     }
   };

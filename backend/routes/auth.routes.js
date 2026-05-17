@@ -59,7 +59,8 @@ router.post(
       });
       res.status(201).json(newUser);
     } catch (e) {
-      res.status(400).json({ error: "Ошибка при регистрации" });
+      console.error("КРИТИЧЕСКАЯ ОШИБКА БАЗЫ:", e); // Выведет детали в терминал
+      res.status(400).json({ error: "Ошибка при регистрации: " + e.message }); // Отправит детали на фронтенд
     }
   }
 );

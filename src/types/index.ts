@@ -10,4 +10,10 @@ export const schemaTask = z.object({
   energyLevel: z.enum(["low", "med", "high"]),
 });
 
+export const schemaAuthData = z.object({
+  username: z.string(),
+  password: z.string(),
+});
+
 export type Task = z.infer<typeof schemaTask>;
+export type Auth = z.infer<typeof schemaAuthData>;

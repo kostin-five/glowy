@@ -4,22 +4,25 @@ import { useEffect, useState } from "react";
 import useTypewriter from "../hooks/useTypewriter";
 import SuccessStairs from "../dashboard/SuccessStairs";
 import { useIsLoading, useUserLevel } from "../store/useTaskStore";
-import { useUserName } from "../store/useAuthStore";
 import Spinner from "../components/ui/Spinner";
+import AiApi from "../api/AiApi";
 
 const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
   const [aiMessage, setAIMessage] = useState("");
   const currentLevel = useUserLevel();
-  const username = useUserName();
   const isLoading = useIsLoading();
 
   useEffect(() => {
-    setTimeout(() => {
+    const fetchAdvice = async () => {
+      setIsThinking(true);
+      const data = await AiApi.getAdvice();
+      setAIMessage(data.message);
       setIsThinking(false);
-      setAIMessage(`Привет, ${username}! С чего начнем?`);
-    }, 1500);
-  }, [username]);
+    };
+
+    fetchAdvice();
+  }, []);
 
   const typewriter = useTypewriter(aiMessage, 50);
 

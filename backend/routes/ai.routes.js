@@ -47,7 +47,7 @@ router.post("/analyze", async (req, res) => {
     Проанализируй их уровень энергии и приоритет. 
     Дай один короткий, теплый и практичный совет (максимум 2-3 предложения) о том, с чего лучше начать или как распределить силы сегодня. 
     Пиши связным текстом, без списков.`;
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(SYSTEM_PROMPT);
     const responseText = result.response.text();
     res.json({ message: responseText });

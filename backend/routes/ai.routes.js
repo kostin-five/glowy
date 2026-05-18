@@ -1,5 +1,4 @@
 import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import pg from "pg";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -18,7 +17,6 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.use(authMiddleware);
 
@@ -47,9 +45,28 @@ router.post("/analyze", async (req, res) => {
     Проанализируй их уровень энергии и приоритет. 
     Дай один короткий, теплый и практичный совет (максимум 2-3 предложения) о том, с чего лучше начать или как распределить силы сегодня. 
     Пиши связным текстом, без списков.`;
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(SYSTEM_PROMPT);
-    const responseText = result.response.text();
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: "Ты полезный и эмпатичный ассистент." },
+          { role: "user", content: SYSTEM_PROMPT },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ошибка DeepSeek: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.choices[0].message.content;
     res.json({ message: responseText });
   } catch (e) {
     console.error(e);

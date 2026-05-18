@@ -46,23 +46,32 @@ router.post("/analyze", async (req, res) => {
     Дай один короткий, теплый и практичный совет (максимум 2-3 предложения) о том, с чего лучше начать или как распределить силы сегодня. 
     Пиши связным текстом, без списков.`;
 
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: "Ты полезный и эмпатичный ассистент." },
-          { role: "user", content: SYSTEM_PROMPT },
-        ],
-      }),
-    });
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://glowy-backend.onrender.com",
+          "X-Title": "Glowy",
+        },
+        body: JSON.stringify({
+          model: "qwen/qwen-2.5-72b-instruct:free",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Ты — эмпатичный ИИ-ассистент. Отвечай кратко, тепло и по делу.",
+            },
+            { role: "user", content: SYSTEM_PROMPT },
+          ],
+        }),
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Ошибка DeepSeek: ${response.status}`);
+      throw new Error(`Ошибка OpenRouter: ${response.status}`);
     }
 
     const data = await response.json();

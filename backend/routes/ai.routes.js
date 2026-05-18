@@ -53,16 +53,14 @@ router.post("/analyze", async (req, res) => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": "https://glowy-backend.onrender.com",
-          "X-Title": "Glowy",
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-3-8b-instruct:free",
+          model: "mistralai/mistral-7b-instruct:free",
           messages: [
             {
               role: "system",
               content:
-                "Ты — эмпатичный ИИ-ассистент. Отвечай кратко, тепло и по делу.",
+                "Ты — эмпатичный ИИ-ассистент. Отвечай на русском языке кратко и по делу.",
             },
             { role: "user", content: SYSTEM_PROMPT },
           ],
@@ -71,7 +69,10 @@ router.post("/analyze", async (req, res) => {
     );
 
     if (!response.ok) {
-      throw new Error(`Ошибка OpenRouter: ${response.status}`);
+      const errorData = await response.text();
+      throw new Error(
+        `OpenRouter API Error: ${response.status} - ${errorData}`
+      );
     }
 
     const data = await response.json();

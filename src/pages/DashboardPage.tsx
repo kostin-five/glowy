@@ -47,7 +47,7 @@ const DashboardPage = () => {
 
         <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125">
           <h2 className="text-xl font-bold text-slate-200 mb-6">
-            Хаб выгрузки мыслей
+            Совет от Glowy
             <span
               className={`w-2 h-2 rounded-full ${
                 isThinking ? "bg-amber-500 animate-pulse" : "bg-indigo-500"

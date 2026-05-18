@@ -1,5 +1,6 @@
 import express from "express";
 import pg from "pg";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authMiddleware } from "../middleware/auth.middleware.js";
@@ -17,6 +18,7 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.use(authMiddleware);
 
@@ -46,37 +48,10 @@ router.post("/analyze", async (req, res) => {
     Дай один короткий, теплый и практичный совет (максимум 2-3 предложения) о том, с чего лучше начать или как распределить силы сегодня. 
     Пиши связным текстом, без списков.`;
 
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "mistralai/mistral-7b-instruct:free",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Ты — эмпатичный ИИ-ассистент. Отвечай на русском языке кратко и по делу.",
-            },
-            { role: "user", content: SYSTEM_PROMPT },
-          ],
-        }),
-      }
-    );
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(SYSTEM_PROMPT);
+    const responseText = result.response.text();
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(
-        `OpenRouter API Error: ${response.status} - ${errorData}`
-      );
-    }
-
-    const data = await response.json();
-    const responseText = data.choices[0].message.content;
     res.json({ message: responseText });
   } catch (e) {
     console.error(e);

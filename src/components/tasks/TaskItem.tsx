@@ -3,12 +3,6 @@ import type { Task } from "../../types";
 import EditTaskModal from "./EditTaskModal";
 import { motion } from "framer-motion";
 
-const energyIcons = {
-  low: "🟢",
-  med: "🟡",
-  high: "🔴",
-};
-
 const TaskItem = ({
   task,
   toggle,
@@ -32,7 +26,13 @@ const TaskItem = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       layout
-      className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors"
+      className={`flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 border-l-4 ${
+        task.energyLevel === "high"
+          ? "bg-red-500/20 border-l-red-500"
+          : task.energyLevel === "med"
+          ? "bg-yellow-500/20 border-l-yellow-500"
+          : "bg-green-500/30 border-l-green-500"
+      } p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors`}
     >
       <label className="flex items-center gap-4 cursor-pointer group w-full sm:w-auto flex-1 min-w-50">
         <input
@@ -67,11 +67,6 @@ const TaskItem = ({
       </label>
       <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
         <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
-          <span
-            className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
-          >
-            {energyIcons[task.energyLevel]}
-          </span>
           <span
             className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
           >

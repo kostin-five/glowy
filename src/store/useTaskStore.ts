@@ -20,7 +20,7 @@ interface TaskStore {
   fetchTasks: () => Promise<void>;
 }
 
-export type Priority = "Важно" | "Нормально" | "Не срочно";
+export type Priority = "🔥 P1" | "⚡️ P2" | "💤 P3";
 export type EnergyLevel = "low" | "med" | "high";
 export type FilterStatus = "Все" | "Активные" | "Выполненные";
 export type SortField =

@@ -17,7 +17,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     id: 0,
     title: "",
     date: "",
-    priority: "Нормально",
+    priority: "⚡️ P2",
     category: "",
     completed: false,
     energyLevel: "med",
@@ -28,7 +28,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
       id: 0,
       title: "",
       date: "",
-      priority: "Нормально",
+      priority: "⚡️ P2",
       category: "",
       completed: false,
       energyLevel: "med",
@@ -56,7 +56,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Создать">
+    <Modal isOpen={isOpen} onClose={onClose} title="Создать задачу">
       <form
         className="flex flex-col
        w-full gap-4
@@ -72,6 +72,9 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         />
         <div className="flex sm:flex-row flex-col gap-4 w-full">
           <div className="flex-1">
+            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+              Дата задачи
+            </label>
             <input
               className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
@@ -81,25 +84,36 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               onChange={(e) => setValues({ ...values, date: e.target.value })}
             />
           </div>
-          <div className="flex-1">
-            <select
-              className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+          <div className="flex-1 relative">
+            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+              Приоритет
+            </label>
+            <div className="relative">
+              <select
+                className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
-                 transition-all appearance-none cursor-pointer"
-              value={values.priority}
-              onChange={(e) =>
-                setValues({ ...values, priority: e.target.value as Priority })
-              }
-            >
-              <option value="Важно">Важно</option>
-              <option value="Нормально">Нормально</option>
-              <option value="Не срочно">Не срочно</option>
-            </select>
+                 transition-all appearance-none cursor-pointer pr-10"
+                value={values.priority}
+                onChange={(e) =>
+                  setValues({ ...values, priority: e.target.value as Priority })
+                }
+              >
+                <option value="🔥 P1">🔥 Высокий</option>
+                <option value="⚡️ P2">⚡️ Средний</option>
+                <option value="💤 P3">💤 Низкий</option>
+              </select>
+
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">
+                ▼
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="text-slate-200">
-          <p>Уровень энергии:</p>
+          <p className="text-sm font-medium text-slate-400 mb-2">
+            Энергозатратность задачи:
+          </p>
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
               <input

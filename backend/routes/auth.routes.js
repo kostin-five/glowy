@@ -31,7 +31,8 @@ const generateAccessToken = (id) => {
 router.post(
   "/register",
   [
-    check("username", "Имя пользователя не может быть пустым").notEmpty(),
+    check("loginUser", "Логин пользователя не может быть пустым").notEmpty(),
+    check("username", "Юзернейм пользователя не может быть пустым").notEmpty(),
     check(
       "password",
       "Пароль должен быть больше 4 и меньше 20 символов"
@@ -45,7 +46,7 @@ router.post(
           .status(400)
           .json({ message: "Ошибка при регистрации", errors: errors.array() });
       }
-      const { username, password } = req.body;
+      const { loginUser, username, password } = req.body;
       const candidate = await prisma.user.findUnique({ where: { username } });
       if (candidate) {
         res
@@ -55,7 +56,7 @@ router.post(
       }
       const hashPassword = bcrypt.hashSync(password, 7);
       const newUser = await prisma.user.create({
-        data: { username, password: hashPassword },
+        data: { loginUser, username, password: hashPassword },
       });
       res.status(201).json(newUser);
     } catch (e) {

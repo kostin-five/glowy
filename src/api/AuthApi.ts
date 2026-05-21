@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Auth } from "../types";
+import type { Auth, LoginData } from "../types";
 
 const url = "https://glowy-backend.onrender.com/api/auth";
 
@@ -9,7 +9,7 @@ export const AuthApi = {
     return response.data;
   },
 
-  async loginRequest(data: Auth) {
+  async loginRequest(data: LoginData) {
     const response = await axios.post(`${url}/login`, data);
     return response.data;
   },

@@ -3,28 +3,30 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 interface AuthStore {
   isAuthenticated: boolean;
-  userName: string | null;
+  name: string;
+  login: string | null;
   token: string | null;
-  login: (name: string, token: string) => void;
-  logout: () => void;
+  toLogin: (name: string, token: string) => void;
+  toLogout: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
       isAuthenticated: false,
-      userName: null,
+      name: "",
+      login: null,
       token: null,
-      login: (name: string, token: string) =>
+      toLogin: (login: string, token: string) =>
         set(() => ({
           isAuthenticated: true,
-          userName: name,
+          login: login,
           token: token,
         })),
-      logout: () =>
+      toLogout: () =>
         set(() => ({
           isAuthenticated: false,
-          userName: null,
+          login: null,
           token: null,
         })),
     }),
@@ -37,7 +39,8 @@ export const useAuthStore = create<AuthStore>()(
 
 export const useIsAuthenticated = () =>
   useAuthStore((state) => state.isAuthenticated);
-export const useUserName = () => useAuthStore((state) => state.userName);
+export const useName = () => useAuthStore((state) => state.name);
 export const useLogin = () => useAuthStore((state) => state.login);
-export const useLogout = () => useAuthStore((state) => state.logout);
+export const useToLogin = () => useAuthStore((state) => state.toLogin);
+export const useToLogout = () => useAuthStore((state) => state.toLogout);
 export const useToken = () => useAuthStore((state) => state.token);

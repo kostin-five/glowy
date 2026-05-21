@@ -1,4 +1,5 @@
-import { useFilter, useSetFilter, type FilterStatus } from "../../store/useTaskStore";
+import { useFilter, useSetFilter } from "../../store/useTaskStore";
+import type { FilterStatus } from "../../types";
 
 const TaskFilter = () => {
   const filterStatus = useFilter();

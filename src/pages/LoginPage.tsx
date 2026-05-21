@@ -2,23 +2,25 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthApi } from "../api/AuthApi";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useLogin } from "../store/useAuthStore";
+import { useToLogin } from "../store/useAuthStore";
 import axios from "axios";
 import { useIsLoading } from "../store/useTaskStore";
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginPage = () => {
-  const [username, setUsername] = useState<string>("");
+  const [login, setLogin] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const login = useLogin();
+  const toLogin = useToLogin();
   const isLoading = useIsLoading();
+  const [showPassword, setShowPassword] = useState(false);
 
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = await AuthApi.loginRequest({ username, password });
-      login(username, token);
+      const token = await AuthApi.loginRequest({ login, password });
+      toLogin(login, token);
       navigate("/dashboard");
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -40,8 +42,8 @@ const LoginPage = () => {
         transition={{ duration: 0.8 }}
         className="z-10 max-w-md w-full flex flex-col items-center"
       >
-        <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(99,102,241,0.2)]">
-          <img src="/Glowy.png" alt="Glowy Logo" className="w-12 h-12" />
+        <div className="w-20 h-20  rounded-3xl flex items-center justify-center mb-6 ">
+          <img src="/Glowy.png" alt="Glowy Logo" className="w-20 h-20" />
         </div>
 
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
@@ -60,13 +62,13 @@ const LoginPage = () => {
         >
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
-              Имя пользователя
+              Логин
             </label>
             <input
               type="text"
-              placeholder="Имя пользователя"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Юзернейм"
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
               className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
               required
             />
@@ -76,14 +78,23 @@ const LoginPage = () => {
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
               Пароль
             </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
-              required
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 pr-12 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {error && (

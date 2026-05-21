@@ -1,9 +1,7 @@
-import { schemaTask, type Task } from "../../types";
+import { schemaTask, type EnergyLevel, type Priority, type Task } from "../../types";
 import {
   useDeleteTask,
   useUpdateTask,
-  type EnergyLevel,
-  type Priority,
 } from "../../store/useTaskStore";
 import { useState } from "react";
 import Modal from "../ui/Modal";
@@ -109,7 +107,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                   })
                 }
               />
-              Низкий
+              Низкая
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
@@ -126,7 +124,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                   })
                 }
               />
-              Средний
+              Средняя
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
@@ -143,7 +141,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                   })
                 }
               />
-              Высокий
+              Высокая
             </label>
           </div>
         </div>

@@ -1,10 +1,8 @@
 import { useState } from "react";
 import {
   useCreateTask,
-  type EnergyLevel,
-  type Priority,
 } from "../../store/useTaskStore";
-import { schemaTask, type Task } from "../../types";
+import { schemaTask, type EnergyLevel, type Priority, type Task } from "../../types";
 import Modal from "../ui/Modal";
 
 interface ICreateModal {
@@ -129,7 +127,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                   })
                 }
               />
-              Низкий
+              Низкая
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
@@ -146,7 +144,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                   })
                 }
               />
-              Средний
+              Средняя
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
@@ -163,7 +161,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                   })
                 }
               />
-              Высокий
+              Высокая
             </label>
           </div>
         </div>

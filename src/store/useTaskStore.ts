@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Task } from "../types";
+import type { FilterStatus, SortDirection, SortField, Task } from "../types";
 import type { StateCreator } from "zustand";
 import { TaskApi } from "../api/TaskApi";
 import axios from "axios";
@@ -20,18 +20,6 @@ interface TaskStore {
   fetchTasks: () => Promise<void>;
 }
 
-export type Priority = "🔥 P1" | "⚡️ P2" | "💤 P3";
-export type EnergyLevel = "low" | "med" | "high";
-export type FilterStatus = "Все" | "Активные" | "Выполненные";
-export type SortField =
-  | "date"
-  | "energy"
-  | "title"
-  | "category"
-  | "priority"
-  | null;
-export type SortDirection = "asc" | "desc";
-
 const initialTasks: Task[] = [];
 
 const calculateLevel = (tasks: Task[]) => {
@@ -41,9 +29,11 @@ const calculateLevel = (tasks: Task[]) => {
 
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
+
   filterStatus: "Все",
   sortField: null,
   sortDirection: "asc",
+
   userLevel: 1,
   isLoading: false,
 

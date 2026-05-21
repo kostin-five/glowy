@@ -3,10 +3,9 @@ import {
   useSetSort,
   useSortDirection,
   useSortField,
-  type SortDirection,
-  type SortField,
 } from "../../store/useTaskStore";
 import { Fragment } from "react/jsx-runtime";
+import type { SortDirection, SortField } from "../../types";
 
 const SortMenu = () => {
   const sortField = useSortField();

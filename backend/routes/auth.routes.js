@@ -31,8 +31,8 @@ const generateAccessToken = (id) => {
 router.post(
   "/register",
   [
-    check("loginUser", "Логин пользователя не может быть пустым").notEmpty(),
-    check("username", "Юзернейм пользователя не может быть пустым").notEmpty(),
+    check("name", "Имя пользователя не может быть пустым").notEmpty(),
+    check("login", "Логин пользователя не может быть пустым").notEmpty(),
     check(
       "password",
       "Пароль должен быть больше 4 и меньше 20 символов"
@@ -46,30 +46,30 @@ router.post(
           .status(400)
           .json({ message: "Ошибка при регистрации", errors: errors.array() });
       }
-      const { loginUser, username, password } = req.body;
-      const candidate = await prisma.user.findUnique({ where: { username } });
+      const { name, login, password } = req.body;
+      const candidate = await prisma.user.findUnique({ where: { login } });
       if (candidate) {
         res
           .status(400)
-          .json({ error: "Пользователь с таким именем уже существует" });
+          .json({ error: "Пользователь с таким логином уже существует" });
         return;
       }
       const hashPassword = bcrypt.hashSync(password, 7);
       const newUser = await prisma.user.create({
-        data: { loginUser, username, password: hashPassword },
+        data: { name, login, password: hashPassword },
       });
       res.status(201).json(newUser);
     } catch (e) {
-      console.error("КРИТИЧЕСКАЯ ОШИБКА БАЗЫ:", e); // Выведет детали в терминал
-      res.status(400).json({ error: "Ошибка при регистрации: " + e.message }); // Отправит детали на фронтенд
+      console.error("КРИТИЧЕСКАЯ ОШИБКА БАЗЫ:", e);
+      res.status(400).json({ error: "Ошибка при регистрации: " + e.message });
     }
   }
 );
 
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { username } });
+    const { login, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { login } });
 
     if (!user) {
       return res.status(400).json({ error: `Пользователь не найден` });

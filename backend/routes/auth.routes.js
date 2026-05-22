@@ -81,7 +81,11 @@ router.post("/login", async (req, res) => {
     }
 
     const token = generateAccessToken(user.id);
-    res.status(201).json(token);
+    res.status(200).json({
+      token: token,
+      name: user.name,
+      login: user.login,
+    });
   } catch (e) {
     res.status(400).json({ error: "Ошибка при входе" });
   }

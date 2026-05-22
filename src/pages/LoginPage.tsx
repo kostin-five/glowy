@@ -19,8 +19,8 @@ const LoginPage = () => {
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = await AuthApi.loginRequest({ login, password });
-      toLogin(login, token);
+      const data = await AuthApi.loginRequest({ login, password });
+      toLogin(data.name, login, data.token);
       navigate("/dashboard");
     } catch (e) {
       if (axios.isAxiosError(e)) {

@@ -6,7 +6,7 @@ interface AuthStore {
   name: string;
   login: string | null;
   token: string | null;
-  toLogin: (name: string, token: string) => void;
+  toLogin: (name: string, login: string, token: string) => void;
   toLogout: () => void;
 }
 
@@ -17,9 +17,10 @@ export const useAuthStore = create<AuthStore>()(
       name: "",
       login: null,
       token: null,
-      toLogin: (login: string, token: string) =>
+      toLogin: (name: string, login: string, token: string) =>
         set(() => ({
           isAuthenticated: true,
+          name: name,
           login: login,
           token: token,
         })),

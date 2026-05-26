@@ -1,5 +1,24 @@
 import { z } from "zod";
 
+export type Priority = "🔥 P1" | "⚡️ P2" | "💤 P3";
+export type EnergyLevel = "low" | "med" | "high";
+export type FilterStatus = "Все" | "Активные" | "Выполненные";
+export type SortField =
+  | "date"
+  | "energy"
+  | "title"
+  | "category"
+  | "priority"
+  | null;
+export type SortDirection = "asc" | "desc";
+
+export const schemaSubTask = z.object({
+  id: z.number(),
+  taskId: z.number(),
+  title: z.string().min(1),
+  completed: z.boolean(),
+});
+
 export const schemaTask = z.object({
   id: z.number(),
   title: z.string().min(1),
@@ -8,6 +27,7 @@ export const schemaTask = z.object({
   category: z.string().min(1),
   completed: z.boolean(),
   energyLevel: z.enum(["low", "med", "high"]),
+  subtasks: z.array(schemaSubTask).optional(),
 });
 
 export const schemaAuthData = z.object({
@@ -20,19 +40,8 @@ export const schemaLoginData = z.object({
   login: z.string(),
   password: z.string(),
 });
-export type LoginData = z.infer<typeof schemaLoginData>;
 
+export type LoginData = z.infer<typeof schemaLoginData>;
 export type Task = z.infer<typeof schemaTask>;
 export type Auth = z.infer<typeof schemaAuthData>;
-
-export type Priority = "🔥 P1" | "⚡️ P2" | "💤 P3";
-export type EnergyLevel = "low" | "med" | "high";
-export type FilterStatus = "Все" | "Активные" | "Выполненные";
-export type SortField =
-  | "date"
-  | "energy"
-  | "title"
-  | "category"
-  | "priority"
-  | null;
-export type SortDirection = "asc" | "desc";
+export type SubTask = z.infer<typeof schemaSubTask>;

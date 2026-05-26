@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { FilterStatus, SortDirection, SortField, Task } from "../types";
 import type { StateCreator } from "zustand";
 import { TaskApi } from "../api/TaskApi";
+import { SubTaskApi } from "../api/SubTaskApi";
 import axios from "axios";
 
 interface TaskStore {
@@ -18,6 +19,13 @@ interface TaskStore {
   toggleTask: (id: number) => Promise<void>;
   updateTask: (id: number, updatedData: Partial<Task>) => Promise<void>;
   fetchTasks: () => Promise<void>;
+  addSubTask: (taskId: number, title: string) => Promise<void>;
+  toggleSubTask: (
+    subTaskId: number,
+    taskId: number,
+    completed: boolean
+  ) => Promise<void>;
+  deleteSubTask: (taskId: number, subTaskId: number) => Promise<void>;
 }
 
 const initialTasks: Task[] = [];
@@ -148,6 +156,68 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       }
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  addSubTask: async (taskId: number, title: string) => {
+    try {
+      const newSub = await SubTaskApi.createSubTask(taskId, title);
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: [...(task.subtasks || []), newSub],
+              }
+            : task
+        ),
+      }));
+    } catch (e) {
+      console.error("Ошибка при добавлении подзадачи:", e);
+    }
+  },
+
+  toggleSubTask: async (
+    subTaskId: number,
+    taskId: number,
+    completed: boolean
+  ) => {
+    try {
+      await SubTaskApi.toggleSubTask(subTaskId, completed);
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: task.subtasks?.map((sub) =>
+                  sub.id === subTaskId ? { ...sub, completed } : sub
+                ),
+              }
+            : task
+        ),
+      }));
+    } catch (e) {
+      console.error("Ошибка при изменении статуса подзадачи:", e);
+    }
+  },
+
+  deleteSubTask: async (taskId: number, subTaskId: number) => {
+    try {
+      await SubTaskApi.deleteTask(subTaskId);
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: task.subtasks?.filter((sub) => sub.id !== subTaskId),
+              }
+            : task
+        ),
+      }));
+    } catch (e) {
+      console.error("Ошибка при удалении подзадачи:", e);
     }
   },
 });

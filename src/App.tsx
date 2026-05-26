@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { useFetchTasks } from "./store/useTaskStore";
 import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
+import { useCheckAndResetEnergy } from "./store/useAuthStore";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
@@ -20,9 +21,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const fetchTasks = useFetchTasks();
+  const checkAndResetEnergy = useCheckAndResetEnergy();
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    checkAndResetEnergy();
+  }, [fetchTasks, checkAndResetEnergy]);
 
   return (
     <BrowserRouter>

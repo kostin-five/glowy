@@ -6,6 +6,7 @@ import SuccessStairs from "../dashboard/SuccessStairs";
 import { useIsLoading, useUserLevel } from "../store/useTaskStore";
 import Spinner from "../components/ui/Spinner";
 import AiApi from "../api/AiApi";
+import { EnergySlider } from "../components/layout/EnergySlider";
 
 const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
@@ -45,34 +46,38 @@ const DashboardPage = () => {
           <SuccessStairs currentLevel={currentLevel} />
         </section>
 
-        <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125">
-          <h2 className="text-xl font-bold text-slate-200 mb-6">
-            Совет от Glowy
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isThinking ? "bg-amber-500 animate-pulse" : "bg-indigo-500"
-              }`}
-            ></span>
-          </h2>
-          <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-6 flex flex-col justify-center">
-            {isThinking ? (
-              <div className="flex flex-col items-center justify-center h-full text-indigo-400/50 space-y-4">
-                <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                <p className="text-sm uppercase tracking-widest animate-pulse">
-                  Glowy анализирует данные...
-                </p>
-              </div>
-            ) : (
-              <div className="text-indigo-300 leading-relaxed font-medium">
-                {typewriter.displayedText}
+        <div className="xl:col-span-5 flex flex-col gap-6 xl:h-125">
+          <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125">
+            <h2 className="text-xl font-bold text-slate-200 mb-6">
+              Совет от Glowy
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isThinking ? "bg-amber-500 animate-pulse" : "bg-indigo-500"
+                }`}
+              ></span>
+            </h2>
+            <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-6 flex flex-col justify-center">
+              {isThinking ? (
+                <div className="flex flex-col items-center justify-center h-full text-indigo-400/50 space-y-4">
+                  <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                  <p className="text-sm uppercase tracking-widest animate-pulse">
+                    Glowy анализирует данные...
+                  </p>
+                </div>
+              ) : (
+                <div className="text-indigo-300 leading-relaxed font-medium">
+                  {typewriter.displayedText}
 
-                {typewriter.isTyping && (
-                  <span className="inline-block w-1.5 h-4 ml-1 bg-indigo-400 animate-pulse"></span>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+                  {typewriter.isTyping && (
+                    <span className="inline-block w-1.5 h-4 ml-1 bg-indigo-400 animate-pulse"></span>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <EnergySlider />
+        </div>
 
         <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-125">
           <div className="flex items-center justify-between mb-6">

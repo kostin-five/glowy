@@ -18,6 +18,7 @@ model Task {
   completed Boolean @default(false)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  subtasks SubTask[]
 
   @@map("tasks")
 }
@@ -30,4 +31,16 @@ model User {
   tasks Task[]
 
   @@map("users")  
+}
+
+model SubTask {
+  id Int @id @default(autoincrement())
+  taskId Int @map("task_id")
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title String 
+  completed Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("sub_tasks")
 }

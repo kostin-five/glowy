@@ -32,7 +32,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden px-4">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden py-12 px-4">
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/20 blur-[120px] pointer-events-none"></div>
 
@@ -42,7 +42,7 @@ const LoginPage = () => {
         transition={{ duration: 0.8 }}
         className="z-10 max-w-md w-full flex flex-col items-center"
       >
-        <div className="w-20 h-20  rounded-3xl flex items-center justify-center mb-6 ">
+        <div className="w-18 h-16  rounded-3xl flex items-center justify-center mb-6 ">
           <img src="/Glowy.png" alt="Glowy Logo" className="w-20 h-20" />
         </div>
 
@@ -58,7 +58,7 @@ const LoginPage = () => {
         </p>
         <form
           onSubmit={toLoginUser}
-          className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl flex flex-col gap-5 shadow-2xl"
+          className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-5 sm:p-8 rounded-3xl flex flex-col gap-4 sm:gap-5 shadow-2xl"
         >
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
@@ -84,7 +84,7 @@ const LoginPage = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 pr-12 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
                 required
               />
               <button

@@ -20,22 +20,55 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-router.get("/subtask/:taskId", async (req, res) => {
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const findUserTask = (taskId, userId) =>
+  prisma.task.findFirst({
+    where: {
+      id: taskId,
+      userId,
+    },
+  });
+
+const getSubTasks = async (req, res) => {
   try {
-    const { taskId } = req.params;
+    const taskId = parseId(req.params.taskId);
+    if (!taskId) {
+      return res.status(400).json({ error: "Некорректный ID задачи" });
+    }
+
+    const task = await findUserTask(taskId, req.user.id);
+    if (!task) {
+      return res.status(404).json({ error: "Задача не найдена" });
+    }
+
     const subtasks = await prisma.subTask.findMany({
-      where: { taskId: Number(taskId) },
+      where: { taskId },
     });
     res.json(subtasks);
   } catch (e) {
     res.status(500).json({ error: "Не удалось загрузить подзадачи" });
     console.error(e);
   }
-});
+};
 
-router.post("/subtask", async (req, res) => {
+const createSubTask = async (req, res) => {
   try {
-    const { taskId, title } = req.body;
+    const taskId = parseId(req.body.taskId);
+    const title = req.body.title?.trim();
+
+    if (!taskId || !title) {
+      return res.status(400).json({ error: "Некорректные данные подзадачи" });
+    }
+
+    const task = await findUserTask(taskId, req.user.id);
+    if (!task) {
+      return res.status(404).json({ error: "Задача не найдена" });
+    }
+
     const newSubTask = await prisma.subTask.create({
       data: {
         taskId,
@@ -45,11 +78,12 @@ router.post("/subtask", async (req, res) => {
     });
     res.status(201).json(newSubTask);
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Ошибка при создании" });
   }
-});
+};
 
-router.put("/subtask/:id", async (req, res) => {
+const updateSubTask = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, completed } = req.body;
@@ -68,9 +102,9 @@ router.put("/subtask/:id", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: "Ошибка при обновлении" });
   }
-});
+};
 
-router.delete("/subtask/:id", async (req, res) => {
+const deleteSubTask = async (req, res) => {
   try {
     const { id } = req.params;
     const uniqueSubTask = await prisma.subTask.findUnique({
@@ -87,6 +121,14 @@ router.delete("/subtask/:id", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: "Ошибка при удалении" });
   }
-});
+};
+
+router.get("/:taskId", getSubTasks);
+
+router.post("/", createSubTask);
+
+router.put("/:id", updateSubTask);
+
+router.delete("/:id", deleteSubTask);
 
 export default router;

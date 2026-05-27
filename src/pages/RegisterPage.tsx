@@ -41,7 +41,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden px-4">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden py-6 px-4">
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-600/20 blur-[120px] pointer-events-none"></div>
 
@@ -49,26 +49,26 @@ const RegisterPage = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="z-10 max-w-md w-full flex flex-col items-center"
+        className="z-10 max-w-sm w-full flex flex-col items-center"
       >
-        <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6">
-          <img src="/Glowy.png" alt="Glowy Logo" className="w-20 h-20" />
+        <div className="w-18 h-16 rounded-3xl hidden sm:flex items-center justify-center mb-4">
+          <img src="/Glowy.png" alt="Glowy Logo" className="w-18 h-18" />
         </div>
 
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
+        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1 text-center">
           Начать путь с{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
             Glowy
           </span>
         </h1>
-        <p className="text-slate-400 text-sm mb-8 text-center px-4">
+        <p className="text-slate-400 text-sm mb-6 text-center px-4">
           Создай аккаунт, чтобы сохранять свои задачи и отслеживать прогресс
           энергии.
         </p>
 
         <form
           onSubmit={handleRegister}
-          className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl flex flex-col gap-5 shadow-2xl"
+          className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-5 sm:p-6 rounded-3xl flex flex-col gap-3.5 shadow-2xl"
         >
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
@@ -79,7 +79,7 @@ const RegisterPage = () => {
               placeholder="Напишите имя"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
               required
             />
           </div>
@@ -93,7 +93,7 @@ const RegisterPage = () => {
               placeholder="Напишите юзернейм"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
-              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+              className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
               required
             />
           </div>
@@ -108,7 +108,7 @@ const RegisterPage = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 pr-12 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
                 required
               />
               <button
@@ -131,7 +131,7 @@ const RegisterPage = () => {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 pr-12 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
                 required
               />
               <button
@@ -153,7 +153,7 @@ const RegisterPage = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50"
+            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50"
           >
             {isLoading ? "Создание аккаунта..." : "Зарегистрироваться"}
           </button>

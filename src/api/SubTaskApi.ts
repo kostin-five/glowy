@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
+import type { SubTask } from "../types";
 
 const url = "https://glowy-backend.onrender.com/api/subtasks";
 
@@ -18,23 +19,23 @@ api.interceptors.request.use((config) => {
 });
 
 export const SubTaskApi = {
-  async fetchSubTasks(taskId: number) {
-    const response = await api.get(`/subtask/${taskId}`);
+  async fetchSubTasks(taskId: number): Promise<SubTask[]> {
+    const response = await api.get(`/${taskId}`);
     return response.data;
   },
 
-  async createSubTask(taskId: number, title: string) {
-    const response = await api.post("/subtask", { taskId, title });
+  async createSubTask(taskId: number, title: string): Promise<SubTask> {
+    const response = await api.post("/", { taskId, title });
     return response.data;
   },
 
-  async toggleSubTask(id: number, completed: boolean) {
-    const response = await api.put(`/subtask/${id}`, { completed });
+  async toggleSubTask(id: number, completed: boolean): Promise<SubTask> {
+    const response = await api.put(`/${id}`, { completed });
     return response.data;
   },
 
-  async deleteTask(id: number) {
-    const response = await api.delete(`/subtask/${id}`);
+  async deleteSubTask(id: number) {
+    const response = await api.delete(`/${id}`);
     return response.data;
   },
 };

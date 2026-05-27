@@ -24,6 +24,9 @@ router.get("/", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
       where: { userId: req.user.id },
+      include: {
+        subtasks: true,
+      },
     });
     res.json(tasks);
   } catch (e) {
@@ -34,7 +37,16 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { title, energyLevel, priority, date, category } = req.body;
+    const { title, energyLevel, priority, date, category, subtasks } = req.body;
+    const subtasksToCreate = Array.isArray(subtasks)
+      ? subtasks
+          .map((sub) => ({
+            title: typeof sub.title === "string" ? sub.title.trim() : "",
+            completed: Boolean(sub.completed),
+          }))
+          .filter((sub) => sub.title.length > 0)
+      : [];
+
     const newTask = await prisma.task.create({
       data: {
         title,
@@ -44,10 +56,21 @@ router.post("/", async (req, res) => {
         priority,
         completed: false,
         userId: req.user.id,
+        subtasks: subtasksToCreate.length
+          ? {
+              create: subtasksToCreate,
+            }
+          : undefined,
+      },
+
+      include: {
+        subtasks: true,
       },
     });
+
     res.status(201).json(newTask);
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Ошибка при создании" });
   }
 });
@@ -66,6 +89,9 @@ router.put("/:id", async (req, res) => {
     const updatedTask = await prisma.task.update({
       where: { id: Number(id) },
       data: { title, energyLevel, priority, date, category, completed },
+      include: {
+        subtasks: true,
+      },
     });
     res.json(updatedTask);
   } catch (e) {

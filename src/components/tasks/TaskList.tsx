@@ -4,17 +4,24 @@ import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
 
-const TaskList = () => {
-  const toggle = useToggleTask();
+interface TaskListProps {
+  onlyActive?: boolean;
+}
 
+const TaskList = ({ onlyActive = false }: TaskListProps) => {
+  const toggle = useToggleTask();
   const processedTasks = useProcessedTasks();
+
+  const displayedTasks = onlyActive
+    ? processedTasks.filter((task: Task) => !task.completed)
+    : processedTasks;
 
   return (
     <>
       <ul className="flex flex-col list-none">
         <AnimatePresence>
-          {processedTasks.length ? (
-            processedTasks.map((task: Task) => (
+          {displayedTasks.length ? (
+            displayedTasks.map((task: Task) => (
               <TaskItem key={task.id} toggle={toggle} task={task} />
             ))
           ) : (
@@ -39,10 +46,12 @@ const TaskList = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-slate-200 mb-1">
-                Список задач пуст
+                {onlyActive ? "Нет активных задач" : "Список задач пуст"}
               </h3>
               <p className="text-sm text-slate-400 max-w-62.5">
-                Добавь свою первую задачу, чтобы запустить трекинг энергии
+                {onlyActive
+                  ? "Все текущие задачи выполнены! Отличный уровень баланса энергии."
+                  : "Добавь свою первую задачу, чтобы запустить трекинг энергии"}
               </p>
             </motion.div>
           )}

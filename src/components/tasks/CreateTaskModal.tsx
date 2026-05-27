@@ -1,41 +1,70 @@
 import { useState } from "react";
+import { useCreateTask } from "../../store/useTaskStore";
 import {
-  useCreateTask,
-} from "../../store/useTaskStore";
-import { schemaTask, type EnergyLevel, type Priority, type Task } from "../../types";
+  schemaTaskDraft,
+  type EnergyLevel,
+  type Priority,
+  type TaskDraft,
+} from "../../types";
 import Modal from "../ui/Modal";
+import { Plus, Trash2 } from "lucide-react";
 
 interface ICreateModal {
   isOpen: boolean;
   onClose: () => void;
 }
 
+interface LocalSubTask {
+  clientId: number;
+  title: string;
+}
+
 const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
-  const [values, setValues] = useState<Task>({
-    id: 0,
+  const [values, setValues] = useState<TaskDraft>({
     title: "",
     date: "",
     priority: "⚡️ P2",
     category: "",
     completed: false,
     energyLevel: "med",
+    subtasks: [],
   });
+
+  const [subTitle, setSubTitle] = useState("");
+  const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
 
   const clean = () => {
     setValues({
-      id: 0,
       title: "",
       date: "",
       priority: "⚡️ P2",
       category: "",
       completed: false,
       energyLevel: "med",
+      subtasks: [],
     });
+    setLocalSubTasks([]);
+    setSubTitle("");
   };
 
   const create = useCreateTask();
 
-  const sendTask = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddLocalSub = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!subTitle.trim()) return;
+
+    setLocalSubTasks([
+      ...localSubTasks,
+      { clientId: Date.now(), title: subTitle.trim() },
+    ]);
+    setSubTitle("");
+  };
+
+  const handleRemoveLocalSub = (clientId: number) => {
+    setLocalSubTasks(localSubTasks.filter((sub) => sub.clientId !== clientId));
+  };
+
+  const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!values.title.trim() || !values.category.trim()) {
@@ -43,14 +72,25 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
       return;
     }
 
-    const parsedValues = schemaTask.safeParse(values);
+    const subtasksForBackend = localSubTasks.map((sub) => ({
+      title: sub.title,
+      completed: false,
+    }));
+
+    const parsedValues = schemaTaskDraft.safeParse({
+      ...values,
+      subtasks: subtasksForBackend,
+    });
+
     if (parsedValues.success) {
-      create({ ...parsedValues.data, id: Date.now() });
+      const createdTask = await create(parsedValues.data);
+      if (!createdTask) return;
+
+      clean();
+      onClose();
     } else {
-      alert("Поле не может быть пустым!");
+      alert("Заполните корректно все поля!");
     }
-    clean();
-    onClose();
   };
 
   return (
@@ -172,6 +212,51 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           type="text"
           placeholder="Напишите категорию задачи"
         />
+
+        <div className="space-y-2 pt-2 border-t border-slate-800">
+          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+            Подзадачи
+          </label>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl focus:outline-none focus:border-indigo-500 text-sm"
+              placeholder="Что нужно сделать?"
+              value={subTitle}
+              onChange={(e) => setSubTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+            />
+            <button
+              type="button"
+              onClick={handleAddLocalSub}
+              className="p-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors cursor-pointer"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {localSubTasks.length > 0 && (
+            <div className="mt-2 p-3 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
+              {localSubTasks.map((sub) => (
+                <div
+                  key={sub.clientId}
+                  className="flex items-center justify-between text-sm text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg"
+                >
+                  <span className="truncate">{sub.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLocalSub(sub.clientId)}
+                    className="text-slate-500 hover:text-red-400 p-1 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button
           className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-lg p-2.5 font-medium transition-colors w-full mt-2 cursor-pointer"
           type="submit"

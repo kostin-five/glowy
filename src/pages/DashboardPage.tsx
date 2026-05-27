@@ -91,7 +91,7 @@ const DashboardPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {isLoading ? <Spinner /> : <TaskList />}
+            {isLoading ? <Spinner /> : <TaskList onlyActive={true} />}
           </div>
         </section>
       </div>

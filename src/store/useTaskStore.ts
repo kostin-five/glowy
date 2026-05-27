@@ -1,5 +1,12 @@
 import { create } from "zustand";
-import type { FilterStatus, SortDirection, SortField, Task } from "../types";
+import type {
+  FilterStatus,
+  SortDirection,
+  SortField,
+  SubTask,
+  Task,
+  TaskDraft,
+} from "../types";
 import type { StateCreator } from "zustand";
 import { TaskApi } from "../api/TaskApi";
 import { SubTaskApi } from "../api/SubTaskApi";
@@ -12,19 +19,23 @@ interface TaskStore {
   sortDirection: SortDirection;
   userLevel: number;
   isLoading: boolean;
+
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
-  createTask: (newTask: Task) => Promise<void>;
+  createTask: (newTask: TaskDraft) => Promise<Task | undefined>;
   deleteTask: (id: number) => Promise<void>;
-  toggleTask: (id: number) => Promise<void>;
-  updateTask: (id: number, updatedData: Partial<Task>) => Promise<void>;
+  toggleTask: (id: number) => Promise<Task | undefined>;
+  updateTask: (
+    id: number,
+    updatedData: Partial<Task>
+  ) => Promise<Task | undefined>;
   fetchTasks: () => Promise<void>;
-  addSubTask: (taskId: number, title: string) => Promise<void>;
+  addSubTask: (taskId: number, title: string) => Promise<SubTask | undefined>;
   toggleSubTask: (
     subTaskId: number,
     taskId: number,
     completed: boolean
-  ) => Promise<void>;
+  ) => Promise<SubTask | undefined>;
   deleteSubTask: (taskId: number, subTaskId: number) => Promise<void>;
 }
 
@@ -34,6 +45,11 @@ const calculateLevel = (tasks: Task[]) => {
   const calculatedCount = tasks.filter((t) => t.completed).length;
   return Math.min(5, calculatedCount + 1);
 };
+
+const normalizeTask = (task: Task): Task => ({
+  ...task,
+  subtasks: task.subtasks ?? [],
+});
 
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
@@ -55,12 +71,22 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       sortDirection: sortDirection,
     })),
 
-  createTask: async (newTask: Task) => {
+  createTask: async (newTask: TaskDraft) => {
     try {
-      const result = await TaskApi.postTask(newTask);
+      const result = normalizeTask(await TaskApi.postTask(newTask));
       set((state) => {
-        return { tasks: [...state.tasks, result] };
+        const clientId = "id" in newTask ? newTask.id : undefined;
+        const hasClientTask =
+          typeof clientId === "number" &&
+          state.tasks.some((task) => task.id === clientId);
+
+        return {
+          tasks: hasClientTask
+            ? state.tasks.map((task) => (task.id === clientId ? result : task))
+            : [...state.tasks, result],
+        };
       });
+      return result;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
@@ -95,20 +121,22 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     try {
       const taskToToggle = get().tasks.find((t) => t.id === id);
       if (!taskToToggle) return;
-      const updatedData = await TaskApi.putTask(id, {
-        ...taskToToggle,
-        completed: !taskToToggle.completed,
-      });
+      const updatedTask = normalizeTask(
+        await TaskApi.putTask(id, {
+          ...taskToToggle,
+          completed: !taskToToggle.completed,
+        })
+      );
       set((state) => {
         const updatedTasks = state.tasks.map((t) =>
-          t.id === id ? { ...t, completed: !t.completed } : t
+          t.id === id ? updatedTask : t
         );
         return {
           tasks: updatedTasks,
           userLevel: calculateLevel(updatedTasks),
         };
       });
-      return updatedData;
+      return updatedTask;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
@@ -122,18 +150,20 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     try {
       const taskToUpdate = get().tasks.find((t) => t.id === id);
       if (!taskToUpdate) return;
-      const updateTask = await TaskApi.putTask(id, {
-        ...taskToUpdate,
-        ...updatedData,
-      });
+      const updatedTask = normalizeTask(
+        await TaskApi.putTask(id, {
+          ...taskToUpdate,
+          ...updatedData,
+        })
+      );
       set((state) => {
         return {
           tasks: state.tasks.map(
-            (t: Task): Task => (t.id === id ? { ...t, ...updatedData } : t)
+            (t: Task): Task => (t.id === id ? updatedTask : t)
           ),
         };
       });
-      return updateTask;
+      return updatedTask;
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
@@ -147,7 +177,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     set({ isLoading: true });
     try {
       const response = await TaskApi.getTasks();
-      set({ tasks: response });
+      set({ tasks: response.map(normalizeTask) });
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
@@ -161,6 +191,9 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   addSubTask: async (taskId: number, title: string) => {
     try {
+      const taskToUpdate = get().tasks.find((task) => task.id === taskId);
+      if (!taskToUpdate) return;
+
       const newSub = await SubTaskApi.createSubTask(taskId, title);
       set((state) => ({
         tasks: state.tasks.map((task) =>
@@ -172,6 +205,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
             : task
         ),
       }));
+      return newSub;
     } catch (e) {
       console.error("Ошибка при добавлении подзадачи:", e);
     }
@@ -183,20 +217,21 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     completed: boolean
   ) => {
     try {
-      await SubTaskApi.toggleSubTask(subTaskId, completed);
+      const updatedSub = await SubTaskApi.toggleSubTask(subTaskId, completed);
 
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === taskId
+          task.id === taskId || task.id === updatedSub.taskId
             ? {
                 ...task,
                 subtasks: task.subtasks?.map((sub) =>
-                  sub.id === subTaskId ? { ...sub, completed } : sub
+                  sub.id === subTaskId ? updatedSub : sub
                 ),
               }
             : task
         ),
       }));
+      return updatedSub;
     } catch (e) {
       console.error("Ошибка при изменении статуса подзадачи:", e);
     }
@@ -204,7 +239,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   deleteSubTask: async (taskId: number, subTaskId: number) => {
     try {
-      await SubTaskApi.deleteTask(subTaskId);
+      await SubTaskApi.deleteSubTask(subTaskId);
 
       set((state) => ({
         tasks: state.tasks.map((task) =>
@@ -222,7 +257,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 });
 
-const useTaskStore = create<TaskStore>()(taskStore);
+export const useTaskStore = create<TaskStore>()(taskStore);
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
 export const useFilter = () => useTaskStore((state) => state.filterStatus);
@@ -239,3 +274,9 @@ export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);
 export const useToggleTask = () => useTaskStore((state) => state.toggleTask);
 export const useUpdateTask = () => useTaskStore((state) => state.updateTask);
 export const useFetchTasks = () => useTaskStore((state) => state.fetchTasks);
+
+export const useAddSubTask = () => useTaskStore((state) => state.addSubTask);
+export const useToggleSubTask = () =>
+  useTaskStore((state) => state.toggleSubTask);
+export const useDeleteSubTask = () =>
+  useTaskStore((state) => state.deleteSubTask);

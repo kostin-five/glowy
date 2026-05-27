@@ -1,10 +1,21 @@
-import { schemaTask, type EnergyLevel, type Priority, type Task } from "../../types";
 import {
+  schemaTask,
+  type EnergyLevel,
+  type Priority,
+  type SubTask,
+  type Task,
+} from "../../types";
+import {
+  useAddSubTask,
+  useDeleteSubTask,
   useDeleteTask,
+  useToggleSubTask,
   useUpdateTask,
 } from "../../store/useTaskStore";
+import { useTaskStore } from "../../store/useTaskStore";
 import { useState } from "react";
 import Modal from "../ui/Modal";
+import { Trash2, Plus, CheckSquare, Square } from "lucide-react";
 
 interface IDialog {
   isOpen: boolean;
@@ -13,11 +24,57 @@ interface IDialog {
 }
 
 const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
-  const [values, setValues] = useState<Task>(task);
+  const [values, setValues] = useState<Task>({
+    ...task,
+    subtasks: task.subtasks ?? [],
+  });
+  const [subTitle, setSubTitle] = useState("");
+
   const updateTask = useUpdateTask();
   const remove = useDeleteTask();
+  const addSubTask = useAddSubTask();
+  const toggleSubTask = useToggleSubTask();
+  const deleteSubTask = useDeleteSubTask();
 
-  const handleSave = (e?: React.FormEvent) => {
+  const refreshSubtasks = (taskId: number) => {
+    const updated = useTaskStore
+      .getState()
+      .tasks.find((item: Task) => item.id === taskId);
+
+    if (!updated) return;
+
+    setValues((current) => ({
+      ...current,
+      id: updated.id,
+      subtasks: updated.subtasks ?? [],
+    }));
+  };
+
+  const handleAddSub = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!subTitle.trim()) return;
+
+    const createdSubTask = await addSubTask(values.id, subTitle.trim());
+    if (!createdSubTask) return;
+
+    setSubTitle("");
+    refreshSubtasks(values.id);
+  };
+
+  const handleToggleSub = async (subId: number, currentStatus: boolean) => {
+    const updatedSubTask = await toggleSubTask(subId, values.id, !currentStatus);
+    if (!updatedSubTask) return;
+
+    refreshSubtasks(updatedSubTask.taskId);
+  };
+
+  const handleDeleteSub = async (subId: number) => {
+    await deleteSubTask(values.id, subId);
+
+    refreshSubtasks(values.id);
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (!values.title.trim() || !values.category.trim()) {
@@ -27,7 +84,9 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
 
     const parsedValues = schemaTask.safeParse(values);
     if (parsedValues.success) {
-      updateTask(task.id, parsedValues.data);
+      const updatedTask = await updateTask(values.id, parsedValues.data);
+      if (!updatedTask) return;
+
       onClose();
     } else {
       alert("Поле не может быть пустым!");
@@ -35,7 +94,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   };
 
   const deleteTask = (): void => {
-    remove(task.id);
+    remove(values.id);
     onClose();
   };
 
@@ -152,6 +211,67 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           type="text"
           placeholder="Напишите категорию задачи"
         />
+
+        <div className="border-t border-slate-800 pt-4 mt-2">
+          <h3 className="text-sm font-bold text-slate-300 mb-3">Подзадачи</h3>
+
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="Добавить подзадачу..."
+              value={subTitle}
+              onChange={(e) => setSubTitle(e.target.value)}
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddSub}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-xl transition-colors"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+            {values.subtasks?.map((sub: SubTask) => (
+              <div
+                key={sub.id}
+                className="flex items-center justify-between bg-slate-900/40 border border-slate-800 p-2.5 rounded-xl"
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSub(sub.id, sub.completed)}
+                    className="text-slate-500 hover:text-indigo-400 transition-colors"
+                  >
+                    {sub.completed ? (
+                      <CheckSquare size={16} className="text-indigo-400" />
+                    ) : (
+                      <Square size={16} />
+                    )}
+                  </button>
+                  <span
+                    className={`text-sm truncate ${
+                      sub.completed
+                        ? "line-through text-slate-500"
+                        : "text-slate-200"
+                    }`}
+                  >
+                    {sub.title}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSub(sub.id)}
+                  className="text-slate-400 hover:text-red-400 p-1 rounded transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
           <button
             className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"

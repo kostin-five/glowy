@@ -72,10 +72,21 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
       return;
     }
 
-    const subtasksForBackend = localSubTasks.map((sub) => ({
-      title: sub.title,
-      completed: false,
-    }));
+    const pendingSubTitle = subTitle.trim();
+    const subtasksForBackend = [
+      ...localSubTasks.map((sub) => ({
+        title: sub.title,
+        completed: false,
+      })),
+      ...(pendingSubTitle
+        ? [
+            {
+              title: pendingSubTitle,
+              completed: false,
+            },
+          ]
+        : []),
+    ];
 
     const parsedValues = schemaTaskDraft.safeParse({
       ...values,
@@ -214,7 +225,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         />
 
         <div className="space-y-2 pt-2 border-t border-slate-800">
-          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+          <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">
             Подзадачи
           </label>
 
@@ -261,7 +272,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-lg p-2.5 font-medium transition-colors w-full mt-2 cursor-pointer"
           type="submit"
         >
-          Добавить
+          Сохранить
         </button>
       </form>
     </Modal>

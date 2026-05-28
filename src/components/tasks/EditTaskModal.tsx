@@ -87,6 +87,12 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
       const updatedTask = await updateTask(values.id, parsedValues.data);
       if (!updatedTask) return;
 
+      const pendingSubTitle = subTitle.trim();
+      if (pendingSubTitle) {
+        const createdSubTask = await addSubTask(values.id, pendingSubTitle);
+        if (!createdSubTask) return;
+      }
+
       onClose();
     } else {
       alert("Поле не может быть пустым!");
@@ -213,7 +219,9 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
         />
 
         <div className="border-t border-slate-800 pt-4 mt-2">
-          <h3 className="text-sm font-bold text-slate-300 mb-3">Подзадачи</h3>
+          <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">
+            Подзадачи
+          </label>
 
           <div className="flex gap-2 mb-3">
             <input

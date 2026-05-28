@@ -26,6 +26,9 @@ router.post("/analyze", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
       where: { userId: req.user.id },
+      include: {
+        subtasks: true,
+      },
     });
 
     const activeTasks = tasks.filter((task) => !task.completed);
@@ -42,21 +45,31 @@ router.post("/analyze", async (req, res) => {
       });
     }
     const tasksString = activeTasks
-      .map(
-        (task) =>
-          `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority})`
-      )
+      .map((task) => {
+        const subtasks = task.subtasks.length
+          ? task.subtasks
+              .map(
+                (subtask) =>
+                  `${subtask.completed ? "готово" : "активно"}: ${
+                    subtask.title
+                  }`
+              )
+              .join("; ")
+          : "подзадач нет";
+
+        return `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority}, Подзадачи: ${subtasks})`;
+      })
       .join("\n");
     const SYSTEM_PROMPT = `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
     Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
 
     ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
     - Выбранный лимит энергии на сегодня: ${energyLimit}% (где 100% — режим терминатора или максимум энергии, а 0% — полное истощение).
-    - Список его активных(невыполненных) задач на сегодня:
+    - Список его активных(невыполненных) задач на сегодня с подзадачами:
     ${tasksString}
 
     ЗАДАНИЕ:
-    Проанализируй этот список. Сопоставь сложность задач с его лимитом энергии на сегодня (${energyLimit}%).
+    Проанализируй этот список, включая подзадачи. Сопоставь сложность задач с его лимитом энергии на сегодня (${energyLimit}%).
     Дай один короткий, глубокий, теплый и практичный совет (максимум 2-3 предложения) о том, как ему лучше распределить силы, с какой задачи начать с точки зрения энергозатратности, или как уберечь себя от перегрузки.
     
     ВАЖНО:

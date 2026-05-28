@@ -31,12 +31,19 @@ export const EnergySlider: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-3xl flex flex-col justify-between">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-semibold tracking-wide text-slate-400 uppercase">
-          Энергопотенциал
-        </h3>
-        <span className="text-sm font-bold text-indigo-400">
+    <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-3xl flex flex-col justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2 className="text-xl font-bold text-slate-200">
+              Энергопотенциал
+            </h2>
+            <p className="text-sm leading-relaxed text-slate-400">
+              Дневной лимит сил на задачи.
+            </p>
+          </div>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-indigo-300">
           {energyStatuses[energyLimit] || `${energyLimit}%`}
         </span>
       </div>
@@ -51,8 +58,8 @@ export const EnergySlider: React.FC = () => {
         className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none"
       />
 
-      <div className="mt-4 flex justify-between items-center text-xs border-t border-slate-800/60 pt-3">
-        <span className="ext-slate-400">Доступно на день:</span>
+      <div className="flex justify-between items-center gap-4 text-xs border-t border-slate-800/60 pt-3">
+        <span className="text-slate-400">Доступно на день:</span>
         <span
           className={`font-bold ${
             remainingEnergy < 0 ? "text-red-500" : "text-emerald-500"

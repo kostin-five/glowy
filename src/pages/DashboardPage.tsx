@@ -38,16 +38,16 @@ const DashboardPage = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125 overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:items-stretch">
+        <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 overflow-hidden">
           <h2 className="text-xl font-bold text-slate-200 mb-6">
             Лестница успеха
           </h2>
           <SuccessStairs currentLevel={currentLevel} />
         </section>
 
-        <div className="xl:col-span-5 flex flex-col gap-6 xl:h-125">
-          <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col h-125">
+        <div className="xl:col-span-5 flex flex-col gap-6 xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-0">
+          <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col flex-1 min-h-0">
             <h2 className="text-xl font-bold text-slate-200 mb-6">
               Совет от Glowy
               <span
@@ -56,7 +56,7 @@ const DashboardPage = () => {
                 }`}
               ></span>
             </h2>
-            <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-6 flex flex-col justify-center">
+            <div className="flex-1 min-h-0 bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-6 flex flex-col justify-start overflow-y-auto custom-scrollbar">
               {isThinking ? (
                 <div className="flex flex-col items-center justify-center h-full text-indigo-400/50 space-y-4">
                   <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
@@ -65,7 +65,7 @@ const DashboardPage = () => {
                   </p>
                 </div>
               ) : (
-                <div className="text-indigo-300 leading-relaxed font-medium">
+                <div className="text-base leading-7 text-indigo-300 font-medium">
                   {typewriter.displayedText}
 
                   {typewriter.isTyping && (
@@ -79,7 +79,7 @@ const DashboardPage = () => {
           <EnergySlider />
         </div>
 
-        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-125">
+        <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-200">Твои задачи</h2>
             <Link

@@ -7,7 +7,7 @@ import {
   useTaskStore,
   useToggleSubTask,
 } from "../../store/useTaskStore";
-import { Plus, CheckSquare, Square } from "lucide-react";
+import { CheckSquare, ListChecks, Plus, Square } from "lucide-react";
 
 const TaskItem = ({
   task: initialTask,
@@ -93,8 +93,9 @@ const TaskItem = ({
             </span>
             <span className="text-xs text-slate-400 mt-1">{task.date}</span>
             {totalSubs > 0 && (
-              <span className="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-400 font-semibold">
-                📋 {completedSubs}/{totalSubs}
+              <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-slate-700/70 bg-slate-900/50 px-2 py-1 text-xs font-medium text-indigo-300">
+                <ListChecks size={13} />
+                {completedSubs}/{totalSubs}
               </span>
             )}
           </div>

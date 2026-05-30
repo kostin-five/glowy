@@ -14,9 +14,21 @@ interface ICreateModal {
 }
 
 const Modal = ({ isOpen, onClose, title, children }: ICreateModal) => {
+  const stopDragPropagation = (event: React.SyntheticEvent) => {
+    event.stopPropagation();
+  };
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" onClose={onClose} className="relative z-50">
+      <Dialog
+        as="div"
+        onClose={onClose}
+        className="relative z-50"
+        onPointerDown={stopDragPropagation}
+        onMouseDown={stopDragPropagation}
+        onTouchStart={stopDragPropagation}
+        data-no-dnd="true"
+      >
         <TransitionChild
           as={Fragment}
           enter="ease-out duration-300"

@@ -45,7 +45,7 @@ const Modal = ({ isOpen, onClose, title, children }: ICreateModal) => {
                   "w-full max-w-md bg-slate-900 transform text-left align-middle overflow-hidden border border-slate-800 p-6 rounded-2xl shadow-xl transition-all"
                 }
               >
-                <h2 className="text-2xl font-bold text-slate-100 mb-6">
+                <h2 className="font-display text-2xl font-bold text-slate-100 mb-6">
                   {title}
                 </h2>
                 {children}

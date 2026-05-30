@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useMemo } from "react";
 import type {
   FilterStatus,
   SortDirection,
@@ -50,6 +51,7 @@ const calculateLevel = (tasks: Task[]) => {
 
 const normalizeTask = (task: Task): Task => ({
   ...task,
+  category: task.category || "",
   subtasks: task.subtasks ?? [],
 });
 
@@ -65,7 +67,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   setTasks: (updatedTasks: Task[]) =>
     set(() => ({
-      tasks: updatedTasks,
+      tasks: updatedTasks.map(normalizeTask),
     })),
 
   setFilterStatus: (filterStatus: FilterStatus) =>
@@ -276,14 +278,16 @@ export const useSetFilter = () =>
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
 export const useIsLoading = () => useTaskStore((state) => state.isLoading);
 export const useSetTasks = () => useTaskStore((state) => state.setTasks);
-export const useAllCategories = () =>
-  useTaskStore((state) => {
-    const customCategories = state.tasks
-      .map((task) => task.category.trim())
-      .filter(Boolean);
+export const useAllCategories = () => {
+  const tasks = useTaskStore((state) => state.tasks);
 
+  return useMemo(() => {
+    const customCategories = tasks
+      .map((task) => (task.category || "").trim())
+      .filter((cat) => cat.length > 0);
     return Array.from(new Set([...BASE_CATEGORIES, ...customCategories]));
-  });
+  }, [tasks]);
+};
 export const useSetSort = () => useTaskStore((state) => state.setSort);
 export const useCreateTask = () => useTaskStore((state) => state.createTask);
 export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);

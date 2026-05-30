@@ -68,7 +68,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!values.title.trim()) {
+    if (!(values.title || "").trim()) {
       alert("Название задачи не может быть пустым!");
       return;
     }
@@ -91,7 +91,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
     const parsedValues = schemaTaskDraft.safeParse({
       ...values,
-      category: values.category.trim(),
+      category: (values.category || "").trim(),
       subtasks: subtasksForBackend,
     });
 
@@ -220,7 +220,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         </div>
         <input
           className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
-          value={values.category}
+          value={values.category || ""}
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
           placeholder="Напишите категорию задачи"

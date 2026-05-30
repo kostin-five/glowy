@@ -49,7 +49,7 @@ export const useProcessedTasks = () => {
           comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
         case "category":
-          comparison = a.category.localeCompare(b.category);
+          comparison = (a.category || "").localeCompare(b.category || "");
           break;
         case "priority":
           comparison = a.priority.localeCompare(b.priority);

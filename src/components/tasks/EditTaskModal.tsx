@@ -27,6 +27,7 @@ interface IDialog {
 const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const [values, setValues] = useState<Task>({
     ...task,
+    category: task.category || "",
     subtasks: task.subtasks ?? [],
   });
   const [subTitle, setSubTitle] = useState("");
@@ -48,6 +49,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     setValues((current) => ({
       ...current,
       id: updated.id,
+      category: updated.category || "",
       subtasks: updated.subtasks ?? [],
     }));
   };
@@ -79,14 +81,14 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!values.title.trim()) {
+    if (!(values.title || "").trim()) {
       alert("Название задачи не может быть пустым!");
       return;
     }
 
     const parsedValues = schemaTask.safeParse({
       ...values,
-      category: values.category.trim(),
+      category: (values.category || "").trim(),
     });
     if (parsedValues.success) {
       const updatedTask = await updateTask(values.id, parsedValues.data);
@@ -217,7 +219,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
         </div>
         <input
           className="w-full bg-slate-800 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-          value={values.category}
+          value={values.category || ""}
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
           placeholder="Напишите категорию задачи"

@@ -46,7 +46,7 @@ const LoginPage = () => {
           <img src="/Glowy.png" alt="Glowy Logo" className="w-20 h-20" />
         </div>
 
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
+        <h1 className="font-display text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
           С возвращением в{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
             Glowy

@@ -130,7 +130,7 @@ const TaskItem = ({
             <span
               className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
             >
-              {task.category}
+              {task.category || ""}
             </span>
           </div>
           <div className="flex items-center gap-1 ml-auto pl-2 shrink-0">

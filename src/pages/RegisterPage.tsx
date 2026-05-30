@@ -55,7 +55,7 @@ const RegisterPage = () => {
           <img src="/Glowy.png" alt="Glowy Logo" className="w-18 h-18" />
         </div>
 
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-1 text-center">
+        <h1 className="font-display text-2xl md:text-3xl font-black text-white tracking-tight mb-1 text-center">
           Начать путь с{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
             Glowy

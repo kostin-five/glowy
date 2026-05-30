@@ -11,9 +11,10 @@ export default defineConfig({
     VitePWA({
       strategies: "generateSW",
       registerType: "autoUpdate",
-      includeAssets: ["**/*.{html,js,css,png,svg,ico,woff2}"],
+      includeAssets: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
       workbox: {
-        globPatterns: ["**/*.{html,js,css,png,svg,ico,woff2}"],
+        cleanupOutdatedCaches: true,
+        globPatterns: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
       },
       manifest: {
         name: "Glowy — AI Task Tracker",

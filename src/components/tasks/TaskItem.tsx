@@ -7,7 +7,7 @@ import {
   useTaskStore,
   useToggleSubTask,
 } from "../../store/useTaskStore";
-import { CheckSquare, ListChecks, Plus, Square } from "lucide-react";
+import { CheckSquare, ListChecks, Plus, Square, Pencil } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -140,7 +140,7 @@ const TaskItem = ({
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
             <span
-              className={`px-2 py-1 bg-slate-700 rounded-md transition-all duration-300 ${contentStyles}`}
+              className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
             >
               {task.priority}
             </span>
@@ -156,7 +156,7 @@ const TaskItem = ({
             <button
               onClick={() => setIsAddingSub(!isAddingSub)}
               type="button"
-              className="cursor-pointer p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-200 transition-colors"
+              className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
               title="Добавить подзадачу"
             >
               <Plus size={16} />
@@ -164,9 +164,9 @@ const TaskItem = ({
             <button
               onClick={() => editTask()}
               type="button"
-              className="cursor-pointer p-2"
+              className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
             >
-              ✏️
+              <Pencil size={15} />
             </button>
           </div>
         </div>

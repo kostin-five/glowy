@@ -30,7 +30,7 @@ const DashboardPage = () => {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-4xl font-black tracking-tight text-slate-100">
+        <h1 className="font-display text-4xl font-black tracking-tight text-slate-100">
           Пункт управления
         </h1>
         <p className="text-slate-400 mt-1">
@@ -40,7 +40,7 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:items-stretch">
         <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 overflow-hidden">
-          <h2 className="text-xl font-bold text-slate-200 mb-6">
+          <h2 className="font-display text-xl font-bold text-slate-200 mb-6">
             Лестница успеха
           </h2>
           <SuccessStairs currentLevel={currentLevel} />
@@ -48,7 +48,7 @@ const DashboardPage = () => {
 
         <div className="xl:col-span-5 flex flex-col gap-6 xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-0">
           <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col flex-1 min-h-0">
-            <h2 className="text-xl font-bold text-slate-200 mb-6">
+            <h2 className="font-display text-xl font-bold text-slate-200 mb-6">
               Совет от Glowy
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -81,7 +81,9 @@ const DashboardPage = () => {
 
         <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-200">Твои задачи</h2>
+            <h2 className="font-display text-xl font-bold text-slate-200">
+              Твои задачи
+            </h2>
             <Link
               to={"/tasks"}
               className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"

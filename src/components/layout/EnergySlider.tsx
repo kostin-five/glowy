@@ -35,7 +35,7 @@ export const EnergySlider: React.FC = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="text-xl font-bold text-slate-200">
+            <h2 className="font-display text-xl font-bold text-slate-200">
               Энергопотенциал
             </h2>
             <p className="text-sm leading-relaxed text-slate-400">
@@ -61,7 +61,7 @@ export const EnergySlider: React.FC = () => {
       <div className="flex justify-between items-center gap-4 text-xs border-t border-slate-800/60 pt-3">
         <span className="text-slate-400">Доступно на день:</span>
         <span
-          className={`font-bold ${
+          className={`font-display font-bold ${
             remainingEnergy < 0 ? "text-red-500" : "text-emerald-500"
           }`}
         >

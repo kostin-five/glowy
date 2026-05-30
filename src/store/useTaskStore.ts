@@ -20,6 +20,7 @@ interface TaskStore {
   userLevel: number;
   isLoading: boolean;
 
+  setTasks: (updatedTasks: Task[]) => void;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: TaskDraft) => Promise<Task | undefined>;
@@ -40,6 +41,7 @@ interface TaskStore {
 }
 
 const initialTasks: Task[] = [];
+const BASE_CATEGORIES = ["Работа", "Учеба", "Спорт", "Быт"];
 
 const calculateLevel = (tasks: Task[]) => {
   const calculatedCount = tasks.filter((t) => t.completed).length;
@@ -60,6 +62,11 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   userLevel: 1,
   isLoading: false,
+
+  setTasks: (updatedTasks: Task[]) =>
+    set(() => ({
+      tasks: updatedTasks,
+    })),
 
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
@@ -268,6 +275,15 @@ export const useSetFilter = () =>
   useTaskStore((state) => state.setFilterStatus);
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
 export const useIsLoading = () => useTaskStore((state) => state.isLoading);
+export const useSetTasks = () => useTaskStore((state) => state.setTasks);
+export const useAllCategories = () =>
+  useTaskStore((state) => {
+    const customCategories = state.tasks
+      .map((task) => task.category.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set([...BASE_CATEGORIES, ...customCategories]));
+  });
 export const useSetSort = () => useTaskStore((state) => state.setSort);
 export const useCreateTask = () => useTaskStore((state) => state.createTask);
 export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);

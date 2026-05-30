@@ -7,6 +7,7 @@ import {
 } from "../../types";
 import {
   useAddSubTask,
+  useAllCategories,
   useDeleteSubTask,
   useDeleteTask,
   useToggleSubTask,
@@ -35,6 +36,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const addSubTask = useAddSubTask();
   const toggleSubTask = useToggleSubTask();
   const deleteSubTask = useDeleteSubTask();
+  const categories = useAllCategories();
 
   const refreshSubtasks = (taskId: number) => {
     const updated = useTaskStore
@@ -77,12 +79,15 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    if (!values.title.trim() || !values.category.trim()) {
-      alert("Название и категория не могут быть пустыми!");
+    if (!values.title.trim()) {
+      alert("Название задачи не может быть пустым!");
       return;
     }
 
-    const parsedValues = schemaTask.safeParse(values);
+    const parsedValues = schemaTask.safeParse({
+      ...values,
+      category: values.category.trim(),
+    });
     if (parsedValues.success) {
       const updatedTask = await updateTask(values.id, parsedValues.data);
       if (!updatedTask) return;
@@ -216,7 +221,13 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
           placeholder="Напишите категорию задачи"
+          list="categories-list"
         />
+        <datalist id="categories-list">
+          {categories.map((cat) => (
+            <option key={cat} value={cat} />
+          ))}
+        </datalist>
 
         <div className="border-t border-slate-800 pt-4 mt-2">
           <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">

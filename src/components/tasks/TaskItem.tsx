@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { SubTask, Task } from "../../types";
 import EditTaskModal from "./EditTaskModal";
 import { motion } from "framer-motion";
@@ -8,6 +8,8 @@ import {
   useToggleSubTask,
 } from "../../store/useTaskStore";
 import { CheckSquare, ListChecks, Plus, Square } from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const TaskItem = ({
   task: initialTask,
@@ -20,6 +22,14 @@ const TaskItem = ({
     state.tasks.find((t) => t.id === initialTask.id)
   );
   const task = storeTask ?? initialTask;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [isAddingSub, setIsAddingSub] = useState(false);
@@ -47,20 +57,29 @@ const TaskItem = ({
 
   const totalSubs = task.subtasks?.length || 0;
   const completedSubs = task.subtasks?.filter((s) => s.completed).length || 0;
+  const sortableStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : undefined,
+    opacity: isDragging ? 0.92 : 1,
+  };
 
   return (
     <motion.li
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      layout
+      ref={setNodeRef}
+      style={sortableStyle}
+      {...attributes}
+      {...listeners}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: isDragging ? 0.92 : 1 }}
+      exit={{ opacity: 0 }}
       className={`flex flex-col border-l-4 ${
         task.energyLevel === "high"
           ? "bg-red-500/20 border-l-red-500"
           : task.energyLevel === "med"
           ? "bg-yellow-500/20 border-l-yellow-500"
           : "bg-green-500/30 border-l-green-500"
-      } p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors w-full`}
+      } p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors w-full cursor-grab active:cursor-grabbing touch-none`}
     >
       <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
         <label className="flex items-center gap-4 cursor-pointer group w-full sm:w-auto flex-1 min-w-50">

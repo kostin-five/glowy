@@ -21,7 +21,7 @@ const Header = () => {
           alt="Логотип Glowy"
           className="w-10 h-10 object-contain"
         />
-        <h2 className="text-xl font-black tracking-tighter text-indigo-500 italic">
+        <h2 className="font-display text-xl font-black tracking-tighter text-indigo-500 italic">
           GLOWY<span className="text-slate-200">.AI</span>
         </h2>
       </Link>

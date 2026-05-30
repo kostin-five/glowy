@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCreateTask } from "../../store/useTaskStore";
+import { useAllCategories, useCreateTask } from "../../store/useTaskStore";
 import {
   schemaTaskDraft,
   type EnergyLevel,
@@ -32,6 +32,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const [subTitle, setSubTitle] = useState("");
   const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
+  const categories = useAllCategories();
 
   const clean = () => {
     setValues({
@@ -67,8 +68,8 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!values.title.trim() || !values.category.trim()) {
-      alert("Название и категория не могут быть пустыми!");
+    if (!values.title.trim()) {
+      alert("Название задачи не может быть пустым!");
       return;
     }
 
@@ -90,6 +91,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
     const parsedValues = schemaTaskDraft.safeParse({
       ...values,
+      category: values.category.trim(),
       subtasks: subtasksForBackend,
     });
 
@@ -222,7 +224,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
           placeholder="Напишите категорию задачи"
+          list="categories-list"
         />
+        <datalist id="categories-list">
+          {categories.map((cat) => (
+            <option key={cat} value={cat} />
+          ))}
+        </datalist>
 
         <div className="space-y-2 pt-2 border-t border-slate-800">
           <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">

@@ -29,7 +29,7 @@ export const schemaTask = z.object({
   title: z.string().min(1),
   date: z.string(),
   priority: z.enum(["🔥 P1", "⚡️ P2", "💤 P3"]),
-  category: z.string().min(1),
+  category: z.string(),
   completed: z.boolean(),
   energyLevel: z.enum(["low", "med", "high"]),
   subtasks: z.array(schemaSubTask).default([]),

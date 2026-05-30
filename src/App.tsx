@@ -1,14 +1,17 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import TaskPage from "./pages/TaskPage";
-import AnalyticsPage from "./pages/AnalyticsPage";
+
 import AppLayout from "./layout/AppLayout";
-import DashboardPage from "./pages/DashboardPage";
+
 import { useIsAuthenticated } from "./store/useAuthStore";
-import { useEffect } from "react";
+import { lazy, useEffect } from "react";
 import { useFetchTasks } from "./store/useTaskStore";
 import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
 import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
+
+const TaskPage = lazy(() => import("./pages/TaskPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();

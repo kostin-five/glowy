@@ -64,10 +64,8 @@ const TaskItem = ({
   const completedSubs = task.subtasks?.filter((s) => s.completed).length || 0;
   const category = (task.category || "").trim();
   const sortableStyle: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 20 : undefined,
-    opacity: isDragging ? 0.92 : 1,
   };
 
   return (
@@ -77,7 +75,7 @@ const TaskItem = ({
       {...attributes}
       {...listeners}
       initial={{ opacity: 0 }}
-      animate={{ opacity: isDragging ? 0.92 : 1 }}
+      animate={{ opacity: isDragging ? 0 : 1 }}
       exit={{ opacity: 0 }}
       className={`flex flex-col border-l-4 ${
         task.energyLevel === "high"
@@ -85,7 +83,7 @@ const TaskItem = ({
           : task.energyLevel === "med"
           ? "bg-yellow-500/20 border-l-yellow-500"
           : "bg-green-500/30 border-l-green-500"
-      } p-4 rounded-xl mb-3 hover:bg-slate-800/60 transition-colors w-full cursor-grab active:cursor-grabbing touch-none`}
+      } p-4 rounded-xl hover:bg-slate-800/60 transition-colors w-full cursor-grab active:cursor-grabbing touch-none`}
     >
       <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
         <div className="flex items-center gap-4 group w-full sm:w-auto flex-1 min-w-50">

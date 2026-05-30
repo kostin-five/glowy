@@ -47,6 +47,7 @@ const getSubTasks = async (req, res) => {
 
     const subtasks = await prisma.subTask.findMany({
       where: { taskId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     });
     res.json(subtasks);
   } catch (e) {
@@ -69,11 +70,17 @@ const createSubTask = async (req, res) => {
       return res.status(404).json({ error: "Задача не найдена" });
     }
 
+    const lastSubTask = await prisma.subTask.findFirst({
+      where: { taskId },
+      orderBy: [{ position: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    });
+
     const newSubTask = await prisma.subTask.create({
       data: {
         taskId,
         title,
         completed: false,
+        position: lastSubTask ? lastSubTask.position + 1 : 0,
       },
     });
     res.status(201).json(newSubTask);
@@ -86,7 +93,7 @@ const createSubTask = async (req, res) => {
 const updateSubTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, completed } = req.body;
+    const { title, completed, position } = req.body;
     const uniqueSubTask = await prisma.subTask.findUnique({
       where: { id: Number(id) },
       include: { task: true },
@@ -94,9 +101,23 @@ const updateSubTask = async (req, res) => {
     if (!uniqueSubTask || uniqueSubTask.task.userId !== req.user.id) {
       return res.status(403).json({ error: "Нет доступа к этой задаче" });
     }
+    const data = {};
+
+    if (typeof title === "string") {
+      data.title = title;
+    }
+
+    if (typeof completed === "boolean") {
+      data.completed = completed;
+    }
+
+    if (Number.isInteger(position)) {
+      data.position = position;
+    }
+
     const updatedSubTask = await prisma.subTask.update({
       where: { id: Number(id) },
-      data: { title, completed },
+      data,
     });
     res.json(updatedSubTask);
   } catch (e) {

@@ -14,15 +14,100 @@ import {
   useUpdateTask,
 } from "../../store/useTaskStore";
 import { useTaskStore } from "../../store/useTaskStore";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Modal from "../ui/Modal";
 import { Trash2, Plus, CheckSquare, Square } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface IDialog {
   isOpen: boolean;
   onClose: () => void;
   task: Task;
 }
+
+interface SortableSubTaskProps {
+  sub: SubTask;
+  onToggle: (subId: number, currentStatus: boolean) => void;
+  onDelete: (subId: number) => void;
+}
+
+const SortableSubTask = ({
+  sub,
+  onToggle,
+  onDelete,
+}: SortableSubTaskProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sub.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : undefined,
+    position: isDragging ? "relative" : undefined,
+    opacity: isDragging ? 0.92 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="flex items-center justify-between bg-slate-900/40 border border-slate-800 p-2.5 rounded-xl cursor-grab active:cursor-grabbing touch-none"
+    >
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={() => onToggle(sub.id, sub.completed)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="text-slate-500 hover:text-indigo-400 transition-colors"
+        >
+          {sub.completed ? (
+            <CheckSquare size={16} className="text-indigo-400" />
+          ) : (
+            <Square size={16} />
+          )}
+        </button>
+        <span
+          className={`text-sm truncate ${
+            sub.completed ? "line-through text-slate-500" : "text-slate-200"
+          }`}
+        >
+          {sub.title}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => onDelete(sub.id)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="text-slate-400 hover:text-red-400 p-1 rounded transition-colors"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+};
 
 const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const [values, setValues] = useState<Task>({
@@ -38,6 +123,19 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const toggleSubTask = useToggleSubTask();
   const deleteSubTask = useDeleteSubTask();
   const categories = useAllCategories();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 100,
+        tolerance: 5,
+      },
+    })
+  );
 
   const refreshSubtasks = (taskId: number) => {
     const updated = useTaskStore
@@ -76,6 +174,34 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     await deleteSubTask(values.id, subId);
 
     refreshSubtasks(values.id);
+  };
+
+  const handleSubTaskDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+
+    setValues((current) => {
+      const currentSubTasks = current.subtasks ?? [];
+      const oldIndex = currentSubTasks.findIndex(
+        (sub) => sub.id === active.id
+      );
+      const newIndex = currentSubTasks.findIndex((sub) => sub.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return current;
+
+      const reorderedSubTasks = arrayMove(
+        currentSubTasks,
+        oldIndex,
+        newIndex
+      ).map((sub, index) => ({
+        ...sub,
+        position: index,
+      }));
+
+      return {
+        ...current,
+        subtasks: reorderedSubTasks,
+      };
+    });
   };
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -253,44 +379,29 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
             </button>
           </div>
 
-          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-            {values.subtasks?.map((sub: SubTask) => (
-              <div
-                key={sub.id}
-                className="flex items-center justify-between bg-slate-900/40 border border-slate-800 p-2.5 rounded-xl"
+          {(values.subtasks?.length || 0) > 0 && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSubTaskDragEnd}
+            >
+              <SortableContext
+                items={(values.subtasks ?? []).map((sub) => sub.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => handleToggleSub(sub.id, sub.completed)}
-                    className="text-slate-500 hover:text-indigo-400 transition-colors"
-                  >
-                    {sub.completed ? (
-                      <CheckSquare size={16} className="text-indigo-400" />
-                    ) : (
-                      <Square size={16} />
-                    )}
-                  </button>
-                  <span
-                    className={`text-sm truncate ${
-                      sub.completed
-                        ? "line-through text-slate-500"
-                        : "text-slate-200"
-                    }`}
-                  >
-                    {sub.title}
-                  </span>
+                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                  {(values.subtasks ?? []).map((sub: SubTask) => (
+                    <SortableSubTask
+                      key={sub.id}
+                      sub={sub}
+                      onToggle={handleToggleSub}
+                      onDelete={handleDeleteSub}
+                    />
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteSub(sub.id)}
-                  className="text-slate-400 hover:text-red-400 p-1 rounded transition-colors"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useAllCategories, useCreateTask } from "../../store/useTaskStore";
 import {
   schemaTaskDraft,
@@ -8,6 +8,22 @@ import {
 } from "../../types";
 import Modal from "../ui/Modal";
 import { Plus, Trash2 } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface ICreateModal {
   isOpen: boolean;
@@ -18,6 +34,50 @@ interface LocalSubTask {
   clientId: number;
   title: string;
 }
+
+interface SortableSubTaskProps {
+  sub: LocalSubTask;
+  onRemove: (clientId: number) => void;
+}
+
+const SortableSubTask = ({ sub, onRemove }: SortableSubTaskProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sub.clientId });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : undefined,
+    position: isDragging ? "relative" : undefined,
+    opacity: isDragging ? 0.92 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="flex items-center justify-between text-sm text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg cursor-grab active:cursor-grabbing touch-none"
+    >
+      <span className="truncate">{sub.title}</span>
+      <button
+        type="button"
+        onClick={() => onRemove(sub.clientId)}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="text-slate-500 hover:text-red-400 p-1 transition-colors"
+      >
+        <Trash2 size={14} />
+      </button>
+    </div>
+  );
+};
 
 const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [values, setValues] = useState<TaskDraft>({
@@ -33,6 +93,19 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [subTitle, setSubTitle] = useState("");
   const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
   const categories = useAllCategories();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 100,
+        tolerance: 5,
+      },
+    })
+  );
 
   const clean = () => {
     setValues({
@@ -65,6 +138,23 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     setLocalSubTasks(localSubTasks.filter((sub) => sub.clientId !== clientId));
   };
 
+  const handleSubTaskDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+
+    setLocalSubTasks((currentSubTasks) => {
+      const oldIndex = currentSubTasks.findIndex(
+        (sub) => sub.clientId === active.id
+      );
+      const newIndex = currentSubTasks.findIndex(
+        (sub) => sub.clientId === over.id
+      );
+
+      if (oldIndex === -1 || newIndex === -1) return currentSubTasks;
+
+      return arrayMove(currentSubTasks, oldIndex, newIndex);
+    });
+  };
+
   const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -75,15 +165,17 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
     const pendingSubTitle = subTitle.trim();
     const subtasksForBackend = [
-      ...localSubTasks.map((sub) => ({
+      ...localSubTasks.map((sub, index) => ({
         title: sub.title,
         completed: false,
+        position: index,
       })),
       ...(pendingSubTitle
         ? [
             {
               title: pendingSubTitle,
               completed: false,
+              position: localSubTasks.length,
             },
           ]
         : []),
@@ -256,23 +348,26 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           </div>
 
           {localSubTasks.length > 0 && (
-            <div className="mt-2 p-3 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
-              {localSubTasks.map((sub) => (
-                <div
-                  key={sub.clientId}
-                  className="flex items-center justify-between text-sm text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg"
-                >
-                  <span className="truncate">{sub.title}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveLocalSub(sub.clientId)}
-                    className="text-slate-500 hover:text-red-400 p-1 transition-colors"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSubTaskDragEnd}
+            >
+              <SortableContext
+                items={localSubTasks.map((sub) => sub.clientId)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="mt-2 p-3 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
+                  {localSubTasks.map((sub) => (
+                    <SortableSubTask
+                      key={sub.clientId}
+                      sub={sub}
+                      onRemove={handleRemoveLocalSub}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 

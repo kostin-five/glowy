@@ -20,13 +20,17 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+const taskInclude = {
+  subtasks: {
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+  },
+};
+
 router.get("/", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
       where: { userId: req.user.id },
-      include: {
-        subtasks: true,
-      },
+      include: taskInclude,
     });
     res.json(tasks);
   } catch (e) {
@@ -40,9 +44,10 @@ router.post("/", async (req, res) => {
     const { title, energyLevel, priority, date, category, subtasks } = req.body;
     const subtasksToCreate = Array.isArray(subtasks)
       ? subtasks
-          .map((sub) => ({
+          .map((sub, index) => ({
             title: typeof sub.title === "string" ? sub.title.trim() : "",
             completed: Boolean(sub.completed),
+            position: Number.isInteger(sub.position) ? sub.position : index,
           }))
           .filter((sub) => sub.title.length > 0)
       : [];
@@ -63,9 +68,7 @@ router.post("/", async (req, res) => {
           : undefined,
       },
 
-      include: {
-        subtasks: true,
-      },
+      include: taskInclude,
     });
 
     res.status(201).json(newTask);
@@ -78,21 +81,53 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, energyLevel, priority, date, category, completed } =
+    const { title, energyLevel, priority, date, category, completed, subtasks } =
       req.body;
+    const taskId = Number(id);
     const uniqueTask = await prisma.task.findUnique({
-      where: { id: Number(id) },
+      where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
       return res.status(403).json({ error: "Нет доступа к этой задаче" });
     }
-    const updatedTask = await prisma.task.update({
-      where: { id: Number(id) },
-      data: { title, energyLevel, priority, date, category, completed },
-      include: {
-        subtasks: true,
-      },
+
+    const orderedSubtasks = Array.isArray(subtasks)
+      ? subtasks
+          .map((sub, index) => ({
+            id: Number(sub.id),
+            position: index,
+          }))
+          .filter((sub) => Number.isInteger(sub.id) && sub.id > 0)
+      : [];
+
+    const updatedTask = await prisma.$transaction(async (tx) => {
+      await tx.task.update({
+        where: { id: taskId },
+        data: { title, energyLevel, priority, date, category, completed },
+      });
+
+      if (orderedSubtasks.length > 0) {
+        await Promise.all(
+          orderedSubtasks.map((sub) =>
+            tx.subTask.updateMany({
+              where: {
+                id: sub.id,
+                taskId,
+              },
+              data: {
+                position: sub.position,
+              },
+            })
+          )
+        );
+      }
+
+      return tx.task.findUnique({
+        where: { id: taskId },
+        include: taskInclude,
+      });
     });
+
     res.json(updatedTask);
   } catch (e) {
     res.status(500).json({ error: "Ошибка при обновлении" });

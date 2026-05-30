@@ -17,11 +17,13 @@ export const schemaSubTask = z.object({
   taskId: z.number(),
   title: z.string().min(1),
   completed: z.boolean(),
+  position: z.number().default(0),
 });
 
 export const schemaSubTaskDraft = z.object({
   title: z.string().min(1),
   completed: z.boolean().default(false),
+  position: z.number().default(0),
 });
 
 export const schemaTask = z.object({

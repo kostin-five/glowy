@@ -49,10 +49,27 @@ const calculateLevel = (tasks: Task[]) => {
   return Math.min(5, calculatedCount + 1);
 };
 
+const sortSubTasks = (subtasks: SubTask[] = []) =>
+  subtasks
+    .map((sub, index) => ({
+      ...sub,
+      position: sub.position ?? index,
+    }))
+    .sort((a, b) => {
+      const positionDiff = (a.position ?? 0) - (b.position ?? 0);
+      return positionDiff || a.id - b.id;
+    });
+
+const applySubTaskPositions = (subtasks: SubTask[] = []) =>
+  subtasks.map((sub, index) => ({
+    ...sub,
+    position: index,
+  }));
+
 const normalizeTask = (task: Task): Task => ({
   ...task,
   category: task.category || "",
-  subtasks: task.subtasks ?? [],
+  subtasks: sortSubTasks(task.subtasks ?? []),
 });
 
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
@@ -159,12 +176,20 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     try {
       const taskToUpdate = get().tasks.find((t) => t.id === id);
       if (!taskToUpdate) return;
-      const updatedTask = normalizeTask(
-        await TaskApi.putTask(id, {
-          ...taskToUpdate,
-          ...updatedData,
-        })
-      );
+      const payload = {
+        ...taskToUpdate,
+        ...updatedData,
+        subtasks: applySubTaskPositions(
+          updatedData.subtasks ?? taskToUpdate.subtasks ?? []
+        ),
+      };
+      const serverTask = await TaskApi.putTask(id, payload);
+      const updatedTask = normalizeTask({
+        ...serverTask,
+        subtasks: applySubTaskPositions(
+          updatedData.subtasks ?? serverTask.subtasks ?? []
+        ),
+      });
       set((state) => {
         return {
           tasks: state.tasks.map(
@@ -209,7 +234,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
           task.id === taskId
             ? {
                 ...task,
-                subtasks: [...(task.subtasks || []), newSub],
+                subtasks: sortSubTasks([...(task.subtasks || []), newSub]),
               }
             : task
         ),
@@ -233,8 +258,10 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
           task.id === taskId || task.id === updatedSub.taskId
             ? {
                 ...task,
-                subtasks: task.subtasks?.map((sub) =>
-                  sub.id === subTaskId ? updatedSub : sub
+                subtasks: sortSubTasks(
+                  task.subtasks?.map((sub) =>
+                    sub.id === subTaskId ? updatedSub : sub
+                  )
                 ),
               }
             : task

@@ -4,6 +4,7 @@ import SuccessStairs from "../dashboard/SuccessStairs";
 import { useCurrentXP, useIsLoading, useUserLevel } from "../store/useTaskStore";
 import Spinner from "../components/ui/Spinner";
 import { EnergySlider } from "../components/layout/EnergySlider";
+import MindHubChat from "../components/mind/MindHubChat";
 
 const DashboardPage = () => {
   const currentLevel = useUserLevel();
@@ -42,14 +43,9 @@ const DashboardPage = () => {
           <EnergySlider />
         </div>
 
-        <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display text-xl font-bold text-slate-200">
-              Хаб мыслей
-            </h2>
-          </div>
-          <div className="flex-1 min-h-0 rounded-2xl border border-slate-800/70 bg-slate-950/20" />
-        </section>
+        <div className="xl:col-span-5">
+          <MindHubChat />
+        </div>
 
         <section className="xl:col-span-4 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160">
           <div className="flex items-center justify-between mb-6">

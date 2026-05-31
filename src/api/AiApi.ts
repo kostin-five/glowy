@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { Task } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 const url = "https://glowy-backend.onrender.com/api/ai";
 
@@ -25,5 +26,13 @@ export default class AiApi {
       console.error(e);
       return { message: "Glowy сейчас отдыхает, попробуй позже" };
     }
+  }
+
+  static async parseMindHub(message: string): Promise<{
+    tasks: Task[];
+    reply: string | null;
+  }> {
+    const response = await aiInstance.post("/mind-hub", { message });
+    return response.data;
   }
 }

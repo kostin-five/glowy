@@ -90,6 +90,7 @@ const SuccessStairs = ({
     safeVisibleSteps >= 7 ? 42 : safeVisibleSteps >= 5 ? 52 : 64;
   const runnerLeftOffset =
     safeVisibleSteps >= 7 ? 4 : safeVisibleSteps >= 5 ? 6 : 8;
+  const baselineOffset = 32;
   const runnerPosition = {
     bottom: `calc(${runnerIndex * stepSize}% + ${thickness + 2}px)`,
     left: `calc(${runnerIndex * stepSize}% + ${runnerLeftOffset}px)`,
@@ -109,7 +110,7 @@ const SuccessStairs = ({
   }, [safeLevel]);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pb-10 pt-8 overflow-hidden">
+    <div className="relative w-full h-full flex flex-col items-center justify-center pb-12 pt-8 overflow-visible">
       <div className="absolute top-0 left-0 w-full text-center">
         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
           Бесконечная лестница: XP двигает уровень вперёд
@@ -120,8 +121,14 @@ const SuccessStairs = ({
         <motion.div
           className="absolute z-30"
           initial={false}
-          style={runnerPosition}
-          animate={runnerPosition}
+          style={{
+            bottom: `calc(${runnerPosition.bottom} + ${baselineOffset}px)`,
+            left: runnerPosition.left,
+          }}
+          animate={{
+            bottom: `calc(${runnerPosition.bottom} + ${baselineOffset}px)`,
+            left: runnerPosition.left,
+          }}
           transition={{ type: "spring", stiffness: 130, damping: 17 }}
         >
           <StepRunner isMoving={isStepping} size={runnerSize} />
@@ -136,20 +143,6 @@ const SuccessStairs = ({
 
           return (
             <div key={step}>
-              {index === 0 && (
-                <div
-                  className={`absolute z-0 transition-all duration-700 ${
-                    isReached ? activeStyle : inactiveStyle
-                  }`}
-                  style={{
-                    width: `${thickness}px`,
-                    height: "40px",
-                    left: "0px",
-                    bottom: "-40px",
-                  }}
-                />
-              )}
-
               <div
                 className={`absolute z-10 transition-all duration-700 ${
                   isReached ? activeStyle : inactiveStyle
@@ -158,7 +151,7 @@ const SuccessStairs = ({
                   height: `${thickness}px`,
                   width: `calc(${stepSize}% + ${thickness}px)`,
                   left: `${index * stepSize}%`,
-                  bottom: `${index * stepSize}%`,
+                  bottom: `calc(${index * stepSize}% + ${baselineOffset}px)`,
                   borderRadius:
                     index === 0 || index === steps.length - 1 ? "8px" : "0px",
                 }}
@@ -170,7 +163,7 @@ const SuccessStairs = ({
                 }`}
                 style={{
                   left: `calc(${index * stepSize}% + 24px)`,
-                  bottom: `calc(${index * stepSize}% - 30px)`,
+                  bottom: `calc(${index * stepSize}% + ${baselineOffset - 26}px)`,
                 }}
               >
                 {step.toString().padStart(2, "0")}
@@ -185,7 +178,7 @@ const SuccessStairs = ({
                     width: `${thickness}px`,
                     height: `calc(${stepSize}% + ${thickness}px)`,
                     left: `${(index + 1) * stepSize}%`,
-                    bottom: `${index * stepSize}%`,
+                    bottom: `calc(${index * stepSize}% + ${baselineOffset}px)`,
                   }}
                 />
               )}

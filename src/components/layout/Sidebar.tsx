@@ -13,7 +13,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
-    { to: "/success-stairs", label: "Лестница успеха", icon: Trophy },
+    { to: "/stairs", label: "Лестница успеха", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
   ];
   const name = useName();

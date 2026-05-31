@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { useName } from "../../store/useAuthStore";
+import { useUserLevel } from "../../store/useTaskStore";
 import { LogOut, User } from "lucide-react";
 
 const Header = () => {
   const name = useName();
+  const currentLevel = useUserLevel();
 
   const handleLogout = () => {
     localStorage.removeItem("auth-storage");
@@ -27,6 +29,12 @@ const Header = () => {
       </Link>
 
       <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
+          <span className="text-xs font-bold text-indigo-300">
+            Уровень: {currentLevel}
+          </span>
+        </div>
+
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/60 border border-slate-700/50 rounded-xl">
           <User size={14} className="text-slate-400" />
           <span className="text-xs font-medium text-slate-200 truncate max-w-20">

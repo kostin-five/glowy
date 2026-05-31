@@ -7,11 +7,14 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { useTasks } from "../store/useTaskStore";
+import SuccessStairs from "../dashboard/SuccessStairs";
+import { useCurrentXP, useTasks, useUserLevel } from "../store/useTaskStore";
 
 const AnalyticsPage = () => {
   const { countTasks, calcCompletedTasks, progressPercent } = useTaskStats();
   const tasks = useTasks();
+  const currentLevel = useUserLevel();
+  const currentXP = useCurrentXP();
 
   const energyData = [
     {
@@ -62,6 +65,23 @@ const AnalyticsPage = () => {
           <span className="font-display text-5xl font-black text-indigo-400">
             {progressPercent}%
           </span>
+        </div>
+      </section>
+
+      <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 min-h-125 flex flex-col overflow-hidden">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h2 className="font-display text-lg font-bold text-slate-200">
+              Лестница успеха
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">{currentXP} XP</p>
+          </div>
+          <span className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
+            Уровень: {currentLevel}
+          </span>
+        </div>
+        <div className="flex-1 min-h-0">
+          <SuccessStairs currentLevel={currentLevel} visibleSteps={5} />
         </div>
       </section>
 

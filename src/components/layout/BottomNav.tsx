@@ -7,7 +7,7 @@ const BottomNav = () => {
   const menuItems = [
     { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Задачи", icon: CheckSquare },
-    { to: "/success-stairs", label: "Уровни", icon: Trophy },
+    { to: "/stairs", label: "Уровни", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
   ];
 

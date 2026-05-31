@@ -99,7 +99,7 @@ function App() {
           }
         />
         <Route
-          path="/success-stairs"
+          path="/stairs"
           element={
             <ProtectedRoute>
               <AppLayout>
@@ -108,6 +108,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/success-stairs" element={<Navigate to="/stairs" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

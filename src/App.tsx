@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
 
-import { useIsAuthenticated } from "./store/useAuthStore";
+import { useIsAuthenticated, useIsGuest } from "./store/useAuthStore";
 import { lazy, Suspense, useEffect } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
@@ -12,8 +12,11 @@ const TaskPage = lazy(() => import("./pages/TaskPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
@@ -26,23 +29,66 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
+  const isGuest = useIsGuest();
   const token = useToken();
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const checkAndResetEnergy = useCheckAndResetEnergy();
 
   useEffect(() => {
-    if (!isAuthenticated || !token) return;
+    if (!isAuthenticated || !token || isGuest) return;
 
     fetchTasks();
     fetchProgress();
     checkAndResetEnergy();
-  }, [checkAndResetEnergy, fetchProgress, fetchTasks, isAuthenticated, token]);
+  }, [
+    checkAndResetEnergy,
+    fetchProgress,
+    fetchTasks,
+    isAuthenticated,
+    isGuest,
+    token,
+  ]);
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            <Suspense
+              fallback={
+                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
+              }
+            >
+              <LandingPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/privacy"
+          element={
+            <Suspense
+              fallback={
+                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
+              }
+            >
+              <PrivacyPolicyPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/terms"
+          element={
+            <Suspense
+              fallback={
+                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
+              }
+            >
+              <TermsOfServicePage />
+            </Suspense>
+          }
+        />
         <Route
           path="/login"
           element={

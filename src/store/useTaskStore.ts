@@ -14,6 +14,7 @@ import type { StateCreator } from "zustand";
 import { TaskApi, type TaskUpdateResponse } from "../api/TaskApi";
 import { SubTaskApi } from "../api/SubTaskApi";
 import { UserApi } from "../api/UserApi";
+import { useAuthStore } from "./useAuthStore";
 import { getLevelByXp, getXpReward } from "../utils/xp";
 import axios from "axios";
 
@@ -103,6 +104,30 @@ const applyOptimisticXpReward = (currentXP: number, task: Task) => {
   };
 };
 
+const isGuestSession = () => useAuthStore.getState().isGuest;
+
+const buildLocalTask = (draft: TaskDraft): Task => {
+  const taskId = draft.id ?? Date.now();
+
+  return normalizeTask({
+    id: taskId,
+    title: draft.title,
+    date: draft.date,
+    priority: draft.priority,
+    category: draft.category || "",
+    completed: draft.completed ?? false,
+    xpAwarded: false,
+    energyLevel: draft.energyLevel,
+    subtasks: (draft.subtasks ?? []).map((subtask, index) => ({
+      id: taskId + index + 1,
+      taskId,
+      title: subtask.title,
+      completed: subtask.completed ?? false,
+      position: subtask.position ?? index,
+    })),
+  });
+};
+
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
 
@@ -136,6 +161,14 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     })),
 
   createTask: async (newTask: TaskDraft) => {
+    if (isGuestSession()) {
+      const result = buildLocalTask(newTask);
+      set((state) => ({
+        tasks: [...state.tasks, result],
+      }));
+      return result;
+    }
+
     try {
       const result = normalizeTask(await TaskApi.postTask(newTask));
       set((state) => {
@@ -164,6 +197,13 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   deleteTask: async (id: number) => {
+    if (isGuestSession()) {
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== id),
+      }));
+      return;
+    }
+
     try {
       const deletedTask = await TaskApi.deleteTask(id);
       set((state) => {
@@ -184,6 +224,28 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   toggleTask: async (id: number) => {
+    if (isGuestSession()) {
+      const taskToToggle = get().tasks.find((t) => t.id === id);
+      if (!taskToToggle) return;
+
+      const nextCompleted = !taskToToggle.completed;
+      const shouldAwardXp = nextCompleted && !taskToToggle.xpAwarded;
+      const updatedTask = normalizeTask({
+        ...taskToToggle,
+        completed: nextCompleted,
+        xpAwarded: taskToToggle.xpAwarded || shouldAwardXp,
+      });
+
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
+        ...(shouldAwardXp
+          ? applyOptimisticXpReward(state.currentXP, taskToToggle)
+          : {}),
+      }));
+
+      return updatedTask;
+    }
+
     try {
       const taskToToggle = get().tasks.find((t) => t.id === id);
       if (!taskToToggle) return;
@@ -230,6 +292,25 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   updateTask: async (id: number, updatedData: Partial<Task>) => {
+    if (isGuestSession()) {
+      const taskToUpdate = get().tasks.find((t) => t.id === id);
+      if (!taskToUpdate) return;
+
+      const updatedTask = normalizeTask({
+        ...taskToUpdate,
+        ...updatedData,
+        subtasks: applySubTaskPositions(
+          updatedData.subtasks ?? taskToUpdate.subtasks ?? []
+        ),
+      });
+
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
+      }));
+
+      return updatedTask;
+    }
+
     try {
       const taskToUpdate = get().tasks.find((t) => t.id === id);
       if (!taskToUpdate) return;
@@ -268,6 +349,11 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   fetchTasks: async () => {
+    if (isGuestSession()) {
+      set({ isLoading: false });
+      return;
+    }
+
     const hasCachedTasks = get().tasks.length > 0;
     set({ isLoading: !hasCachedTasks });
     try {
@@ -285,6 +371,8 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   fetchProgress: async () => {
+    if (isGuestSession()) return;
+
     try {
       const progress = await UserApi.getProgress();
       set({
@@ -301,6 +389,30 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   addSubTask: async (taskId: number, title: string) => {
+    if (isGuestSession()) {
+      const newSub: SubTask = {
+        id: Date.now(),
+        taskId,
+        title,
+        completed: false,
+        position: get().tasks.find((task) => task.id === taskId)?.subtasks
+          ?.length ?? 0,
+      };
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: sortSubTasks([...(task.subtasks || []), newSub]),
+              }
+            : task
+        ),
+      }));
+
+      return newSub;
+    }
+
     try {
       const taskToUpdate = get().tasks.find((task) => task.id === taskId);
       if (!taskToUpdate) return;
@@ -327,6 +439,29 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     taskId: number,
     completed: boolean
   ) => {
+    if (isGuestSession()) {
+      let updatedSub: SubTask | undefined;
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: sortSubTasks(
+                  task.subtasks?.map((sub) => {
+                    if (sub.id !== subTaskId) return sub;
+                    updatedSub = { ...sub, completed };
+                    return updatedSub;
+                  })
+                ),
+              }
+            : task
+        ),
+      }));
+
+      return updatedSub;
+    }
+
     try {
       const updatedSub = await SubTaskApi.toggleSubTask(subTaskId, completed);
 
@@ -351,6 +486,20 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   deleteSubTask: async (taskId: number, subTaskId: number) => {
+    if (isGuestSession()) {
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: task.subtasks?.filter((sub) => sub.id !== subTaskId),
+              }
+            : task
+        ),
+      }));
+      return;
+    }
+
     try {
       await SubTaskApi.deleteSubTask(subTaskId);
 

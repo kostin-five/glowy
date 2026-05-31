@@ -81,16 +81,21 @@ const SuccessStairs = ({
     (_, index) => startLevel + index
   );
   const activeIndex = steps.findIndex((step) => step === safeLevel);
-  const thickness = 8;
+  const isCompact = safeVisibleSteps <= 3;
+  const thickness = isCompact ? 7 : 8;
   const stepSize = 100 / safeVisibleSteps;
   const runnerIndex = activeIndex === -1 ? centerOffset : activeIndex;
   const previousLevelRef = useRef(safeLevel);
   const [isStepping, setIsStepping] = useState(false);
   const runnerSize =
-    safeVisibleSteps >= 7 ? 42 : safeVisibleSteps >= 5 ? 52 : 64;
+    safeVisibleSteps >= 7 ? 42 : safeVisibleSteps >= 5 ? 52 : 38;
   const runnerLeftOffset =
-    safeVisibleSteps >= 7 ? 4 : safeVisibleSteps >= 5 ? 6 : 8;
-  const baselineOffset = 32;
+    safeVisibleSteps >= 7 ? 4 : safeVisibleSteps >= 5 ? 6 : 2;
+  const baselineOffset = isCompact ? 30 : 32;
+  const canvasSizeClass =
+    isCompact
+      ? "max-w-[190px] 2xl:max-w-[210px]"
+      : "max-w-[340px] 2xl:max-w-112.5";
   const runnerPosition = {
     bottom: `calc(${runnerIndex * stepSize}% + ${thickness + 2}px)`,
     left: `calc(${runnerIndex * stepSize}% + ${runnerLeftOffset}px)`,
@@ -110,14 +115,22 @@ const SuccessStairs = ({
   }, [safeLevel]);
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center pb-12 pt-8 overflow-visible">
-      <div className="absolute top-0 left-0 w-full text-center">
+    <div
+      className={`relative w-full h-full flex flex-col items-center overflow-hidden ${
+        isCompact ? "justify-center py-2" : "justify-center pb-12 pt-10"
+      }`}
+    >
+      <div
+        className={`absolute top-0 left-0 w-full text-center ${
+          isCompact ? "hidden" : "block"
+        }`}
+      >
         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
           Бесконечная лестница: XP двигает уровень вперёд
         </p>
       </div>
 
-      <div className="relative w-full aspect-square max-w-[340px] 2xl:max-w-112.5">
+      <div className={`relative w-full aspect-square ${canvasSizeClass}`}>
         <motion.div
           className="absolute z-30"
           initial={false}
@@ -162,7 +175,7 @@ const SuccessStairs = ({
                   isReached ? "text-indigo-300" : "text-slate-600"
                 }`}
                 style={{
-                  left: `calc(${index * stepSize}% + 24px)`,
+                  left: `calc(${index * stepSize}% + ${isCompact ? 12 : 16}px)`,
                   bottom: `calc(${index * stepSize}% + ${baselineOffset - 26}px)`,
                 }}
               >

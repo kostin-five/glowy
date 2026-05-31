@@ -3,6 +3,7 @@ import pg from "pg";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { rateLimit } from "express-rate-limit";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const { PrismaClient } = pkg;
@@ -21,6 +22,20 @@ const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 router.use(authMiddleware);
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Лимит AI-запросов исчерпан. Попробуй немного позже." },
+});
+
+router.use(aiLimiter);
+
+const taskInclude = {
+  subtasks: true,
+};
 
 const MIND_HUB_SYSTEM_PROMPT =
   'Ты AI-коуч. Юзер пишет хаос из головы. Вычлени задачи и верни строгий JSON-массив: [{"title": "...", "priority": "P1|P2|P3", "energyLevel": "high|med|low", "category": "..."}]. Дата по умолчанию "сегодня", приоритет по умолчанию "P2", категория "Быт". Если задач нет, верни [] и добавь поле reply с эмпатичным ответом коуча.';

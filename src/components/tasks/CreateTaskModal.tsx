@@ -1,5 +1,9 @@
 import { useState, type CSSProperties } from "react";
-import { useAllCategories, useCreateTask } from "../../store/useTaskStore";
+import {
+  useAllCategories,
+  useCreateTask,
+  useSetFilter,
+} from "../../store/useTaskStore";
 import {
   schemaTaskDraft,
   type EnergyLevel,
@@ -92,7 +96,10 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const [subTitle, setSubTitle] = useState("");
   const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const categories = useAllCategories();
+  const setFilter = useSetFilter();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -119,6 +126,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     });
     setLocalSubTasks([]);
     setSubTitle("");
+    setError("");
   };
 
   const create = useCreateTask();
@@ -157,9 +165,10 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError("");
 
     if (!(values.title || "").trim()) {
-      alert("Название задачи не может быть пустым!");
+      setError("Название задачи не может быть пустым.");
       return;
     }
 
@@ -188,13 +197,28 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     });
 
     if (parsedValues.success) {
-      const createdTask = await create(parsedValues.data);
-      if (!createdTask) return;
+      try {
+        setIsSubmitting(true);
+        const createdTask = await create(parsedValues.data);
+        if (!createdTask) {
+          setError("Не удалось создать задачу. Попробуй ещё раз.");
+          return;
+        }
 
-      clean();
-      onClose();
+        setFilter("Все");
+        clean();
+        onClose();
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Не удалось создать задачу. Попробуй ещё раз."
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
-      alert("Заполните корректно все поля!");
+      setError("Заполните корректно все поля.");
     }
   };
 
@@ -372,11 +396,17 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         </div>
 
         <button
-          className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white rounded-lg p-2.5 font-medium transition-colors w-full mt-2 cursor-pointer"
+          className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-indigo-500/40 disabled:cursor-not-allowed text-white rounded-lg p-2.5 font-medium transition-colors w-full mt-2 cursor-pointer"
           type="submit"
+          disabled={isSubmitting}
         >
-          Сохранить
+          {isSubmitting ? "Сохраняю..." : "Сохранить"}
         </button>
+        {error && (
+          <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            {error}
+          </p>
+        )}
       </form>
     </Modal>
   );

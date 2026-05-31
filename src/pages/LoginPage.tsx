@@ -4,20 +4,23 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useToLogin } from "../store/useAuthStore";
 import axios from "axios";
-import { useIsLoading } from "../store/useTaskStore";
 import { Eye, EyeOff } from "lucide-react";
+import AuthLoader from "../components/ui/AuthLoader";
 
 const LoginPage = () => {
   const [login, setLogin] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const toLogin = useToLogin();
-  const isLoading = useIsLoading();
   const [showPassword, setShowPassword] = useState(false);
 
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
     try {
       const data = await AuthApi.loginRequest({ login, password });
       toLogin(data.name, login, data.token);
@@ -28,6 +31,8 @@ const LoginPage = () => {
       } else {
         setError("Что-то пошло не так");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -42,8 +47,8 @@ const LoginPage = () => {
         transition={{ duration: 0.8 }}
         className="z-10 max-w-md w-full flex flex-col items-center"
       >
-        <div className="w-18 h-16  rounded-3xl flex items-center justify-center mb-6 ">
-          <img src="/Glowy.png" alt="Glowy Logo" className="w-20 h-20" />
+        <div className="w-20 h-16  rounded-3xl flex items-center justify-center mb-6 ">
+          <img src="/Glowy.png" alt="Glowy Logo" className="w-22 h-20" />
         </div>
 
         <h1 className="font-display text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
@@ -106,9 +111,9 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50"
+            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center min-h-13"
           >
-            {isLoading ? "Вход..." : "Войти в систему"}
+            {isLoading ? <AuthLoader /> : "Войти в систему"}
           </button>
 
           <div className="mt-4 text-center text-sm text-slate-400">

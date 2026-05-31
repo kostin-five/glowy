@@ -2,9 +2,9 @@ import { useState } from "react";
 import { AuthApi } from "../api/AuthApi";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { useIsLoading } from "../store/useTaskStore";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
+import AuthLoader from "../components/ui/AuthLoader";
 
 const RegisterPage = () => {
   const [name, setName] = useState<string>("");
@@ -12,8 +12,8 @@ const RegisterPage = () => {
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const isLoading = useIsLoading();
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -23,6 +23,8 @@ const RegisterPage = () => {
     if (password !== confirmPassword) {
       return setError("Пароли не совпадают!");
     }
+
+    setIsLoading(true);
 
     try {
       await AuthApi.registerRequest({ name, login, password });
@@ -36,7 +38,11 @@ const RegisterPage = () => {
 
         setError(serverError);
         console.error("Детали ошибки:", e.response?.data);
+      } else {
+        setError("Что-то пошло не так");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -153,9 +159,9 @@ const RegisterPage = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50"
+            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center min-h-11"
           >
-            {isLoading ? "Создание аккаунта..." : "Зарегистрироваться"}
+            {isLoading ? <AuthLoader /> : "Зарегистрироваться"}
           </button>
 
           <div className="mt-4 text-center text-sm text-slate-400">

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { useMemo } from "react";
 import type {
   FilterStatus,
@@ -115,9 +116,12 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return result;
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+        const message = e.response?.data?.error || e.message;
+        console.error("Ошибка сервера:", message);
+        throw new Error(message, { cause: e });
       } else if (e instanceof Error) {
         console.error("Внутренняя ошибка:", e.message);
+        throw e;
       }
     }
   },
@@ -293,7 +297,18 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 });
 
-export const useTaskStore = create<TaskStore>()(taskStore);
+export const useTaskStore = create<TaskStore>()(
+  persist(taskStore, {
+    name: "glowy-tasks",
+    partialize: (state) => ({
+      tasks: state.tasks,
+      filterStatus: state.filterStatus,
+      sortField: state.sortField,
+      sortDirection: state.sortDirection,
+      userLevel: state.userLevel,
+    }),
+  })
+);
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
 export const useFilter = () => useTaskStore((state) => state.filterStatus);

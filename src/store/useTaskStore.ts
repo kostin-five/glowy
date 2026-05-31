@@ -8,10 +8,13 @@ import type {
   SubTask,
   Task,
   TaskDraft,
+  UserProgress,
 } from "../types";
 import type { StateCreator } from "zustand";
-import { TaskApi } from "../api/TaskApi";
+import { TaskApi, type TaskUpdateResponse } from "../api/TaskApi";
 import { SubTaskApi } from "../api/SubTaskApi";
+import { UserApi } from "../api/UserApi";
+import { getLevelByXp, getXpReward } from "../utils/xp";
 import axios from "axios";
 
 interface TaskStore {
@@ -20,8 +23,10 @@ interface TaskStore {
   sortField: SortField;
   sortDirection: SortDirection;
   userLevel: number;
+  currentXP: number;
   isLoading: boolean;
 
+  setUserProgress: (progress: UserProgress) => void;
   setTasks: (updatedTasks: Task[]) => void;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
@@ -33,6 +38,7 @@ interface TaskStore {
     updatedData: Partial<Task>
   ) => Promise<Task | undefined>;
   fetchTasks: () => Promise<void>;
+  fetchProgress: () => Promise<void>;
   addSubTask: (taskId: number, title: string) => Promise<SubTask | undefined>;
   toggleSubTask: (
     subTaskId: number,
@@ -44,11 +50,6 @@ interface TaskStore {
 
 const initialTasks: Task[] = [];
 const BASE_CATEGORIES = ["Работа", "Учеба", "Спорт", "Быт"];
-
-const calculateLevel = (tasks: Task[]) => {
-  const calculatedCount = tasks.filter((t) => t.completed).length;
-  return Math.min(5, calculatedCount + 1);
-};
 
 const sortSubTasks = (subtasks: SubTask[] = []) =>
   subtasks
@@ -70,8 +71,37 @@ const applySubTaskPositions = (subtasks: SubTask[] = []) =>
 const normalizeTask = (task: Task): Task => ({
   ...task,
   category: task.category || "",
+  xpAwarded: task.xpAwarded ?? false,
   subtasks: sortSubTasks(task.subtasks ?? []),
 });
+
+const applyProgress = (progress: UserProgress | null | undefined) =>
+  progress
+    ? {
+        currentXP: progress.xp,
+        userLevel: progress.level,
+      }
+    : {};
+
+const parseTaskUpdateResponse = (response: Task | TaskUpdateResponse) =>
+  "task" in response
+    ? {
+        task: response.task,
+        userProgress: response.userProgress,
+      }
+    : {
+        task: response,
+        userProgress: null,
+      };
+
+const applyOptimisticXpReward = (currentXP: number, task: Task) => {
+  const nextXP = currentXP + getXpReward(task.priority);
+
+  return {
+    currentXP: nextXP,
+    userLevel: getLevelByXp(nextXP),
+  };
+};
 
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
@@ -81,7 +111,14 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   sortDirection: "asc",
 
   userLevel: 1,
+  currentXP: 0,
   isLoading: false,
+
+  setUserProgress: (progress: UserProgress) =>
+    set(() => ({
+      currentXP: progress.xp,
+      userLevel: progress.level,
+    })),
 
   setTasks: (updatedTasks: Task[]) =>
     set(() => ({
@@ -134,7 +171,6 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
         return {
           tasks: updatedTasks,
-          userLevel: Math.max(state.userLevel, calculateLevel(updatedTasks)),
         };
       });
       return deletedTask;
@@ -151,21 +187,38 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     try {
       const taskToToggle = get().tasks.find((t) => t.id === id);
       if (!taskToToggle) return;
-      const updatedTask = normalizeTask(
-        await TaskApi.putTask(id, {
-          ...taskToToggle,
-          completed: !taskToToggle.completed,
-        })
+      const nextCompleted = !taskToToggle.completed;
+      const result = await TaskApi.putTask(id, {
+        ...taskToToggle,
+        completed: nextCompleted,
+      });
+      const { task: responseTask, userProgress } =
+        parseTaskUpdateResponse(result);
+      const shouldAwardOptimisticXp =
+        nextCompleted && !taskToToggle.xpAwarded && !userProgress;
+      const nextXpAwarded = Boolean(
+        responseTask.xpAwarded ||
+          taskToToggle.xpAwarded ||
+          shouldAwardOptimisticXp
       );
+      const updatedTask = normalizeTask({
+        ...responseTask,
+        xpAwarded: nextXpAwarded,
+      });
       set((state) => {
         const updatedTasks = state.tasks.map((t) =>
           t.id === id ? updatedTask : t
         );
         return {
           tasks: updatedTasks,
-          userLevel: calculateLevel(updatedTasks),
+          ...(userProgress
+            ? applyProgress(userProgress)
+            : shouldAwardOptimisticXp
+            ? applyOptimisticXpReward(state.currentXP, taskToToggle)
+            : {}),
         };
       });
+
       return updatedTask;
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -187,11 +240,13 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
           updatedData.subtasks ?? taskToUpdate.subtasks ?? []
         ),
       };
-      const serverTask = await TaskApi.putTask(id, payload);
+      const result = await TaskApi.putTask(id, payload);
+      const { task: responseTask, userProgress } =
+        parseTaskUpdateResponse(result);
       const updatedTask = normalizeTask({
-        ...serverTask,
+        ...responseTask,
         subtasks: applySubTaskPositions(
-          updatedData.subtasks ?? serverTask.subtasks ?? []
+          updatedData.subtasks ?? responseTask.subtasks ?? []
         ),
       });
       set((state) => {
@@ -199,6 +254,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
           tasks: state.tasks.map(
             (t: Task): Task => (t.id === id ? updatedTask : t)
           ),
+          ...applyProgress(userProgress),
         };
       });
       return updatedTask;
@@ -212,7 +268,8 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   },
 
   fetchTasks: async () => {
-    set({ isLoading: true });
+    const hasCachedTasks = get().tasks.length > 0;
+    set({ isLoading: !hasCachedTasks });
     try {
       const response = await TaskApi.getTasks();
       set({ tasks: response.map(normalizeTask) });
@@ -224,6 +281,22 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       }
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  fetchProgress: async () => {
+    try {
+      const progress = await UserApi.getProgress();
+      set({
+        currentXP: progress.xp,
+        userLevel: progress.level,
+      });
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
     }
   },
 
@@ -306,6 +379,7 @@ export const useTaskStore = create<TaskStore>()(
       sortField: state.sortField,
       sortDirection: state.sortDirection,
       userLevel: state.userLevel,
+      currentXP: state.currentXP,
     }),
   })
 );
@@ -318,7 +392,10 @@ export const useSortDirection = () =>
 export const useSetFilter = () =>
   useTaskStore((state) => state.setFilterStatus);
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
+export const useCurrentXP = () => useTaskStore((state) => state.currentXP);
 export const useIsLoading = () => useTaskStore((state) => state.isLoading);
+export const useSetUserProgress = () =>
+  useTaskStore((state) => state.setUserProgress);
 export const useSetTasks = () => useTaskStore((state) => state.setTasks);
 export const useAllCategories = () => {
   const tasks = useTaskStore((state) => state.tasks);
@@ -336,6 +413,8 @@ export const useDeleteTask = () => useTaskStore((state) => state.deleteTask);
 export const useToggleTask = () => useTaskStore((state) => state.toggleTask);
 export const useUpdateTask = () => useTaskStore((state) => state.updateTask);
 export const useFetchTasks = () => useTaskStore((state) => state.fetchTasks);
+export const useFetchProgress = () =>
+  useTaskStore((state) => state.fetchProgress);
 
 export const useAddSubTask = () => useTaskStore((state) => state.addSubTask);
 export const useToggleSubTask = () =>

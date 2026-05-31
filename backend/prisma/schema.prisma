@@ -16,6 +16,7 @@ model Task {
   energyLevel String @map("energy_level")
   category String
   completed Boolean @default(false)
+  xpAwarded Boolean @default(false) @map("xp_awarded")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   subtasks SubTask[]
@@ -30,6 +31,8 @@ model User {
   password String
   energyLimit Int @default(100) @map("energy_limit")
   energyDate String @default("") @map("energy_date")
+  xp Int @default(0)
+  level Int @default(1)
   tasks Task[]
 
   @@map("users")  

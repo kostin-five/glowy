@@ -26,6 +26,39 @@ const taskInclude = {
   },
 };
 
+const LEVEL_THRESHOLDS = [
+  0, 50, 100, 250, 500, 1000, 1500, 2000, 3000, 4000, 5000, 7000, 9000, 10000,
+];
+
+const getLevelThreshold = (level) => {
+  if (level <= LEVEL_THRESHOLDS.length) {
+    return LEVEL_THRESHOLDS[level - 1];
+  }
+
+  return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] + (level - 14) * 2500;
+};
+
+const getLevelByXp = (xp) => {
+  let level = 1;
+
+  while (xp >= getLevelThreshold(level + 1)) {
+    level += 1;
+  }
+
+  return level;
+};
+
+const getXpReward = (priority = "") => {
+  if (priority.includes("P1")) return 50;
+  if (priority.includes("P2")) return 25;
+  return 10;
+};
+
+const buildUserProgress = (user) => ({
+  xp: user.xp,
+  level: user.level,
+});
+
 router.get("/", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
@@ -100,10 +133,44 @@ router.put("/:id", async (req, res) => {
           .filter((sub) => Number.isInteger(sub.id) && sub.id > 0)
       : [];
 
-    const updatedTask = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      let xpReward = 0;
+      let updatedUser = null;
+      const shouldAwardXp =
+        completed === true && !uniqueTask.completed && !uniqueTask.xpAwarded;
+
+      if (shouldAwardXp) {
+        xpReward = getXpReward(priority);
+        const user = await tx.user.findUnique({
+          where: { id: req.user.id },
+          select: { xp: true },
+        });
+        const nextXp = (user?.xp ?? 0) + xpReward;
+
+        updatedUser = await tx.user.update({
+          where: { id: req.user.id },
+          data: {
+            xp: nextXp,
+            level: getLevelByXp(nextXp),
+          },
+          select: {
+            xp: true,
+            level: true,
+          },
+        });
+      }
+
       await tx.task.update({
         where: { id: taskId },
-        data: { title, energyLevel, priority, date, category, completed },
+        data: {
+          title,
+          energyLevel,
+          priority,
+          date,
+          category,
+          completed,
+          xpAwarded: uniqueTask.xpAwarded || shouldAwardXp,
+        },
       });
 
       if (orderedSubtasks.length > 0) {
@@ -122,13 +189,19 @@ router.put("/:id", async (req, res) => {
         );
       }
 
-      return tx.task.findUnique({
+      const task = await tx.task.findUnique({
         where: { id: taskId },
         include: taskInclude,
       });
+
+      return {
+        task,
+        xpReward,
+        userProgress: updatedUser ? buildUserProgress(updatedUser) : null,
+      };
     });
 
-    res.json(updatedTask);
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: "Ошибка при обновлении" });
   }

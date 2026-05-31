@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { Task, TaskDraft } from "../types";
+import type { Task, TaskDraft, UserProgress } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 
 const url = "https://glowy-backend.onrender.com/api/tasks";
@@ -18,6 +18,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+export interface TaskUpdateResponse {
+  task: Task;
+  xpReward: number;
+  userProgress: UserProgress | null;
+}
+
 export const TaskApi = {
   async getTasks(): Promise<Task[]> {
     const response = await api.get("/");
@@ -29,7 +35,10 @@ export const TaskApi = {
     return response.data;
   },
 
-  async putTask(id: number, data: Partial<Task>): Promise<Task> {
+  async putTask(
+    id: number,
+    data: Partial<Task>
+  ): Promise<TaskUpdateResponse | Task> {
     const response = await api.put(`/${id}`, data);
     return response.data;
   },

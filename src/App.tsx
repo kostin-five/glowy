@@ -4,13 +4,14 @@ import AppLayout from "./layout/AppLayout";
 
 import { useIsAuthenticated } from "./store/useAuthStore";
 import { lazy, Suspense, useEffect } from "react";
-import { useFetchTasks } from "./store/useTaskStore";
+import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
 import AuthLoader from "./components/ui/AuthLoader";
 
 const TaskPage = lazy(() => import("./pages/TaskPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 
@@ -27,14 +28,16 @@ function App() {
   const isAuthenticated = useIsAuthenticated();
   const token = useToken();
   const fetchTasks = useFetchTasks();
+  const fetchProgress = useFetchProgress();
   const checkAndResetEnergy = useCheckAndResetEnergy();
 
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
     fetchTasks();
+    fetchProgress();
     checkAndResetEnergy();
-  }, [checkAndResetEnergy, fetchTasks, isAuthenticated, token]);
+  }, [checkAndResetEnergy, fetchProgress, fetchTasks, isAuthenticated, token]);
 
   return (
     <BrowserRouter>
@@ -91,6 +94,16 @@ function App() {
             <ProtectedRoute>
               <AppLayout>
                 <AnalyticsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/success-stairs"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <SuccessStairsPage />
               </AppLayout>
             </ProtectedRoute>
           }

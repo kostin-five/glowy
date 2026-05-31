@@ -20,6 +20,26 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
+router.get("/progress", async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        xp: true,
+        level: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: "Ошибка при загрузке прогресса" });
+  }
+});
+
 router.put("/energy", async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
 

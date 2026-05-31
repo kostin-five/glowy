@@ -33,12 +33,13 @@ export const schemaTask = z.object({
   priority: z.enum(["🔥 P1", "⚡️ P2", "💤 P3"]),
   category: z.string(),
   completed: z.boolean(),
+  xpAwarded: z.boolean().default(false),
   energyLevel: z.enum(["low", "med", "high"]),
   subtasks: z.array(schemaSubTask).default([]),
 });
 
 export const schemaTaskDraft = schemaTask
-  .omit({ id: true, completed: true, subtasks: true })
+  .omit({ id: true, completed: true, subtasks: true, xpAwarded: true })
   .extend({
     id: z.number().optional(),
     completed: z.boolean().default(false),
@@ -56,9 +57,15 @@ export const schemaLoginData = z.object({
   password: z.string(),
 });
 
+export const schemaUserProgress = z.object({
+  xp: z.number(),
+  level: z.number(),
+});
+
 export type LoginData = z.infer<typeof schemaLoginData>;
 export type Task = z.infer<typeof schemaTask>;
 export type TaskDraft = z.infer<typeof schemaTaskDraft>;
 export type Auth = z.infer<typeof schemaAuthData>;
 export type SubTask = z.infer<typeof schemaSubTask>;
 export type SubTaskDraft = z.infer<typeof schemaSubTaskDraft>;
+export type UserProgress = z.infer<typeof schemaUserProgress>;

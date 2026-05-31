@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { BarChart3, CheckSquare, LayoutDashboard } from "lucide-react";
+import { BarChart3, CheckSquare, LayoutDashboard, Trophy } from "lucide-react";
 
 const BottomNav = () => {
   const location = useLocation();
@@ -7,6 +7,7 @@ const BottomNav = () => {
   const menuItems = [
     { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Задачи", icon: CheckSquare },
+    { to: "/success-stairs", label: "Уровни", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
   ];
 

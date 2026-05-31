@@ -3,7 +3,7 @@ import TaskList from "../components/tasks/TaskList";
 import { useEffect, useState } from "react";
 import useTypewriter from "../hooks/useTypewriter";
 import SuccessStairs from "../dashboard/SuccessStairs";
-import { useIsLoading, useUserLevel } from "../store/useTaskStore";
+import { useCurrentXP, useIsLoading, useUserLevel } from "../store/useTaskStore";
 import Spinner from "../components/ui/Spinner";
 import AiApi from "../api/AiApi";
 import { EnergySlider } from "../components/layout/EnergySlider";
@@ -12,6 +12,7 @@ const DashboardPage = () => {
   const [isThinking, setIsThinking] = useState(true);
   const [aiMessage, setAIMessage] = useState("");
   const currentLevel = useUserLevel();
+  const currentXP = useCurrentXP();
   const isLoading = useIsLoading();
 
   useEffect(() => {
@@ -39,12 +40,21 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:items-stretch">
-        <section className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 overflow-hidden">
-          <h2 className="font-display text-xl font-bold text-slate-200 mb-6">
-            Лестница успеха
-          </h2>
-          <SuccessStairs currentLevel={currentLevel} />
-        </section>
+        <Link
+          to="/success-stairs"
+          className="xl:col-span-3 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 overflow-hidden cursor-pointer transition-colors hover:border-indigo-500/40 hover:bg-slate-900/70"
+          aria-label="Открыть лестницу успеха"
+        >
+          <div className="flex items-start justify-between gap-3 mb-6">
+            <div>
+              <h2 className="font-display text-xl font-bold text-slate-200">
+                Лестница успеха
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">{currentXP} XP</p>
+            </div>
+          </div>
+          <SuccessStairs currentLevel={currentLevel} visibleSteps={3} />
+        </Link>
 
         <div className="xl:col-span-5 flex flex-col gap-6 xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-0">
           <section className="xl:col-span-5 bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex flex-col flex-1 min-h-0">

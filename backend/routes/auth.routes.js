@@ -85,6 +85,8 @@ router.post("/login", async (req, res) => {
       token: token,
       name: user.name,
       login: user.login,
+      xp: user.xp,
+      level: user.level,
     });
   } catch (e) {
     res.status(400).json({ error: "Ошибка при входе" });

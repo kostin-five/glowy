@@ -116,6 +116,36 @@ const normalizeMindHubPayload = (payload) => {
   return { tasks, reply };
 };
 
+const parseMindHubFallback = (message) =>
+  message
+    .split(/[\n,;]+|(?:\s+и\s+)/i)
+    .map((title) => title.trim())
+    .filter((title) => title.length > 0)
+    .map((title) => ({
+      title,
+      priority: priorityMap.P2,
+      energyLevel: "med",
+      category: "Быт",
+    }));
+
+const createMindHubTasks = (tasks, userId, date) =>
+  prisma.$transaction(
+    tasks.map((task) =>
+      prisma.task.create({
+        data: {
+          title: task.title,
+          energyLevel: task.energyLevel,
+          category: task.category,
+          date,
+          priority: task.priority,
+          completed: false,
+          userId,
+        },
+        include: taskInclude,
+      })
+    )
+  );
+
 router.post("/analyze", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
@@ -192,17 +222,27 @@ router.post("/mind-hub", async (req, res) => {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(`${MIND_HUB_SYSTEM_PROMPT}
+    let tasks = [];
+    let reply = null;
+
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(`${MIND_HUB_SYSTEM_PROMPT}
 
 Сегодня: ${today}.
 Текст пользователя:
 """${message}"""
 
 Верни только валидный JSON без markdown. Если задач нет, верни объект {"tasks":[],"reply":"..."} с короткой поддерживающей фразой.`);
-    const responseText = result.response.text();
-    const parsed = parseJsonLoose(responseText);
-    const { tasks, reply } = normalizeMindHubPayload(parsed);
+      const responseText = result.response.text();
+      const parsed = parseJsonLoose(responseText);
+      const normalized = normalizeMindHubPayload(parsed);
+      tasks = normalized.tasks;
+      reply = normalized.reply;
+    } catch (aiError) {
+      console.error("Mind Hub AI parsing failed, using fallback:", aiError);
+      tasks = parseMindHubFallback(message);
+    }
 
     if (!tasks.length) {
       return res.json({
@@ -213,22 +253,7 @@ router.post("/mind-hub", async (req, res) => {
       });
     }
 
-    const createdTasks = await prisma.$transaction(
-      tasks.map((task) =>
-        prisma.task.create({
-          data: {
-            title: task.title,
-            energyLevel: task.energyLevel,
-            category: task.category,
-            date: today,
-            priority: task.priority,
-            completed: false,
-            userId: req.user.id,
-          },
-          include: taskInclude,
-        })
-      )
-    );
+    const createdTasks = await createMindHubTasks(tasks, req.user.id, today);
 
     res.status(201).json({
       tasks: createdTasks,

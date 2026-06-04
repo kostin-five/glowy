@@ -14,6 +14,8 @@ export default defineConfig({
       includeAssets: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
       workbox: {
         cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
       },
       manifest: {

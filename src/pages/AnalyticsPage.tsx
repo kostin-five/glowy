@@ -68,7 +68,7 @@ const AnalyticsPage = () => {
         </div>
       </section>
 
-      <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 min-h-125 flex flex-col overflow-hidden">
+      <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 min-h-125 hidden md:flex flex-col overflow-hidden">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <h2 className="font-display text-lg font-bold text-slate-200">

@@ -29,6 +29,9 @@ interface TaskStore {
 
   setUserProgress: (progress: UserProgress) => void;
   setTasks: (updatedTasks: Task[]) => void;
+  removeTaskLocally: (id: number) => { task: Task; index: number } | undefined;
+  restoreTaskLocally: (task: Task, index: number) => void;
+  confirmTaskDeletion: (id: number) => Promise<void>;
   setFilterStatus: (filterStatus: FilterStatus) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: TaskDraft) => Promise<Task | undefined>;
@@ -149,6 +152,45 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     set(() => ({
       tasks: updatedTasks.map(normalizeTask),
     })),
+
+  removeTaskLocally: (id: number) => {
+    const taskIndex = get().tasks.findIndex((task) => task.id === id);
+    if (taskIndex === -1) return undefined;
+
+    const taskToRemove = get().tasks[taskIndex];
+
+    set((state) => ({
+      tasks: state.tasks.filter((task) => task.id !== id),
+    }));
+
+    return { task: taskToRemove, index: taskIndex };
+  },
+
+  restoreTaskLocally: (task: Task, index: number) =>
+    set((state) => {
+      if (state.tasks.some((currentTask) => currentTask.id === task.id)) {
+        return {};
+      }
+
+      const nextTasks = [...state.tasks];
+      nextTasks.splice(Math.min(index, nextTasks.length), 0, normalizeTask(task));
+
+      return { tasks: nextTasks };
+    }),
+
+  confirmTaskDeletion: async (id: number) => {
+    if (isGuestSession()) return;
+
+    try {
+      await TaskApi.deleteTask(id);
+    } catch (e) {
+      if (axios.isAxiosError(e)) {
+        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+      } else if (e instanceof Error) {
+        console.error("Внутренняя ошибка:", e.message);
+      }
+    }
+  },
 
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
@@ -546,6 +588,12 @@ export const useIsLoading = () => useTaskStore((state) => state.isLoading);
 export const useSetUserProgress = () =>
   useTaskStore((state) => state.setUserProgress);
 export const useSetTasks = () => useTaskStore((state) => state.setTasks);
+export const useRemoveTaskLocally = () =>
+  useTaskStore((state) => state.removeTaskLocally);
+export const useRestoreTaskLocally = () =>
+  useTaskStore((state) => state.restoreTaskLocally);
+export const useConfirmTaskDeletion = () =>
+  useTaskStore((state) => state.confirmTaskDeletion);
 export const useAllCategories = () => {
   const tasks = useTaskStore((state) => state.tasks);
 

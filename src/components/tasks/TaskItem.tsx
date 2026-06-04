@@ -7,16 +7,25 @@ import {
   useTaskStore,
   useToggleSubTask,
 } from "../../store/useTaskStore";
-import { CheckSquare, ListChecks, Plus, Square, Pencil } from "lucide-react";
+import {
+  CheckSquare,
+  ListChecks,
+  Plus,
+  Square,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 const TaskItem = ({
   task: initialTask,
   toggle,
+  onRequestDelete,
 }: {
   task: Task;
   toggle: (id: number) => void;
+  onRequestDelete: (task: Task) => void;
 }) => {
   const storeTask = useTaskStore((state) =>
     state.tasks.find((t) => t.id === initialTask.id)
@@ -44,6 +53,12 @@ const TaskItem = ({
   const contentStyles = task.completed
     ? "line-through text-slate-500 opacity-50"
     : "text-slate-200";
+  const energyStyles =
+    task.energyLevel === "high"
+      ? "bg-[#3a1820] border-l-red-500"
+      : task.energyLevel === "med"
+      ? "bg-[#3a3108] border-l-yellow-500"
+      : "bg-[#123525] border-l-green-500";
 
   const handleToggleTask = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -60,6 +75,11 @@ const TaskItem = ({
     setIsAddingSub(false);
   };
 
+  const handleDelete = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.stopPropagation();
+    onRequestDelete(task);
+  };
+
   const totalSubs = task.subtasks?.length || 0;
   const completedSubs = task.subtasks?.filter((s) => s.completed).length || 0;
   const category = (task.category || "").trim();
@@ -72,154 +92,167 @@ const TaskItem = ({
     <motion.li
       ref={setNodeRef}
       style={sortableStyle}
-      {...attributes}
-      {...listeners}
       initial={{ opacity: 0 }}
-      animate={{ opacity: isDragging ? 0 : 1 }}
+      animate={{ opacity: isDragging ? 0.5 : 1 }}
       exit={{ opacity: 0 }}
-      className={`flex flex-col border-l-4 ${
-        task.energyLevel === "high"
-          ? "bg-red-500/20 border-l-red-500"
-          : task.energyLevel === "med"
-          ? "bg-yellow-500/20 border-l-yellow-500"
-          : "bg-green-500/30 border-l-green-500"
-      } p-4 rounded-xl hover:bg-slate-800/60 transition-colors w-full cursor-grab active:cursor-grabbing touch-none`}
+      className="group relative flex w-full flex-col overflow-hidden rounded-xl"
     >
-      <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
-        <div className="flex items-center gap-4 group w-full sm:w-auto flex-1 min-w-50">
-          <button
-            type="button"
-            onClick={handleToggleTask}
-            onPointerDown={(e) => e.stopPropagation()}
-            aria-pressed={task.completed}
-            aria-label={
-              task.completed
-                ? "Вернуть задачу в активные"
-                : "Отметить задачу выполненной"
-            }
-            className={`w-5 h-5 shrink-0 border-2 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-              task.completed
-                ? "bg-indigo-500 border-indigo-500"
-                : "border-slate-500"
-            }`}
-          >
-            <svg
-              className={`w-3.5 h-3.5 text-white transition-opacity ${
-                task.completed ? "opacity-100" : "opacity-0"
+      <motion.div
+        {...attributes}
+        {...listeners}
+        draggable={false}
+        className={`relative z-10 flex w-full cursor-grab flex-col rounded-xl border-l-4 p-4 transition-all active:cursor-grabbing hover:bg-slate-800/60 ${
+          isDragging
+            ? "border-indigo-500 opacity-50 shadow-xl shadow-indigo-500/20"
+            : ""
+        } ${energyStyles}`}
+      >
+        <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
+          <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-50">
+            <button
+              type="button"
+              onClick={handleToggleTask}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-pressed={task.completed}
+              aria-label={
+                task.completed
+                  ? "Вернуть задачу в активные"
+                  : "Отметить задачу выполненной"
+              }
+              className={`w-5 h-5 shrink-0 border-2 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                task.completed
+                  ? "bg-indigo-500 border-indigo-500"
+                  : "border-slate-500"
               }`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="3"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </button>
-          <div className="flex flex-col min-w-0 overflow-hidden">
-            <span
-              className={`font-medium transition-all duration-300 block truncate ${contentStyles}`}
-            >
-              {task.title}
-            </span>
-            <span className="text-xs text-slate-400 mt-1">{task.date}</span>
-            {totalSubs > 0 && (
-              <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-slate-700/70 bg-slate-900/50 px-2 py-1 text-xs font-medium text-indigo-300">
-                <ListChecks size={13} />
-                {completedSubs}/{totalSubs}
+              <svg
+                className={`w-3.5 h-3.5 text-white transition-opacity ${
+                  task.completed ? "opacity-100" : "opacity-0"
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="3"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </button>
+            <div className="flex flex-col min-w-0 overflow-hidden">
+              <span
+                className={`font-medium transition-all duration-300 block truncate ${contentStyles}`}
+              >
+                {task.title}
               </span>
-            )}
+              <span className="text-xs text-slate-400 mt-1">{task.date}</span>
+              {totalSubs > 0 && (
+                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-slate-700/70 bg-slate-900/50 px-2 py-1 text-xs font-medium text-indigo-300">
+                  <ListChecks size={13} />
+                  {completedSubs}/{totalSubs}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
-            <span
-              className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
-            >
-              {task.priority}
-            </span>
-            {category && (
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
               <span
                 className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
               >
-                {category}
+                {task.priority}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1 ml-auto pl-2 shrink-0">
-            <button
-              onClick={() => setIsAddingSub(!isAddingSub)}
-              type="button"
-              className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
-              title="Добавить подзадачу"
-            >
-              <Plus size={16} />
-            </button>
-            <button
-              onClick={() => editTask()}
-              type="button"
-              className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
-            >
-              <Pencil size={15} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {isAddingSub && (
-        <form onSubmit={handleAddSub} className="mt-3 flex gap-2 pl-9">
-          <input
-            type="text"
-            placeholder="Название подзадачи..."
-            value={newSubTitle}
-            onChange={(e) => setNewSubTitle(e.target.value)}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            autoFocus
-          />
-          <button
-            type="submit"
-            className="bg-indigo-600 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-indigo-500"
-          >
-            ОК
-          </button>
-        </form>
-      )}
-
-      {task.subtasks && task.subtasks.length > 0 && (
-        <div className="mt-3 pl-9 flex flex-col gap-2 border-t border-slate-800/50 pt-2.5">
-          {task.subtasks.map((sub: SubTask) => (
-            <div
-              key={sub.id}
-              className="flex items-center gap-2 text-xs text-slate-300"
-            >
-              <button
-                type="button"
-                onClick={() => toggleSubTask(sub.id, task.id, !sub.completed)}
-                className="text-slate-500 hover:text-indigo-400 transition-colors"
-              >
-                {sub.completed ? (
-                  <CheckSquare size={14} className="text-indigo-400" />
-                ) : (
-                  <Square size={14} />
-                )}
-              </button>
-              <span
-                className={`truncate ${
-                  sub.completed
-                    ? "line-through text-slate-500"
-                    : "text-slate-300"
-                }`}
-              >
-                {sub.title}
-              </span>
+              {category && (
+                <span
+                  className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
+                >
+                  {category}
+                </span>
+              )}
             </div>
-          ))}
+            <div className="flex items-center gap-1 ml-auto pl-2 shrink-0">
+              <button
+                onClick={handleDelete}
+                onPointerDown={(e) => e.stopPropagation()}
+                type="button"
+                className="hidden md:flex cursor-pointer p-1.5 rounded-lg text-slate-400 transition-colors hover:bg-red-500/15 hover:text-red-300"
+                title="Удалить задачу"
+                aria-label="Удалить задачу"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button
+                onClick={() => setIsAddingSub(!isAddingSub)}
+                type="button"
+                className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
+                title="Добавить подзадачу"
+              >
+                <Plus size={16} />
+              </button>
+              <button
+                onClick={() => editTask()}
+                type="button"
+                className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+          </div>
         </div>
-      )}
+
+        {isAddingSub && (
+          <form onSubmit={handleAddSub} className="mt-3 flex gap-2 pl-9">
+            <input
+              type="text"
+              placeholder="Название подзадачи..."
+              value={newSubTitle}
+              onChange={(e) => setNewSubTitle(e.target.value)}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="bg-indigo-600 px-3 py-1.5 rounded-lg text-xs font-medium text-white hover:bg-indigo-500"
+            >
+              ОК
+            </button>
+          </form>
+        )}
+
+        {task.subtasks && task.subtasks.length > 0 && (
+          <div className="mt-3 pl-9 flex flex-col gap-2 border-t border-slate-800/50 pt-2.5">
+            {task.subtasks.map((sub: SubTask) => (
+              <div
+                key={sub.id}
+                className="flex items-center gap-2 text-xs text-slate-300"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleSubTask(sub.id, task.id, !sub.completed)}
+                  className="text-slate-500 hover:text-indigo-400 transition-colors"
+                >
+                  {sub.completed ? (
+                    <CheckSquare size={14} className="text-indigo-400" />
+                  ) : (
+                    <Square size={14} />
+                  )}
+                </button>
+                <span
+                  className={`truncate ${
+                    sub.completed
+                      ? "line-through text-slate-500"
+                      : "text-slate-300"
+                  }`}
+                >
+                  {sub.title}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
 
       {isEditOpen && (
         <EditTaskModal

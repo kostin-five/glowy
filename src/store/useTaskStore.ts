@@ -134,7 +134,7 @@ const buildLocalTask = (draft: TaskDraft): Task => {
 const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
 
-  filterStatus: "Все",
+  filterStatus: "Активные",
   sortField: null,
   sortDirection: "asc",
 
@@ -564,9 +564,13 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 export const useTaskStore = create<TaskStore>()(
   persist(taskStore, {
     name: "glowy-tasks",
+    merge: (persistedState, currentState) => ({
+      ...currentState,
+      ...(persistedState as Partial<TaskStore>),
+      filterStatus: "Активные",
+    }),
     partialize: (state) => ({
       tasks: state.tasks,
-      filterStatus: state.filterStatus,
       sortField: state.sortField,
       sortDirection: state.sortDirection,
       userLevel: state.userLevel,

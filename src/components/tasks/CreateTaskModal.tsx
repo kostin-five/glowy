@@ -223,7 +223,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           return;
         }
 
-        setFilter("Все");
+        setFilter("Активные");
         clean();
         onClose();
       } catch (e) {

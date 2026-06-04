@@ -4,7 +4,7 @@ import type { FilterStatus } from "../../types";
 const TaskFilter = () => {
   const filterStatus = useFilter();
   const setFilterStatus = useSetFilter();
-  const filterTypes: FilterStatus[] = ["Все", "Активные", "Выполненные"];
+  const filterTypes: FilterStatus[] = ["Активные", "Выполненные", "Все"];
 
   return (
     <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl w-fit border border-slate-800 h-full">

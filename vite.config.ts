@@ -26,14 +26,16 @@ export default defineConfig({
         orientation: "portrait",
         icons: [
           {
-            src: "/Glowy.png",
+            src: "/icons/manifest-icon-192.maskable.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any maskable",
           },
           {
-            src: "/Glowy.png",
+            src: "/icons/manifest-icon-512.maskable.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any maskable",
           },
         ],
       },

@@ -1,15 +1,13 @@
 import { Link } from "react-router-dom";
 import TaskList from "../components/tasks/TaskList";
 import SuccessStairs from "../dashboard/SuccessStairs";
-import { useCurrentXP, useIsLoading, useUserLevel } from "../store/useTaskStore";
-import Spinner from "../components/ui/Spinner";
+import { useCurrentXP, useUserLevel } from "../store/useTaskStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
 
 const DashboardPage = () => {
   const currentLevel = useUserLevel();
   const currentXP = useCurrentXP();
-  const isLoading = useIsLoading();
 
   return (
     <div className="flex flex-col gap-8">
@@ -61,7 +59,7 @@ const DashboardPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            {isLoading ? <Spinner /> : <TaskList onlyActive={true} />}
+            <TaskList onlyActive={true} />
           </div>
         </section>
       </div>

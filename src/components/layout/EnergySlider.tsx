@@ -37,7 +37,7 @@ export const EnergySlider: React.FC = () => {
           <h2 className="font-display text-lg 2xl:text-xl font-bold text-slate-200">
             Энергопотенциал
           </h2>
-          <span className="min-w-0 max-w-full shrink whitespace-normal break-words text-right text-xs 2xl:text-sm font-semibold text-indigo-300">
+          <span className="min-w-0 max-w-full shrink whitespace-normal wrap-break-words text-right text-xs 2xl:text-sm font-semibold text-indigo-300">
             {energyStatuses[energyLimit] || `${energyLimit}%`}
           </span>
         </div>

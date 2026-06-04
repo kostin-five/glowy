@@ -14,7 +14,7 @@ import {
   useUpdateTask,
 } from "../../store/useTaskStore";
 import { useTaskStore } from "../../store/useTaskStore";
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import Modal from "../ui/Modal";
 import { Trash2, Plus, CheckSquare, Square } from "lucide-react";
 import {
@@ -116,6 +116,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     subtasks: task.subtasks ?? [],
   });
   const [subTitle, setSubTitle] = useState("");
+  const subTaskInputRef = useRef<HTMLInputElement>(null);
 
   const updateTask = useUpdateTask();
   const remove = useDeleteTask();
@@ -152,15 +153,34 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     }));
   };
 
-  const handleAddSub = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!subTitle.trim()) return;
+  const focusSubTaskInput = () => {
+    window.requestAnimationFrame(() => subTaskInputRef.current?.focus());
+  };
 
-    const createdSubTask = await addSubTask(values.id, subTitle.trim());
+  const addSubTaskFromInput = async () => {
+    const trimmedSubTitle = subTitle.trim();
+    if (!trimmedSubTitle) return;
+
+    const createdSubTask = await addSubTask(values.id, trimmedSubTitle);
     if (!createdSubTask) return;
 
     setSubTitle("");
     refreshSubtasks(values.id);
+    focusSubTaskInput();
+  };
+
+  const handleAddSub = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    await addSubTaskFromInput();
+  };
+
+  const handleSubTaskKeyDown = async (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+    await addSubTaskFromInput();
   };
 
   const handleToggleSub = async (subId: number, currentStatus: boolean) => {
@@ -364,10 +384,12 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
 
           <div className="flex gap-2 mb-3">
             <input
+              ref={subTaskInputRef}
               type="text"
               placeholder="Добавить подзадачу..."
               value={subTitle}
               onChange={(e) => setSubTitle(e.target.value)}
+              onKeyDown={handleSubTaskKeyDown}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
             />
             <button

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import type { SubTask, Task } from "../../types";
 import EditTaskModal from "./EditTaskModal";
 import { motion } from "framer-motion";
@@ -42,6 +42,7 @@ const TaskItem = ({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [newSubTitle, setNewSubTitle] = useState("");
   const [isAddingSub, setIsAddingSub] = useState(false);
+  const subTaskInputRef = useRef<HTMLInputElement>(null);
 
   const addSubTask = useAddSubTask();
   const toggleSubTask = useToggleSubTask();
@@ -65,14 +66,33 @@ const TaskItem = ({
     toggle(task.id);
   };
 
-  const handleAddSub = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSubTitle.trim()) return;
-    const createdSubTask = await addSubTask(task.id, newSubTitle.trim());
+  const focusSubTaskInput = () => {
+    window.requestAnimationFrame(() => subTaskInputRef.current?.focus());
+  };
+
+  const addSubTaskFromInput = async () => {
+    const trimmedSubTitle = newSubTitle.trim();
+    if (!trimmedSubTitle) return;
+
+    const createdSubTask = await addSubTask(task.id, trimmedSubTitle);
     if (!createdSubTask) return;
 
     setNewSubTitle("");
-    setIsAddingSub(false);
+    focusSubTaskInput();
+  };
+
+  const handleAddSub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await addSubTaskFromInput();
+  };
+
+  const handleSubTaskKeyDown = async (
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+    await addSubTaskFromInput();
   };
 
   const handleDelete = (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -205,10 +225,13 @@ const TaskItem = ({
         {isAddingSub && (
           <form onSubmit={handleAddSub} className="mt-3 flex gap-2 pl-9">
             <input
+              ref={subTaskInputRef}
               type="text"
               placeholder="Название подзадачи..."
               value={newSubTitle}
               onChange={(e) => setNewSubTitle(e.target.value)}
+              onKeyDown={handleSubTaskKeyDown}
+              onPointerDown={(e) => e.stopPropagation()}
               className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
               autoFocus
             />

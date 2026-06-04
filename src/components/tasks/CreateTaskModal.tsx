@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import {
   useAllCategories,
   useCreateTask,
@@ -98,6 +98,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const subTaskInputRef = useRef<HTMLInputElement>(null);
   const categories = useAllCategories();
   const setFilter = useSetFilter();
   const sensors = useSensors(
@@ -131,15 +132,32 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const create = useCreateTask();
 
-  const handleAddLocalSub = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!subTitle.trim()) return;
+  const focusSubTaskInput = () => {
+    window.requestAnimationFrame(() => subTaskInputRef.current?.focus());
+  };
 
-    setLocalSubTasks([
-      ...localSubTasks,
-      { clientId: Date.now(), title: subTitle.trim() },
+  const addLocalSubTaskFromInput = () => {
+    const trimmedSubTitle = subTitle.trim();
+    if (!trimmedSubTitle) return;
+
+    setLocalSubTasks((currentSubTasks) => [
+      ...currentSubTasks,
+      { clientId: Date.now(), title: trimmedSubTitle },
     ]);
     setSubTitle("");
+    focusSubTaskInput();
+  };
+
+  const handleAddLocalSub = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    addLocalSubTaskFromInput();
+  };
+
+  const handleSubTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+
+    e.preventDefault();
+    addLocalSubTaskFromInput();
   };
 
   const handleRemoveLocalSub = (clientId: number) => {
@@ -355,12 +373,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
           <div className="flex gap-2">
             <input
+              ref={subTaskInputRef}
               type="text"
               className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl focus:outline-none focus:border-indigo-500 text-sm"
               placeholder="Что нужно сделать?"
               value={subTitle}
               onChange={(e) => setSubTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+              onKeyDown={handleSubTaskKeyDown}
             />
             <button
               type="button"

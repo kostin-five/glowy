@@ -3,6 +3,12 @@ import type { Task } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 const url = "https://glowy-backend.onrender.com/api/ai";
 
+export type MindHubMode = "chat" | "parse";
+export type MindHubMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
 const aiInstance = axios.create({
   baseURL: url,
 });
@@ -13,7 +19,15 @@ const splitGuestThoughts = (message: string) =>
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
 
-const parseGuestMindHub = (message: string) => {
+const parseGuestMindHub = (message: string, hubMode: MindHubMode) => {
+  if (hubMode === "chat") {
+    return {
+      tasks: [],
+      reply:
+        "Я рядом. Давай мягко: выбери одну самую маленькую следующую мысль или действие, а всё остальное пока может просто полежать рядом.",
+    };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const tasks = splitGuestThoughts(message).map<Task>((title, index) => ({
     id: Date.now() + index,
@@ -56,15 +70,23 @@ export default class AiApi {
     }
   }
 
-  static async parseMindHub(message: string): Promise<{
+  static async parseMindHub(
+    message: string,
+    hubMode: MindHubMode = "parse",
+    messages: MindHubMessage[] = []
+  ): Promise<{
     tasks: Task[];
     reply: string | null;
   }> {
     if (useAuthStore.getState().isGuest) {
-      return parseGuestMindHub(message);
+      return parseGuestMindHub(message, hubMode);
     }
 
-    const response = await aiInstance.post("/mind-hub", { message });
+    const response = await aiInstance.post("/mind-hub", {
+      message,
+      hubMode,
+      messages,
+    });
     return response.data;
   }
 }

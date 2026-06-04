@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { Send, Sparkles } from "lucide-react";
-import AiApi from "../../api/AiApi";
+import AiApi, { type MindHubMessage, type MindHubMode } from "../../api/AiApi";
 import { useTaskStore } from "../../store/useTaskStore";
+import useTypewriter from "../../hooks/useTypewriter";
 
 type ChatMessage = {
   id: number;
@@ -9,16 +16,78 @@ type ChatMessage = {
   text: string;
 };
 
+interface ChatMessageBubbleProps {
+  message: ChatMessage;
+  shouldType: boolean;
+  onTypeComplete: (messageId: number) => void;
+  onTextUpdate: () => void;
+}
+
+const ChatMessageBubble = ({
+  message,
+  shouldType,
+  onTypeComplete,
+  onTextUpdate,
+}: ChatMessageBubbleProps) => {
+  const { displayedText: typedText, isTyping } = useTypewriter(
+    shouldType ? message.text : "",
+    38
+  );
+  const displayedText = shouldType ? typedText : message.text;
+
+  useEffect(() => {
+    if (!shouldType) return;
+    onTextUpdate();
+
+    if (!isTyping && displayedText === message.text) {
+      onTypeComplete(message.id);
+    }
+  }, [
+    displayedText,
+    isTyping,
+    message.id,
+    message.text,
+    onTextUpdate,
+    onTypeComplete,
+    shouldType,
+  ]);
+
+  return (
+    <div
+      className={`flex ${
+        message.role === "user" ? "justify-end" : "justify-start"
+      }`}
+    >
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+          message.role === "user"
+            ? "bg-indigo-600 text-white rounded-br-md"
+            : "bg-slate-800/80 text-slate-200 border border-slate-700/70 rounded-bl-md"
+        }`}
+      >
+        {displayedText}
+        {shouldType && displayedText.length < message.text.length && (
+          <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-indigo-300" />
+        )}
+      </div>
+    </div>
+  );
+};
+
 const MindHubChat = () => {
+  const [hubMode, setHubMode] = useState<MindHubMode>("parse");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
       role: "assistant",
-      text: "Я готова разобрать мысли на конкретные задачи.",
+      text: "Я готов разобрать мысли на конкретные задачи.",
     },
   ]);
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(
+    () => new Set([1])
+  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -46,34 +115,65 @@ const MindHubChat = () => {
     ]);
   };
 
+  const handleTypeComplete = useCallback((messageId: number) => {
+    setTypedMessageIds((current) => new Set(current).add(messageId));
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, []);
+
+  const latestAssistantMessageId = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant")?.id;
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
     const message = text.trim();
     if (!message || isSending) return;
 
-    appendMessage({ role: "user", text: message });
+    const userMessage: ChatMessage = {
+      id: Date.now() + messages.length,
+      role: "user",
+      text: message,
+    };
+    const requestMessages: MindHubMessage[] = [...messages, userMessage].map(
+      ({ role, text }) => ({
+        role,
+        text,
+      })
+    );
+
+    setMessages((current) => [...current, userMessage]);
     setText("");
     setIsSending(true);
 
     try {
-      const result = await AiApi.parseMindHub(message);
+      const result = await AiApi.parseMindHub(
+        message,
+        hubMode,
+        requestMessages
+      );
 
       if (result.tasks.length) {
         const store = useTaskStore.getState();
         store.setTasks([...store.tasks, ...result.tasks]);
         appendMessage({
           role: "assistant",
-          text: `Я вытащила ${result.tasks.length} ${getTaskWord(
-            result.tasks.length
-          )} и добавила в список.`,
+          text:
+            hubMode === "parse"
+              ? `Я вытащил ${result.tasks.length} ${getTaskWord(
+                  result.tasks.length
+                )} и добавил в список.`
+              : result.reply || "Я рядом и слышу тебя.",
         });
       } else {
         appendMessage({
           role: "assistant",
           text:
             result.reply ||
-            "Я не нашла конкретных задач, но вижу, что мыслей много. Можем разложить их ещё чуть подробнее.",
+            "Я не нашёл конкретных задач, но вижу, что мыслей много. Можем разложить их ещё чуть подробнее.",
         });
       }
     } catch (error) {
@@ -97,31 +197,30 @@ const MindHubChat = () => {
           </h2>
         </div>
         <p className="text-sm leading-6 text-slate-400">
-          Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли,
-          разобью их на задачи и сам добавлю в список.
+          {hubMode === "parse"
+            ? "Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли, разобью их на задачи и сам добавлю в список."
+            : "Можно просто написать, что происходит. Я отвечу как спокойный коуч и помогу бережно разложить мысли."}
         </p>
       </div>
 
       <div className="custom-scrollbar flex-1 overflow-y-auto px-5 py-5">
         <div className="flex flex-col gap-3">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
-                  message.role === "user"
-                    ? "bg-indigo-600 text-white rounded-br-md"
-                    : "bg-slate-800/80 text-slate-200 border border-slate-700/70 rounded-bl-md"
-                }`}
-              >
-                {message.text}
-              </div>
-            </div>
-          ))}
+          {messages.map((message) => {
+            const shouldType =
+              message.role === "assistant" &&
+              message.id === latestAssistantMessageId &&
+              !typedMessageIds.has(message.id);
+
+            return (
+              <ChatMessageBubble
+                key={message.id}
+                message={message}
+                shouldType={shouldType}
+                onTypeComplete={handleTypeComplete}
+                onTextUpdate={scrollToBottom}
+              />
+            );
+          })}
 
           {isSending && (
             <div className="flex justify-start">
@@ -143,6 +242,26 @@ const MindHubChat = () => {
         onSubmit={handleSubmit}
         className="border-t border-slate-800 bg-slate-900/95 p-4"
       >
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-800 bg-slate-950/60 p-1">
+          {[
+            { value: "chat" as const, label: "💬 Диалог" },
+            { value: "parse" as const, label: "⚡️ В задачи" },
+          ].map((mode) => (
+            <button
+              key={mode.value}
+              type="button"
+              onClick={() => setHubMode(mode.value)}
+              className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
+                hubMode === mode.value
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              }`}
+              aria-pressed={hubMode === mode.value}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-end gap-3 rounded-2xl border border-slate-700 bg-slate-950/50 p-3 focus-within:border-indigo-500">
           <textarea
             ref={textareaRef}
@@ -155,7 +274,11 @@ const MindHubChat = () => {
               }
             }}
             rows={1}
-            placeholder="Например: надо ответить преподу, купить продукты, подготовиться к тесту..."
+            placeholder={
+              hubMode === "parse"
+                ? "Например: надо ответить преподу, купить продукты, подготовиться к тесту..."
+                : "Например: я устал, всё навалилось и не понимаю, с чего начать..."
+            }
             className="custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
             disabled={isSending}
           />

@@ -9,6 +9,10 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 const { PrismaClient } = pkg;
 const { Pool } = pg;
 
+// ---------------------------------------------------------------------------
+// Инициализация роутера, Prisma и Gemini
+// ---------------------------------------------------------------------------
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -33,12 +37,17 @@ const aiLimiter = rateLimit({
 
 router.use(aiLimiter);
 
-const taskInclude = {
-  subtasks: true,
-};
+// ---------------------------------------------------------------------------
+// Общие константы и нормализация данных
+// ---------------------------------------------------------------------------
 
-const MIND_HUB_SYSTEM_PROMPT =
-  'Ты AI-коуч. Юзер пишет хаос из головы. Вычлени задачи и верни строгий JSON-массив: [{"title": "...", "priority": "P1|P2|P3", "energyLevel": "high|med|low", "category": "..."}]. Дата по умолчанию "сегодня", приоритет по умолчанию "P2", категория "Быт". Если задач нет, верни [] и добавь поле reply с эмпатичным ответом коуча.';
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+const taskInclude = {
+  subtasks: {
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+  },
+};
 
 const priorityMap = {
   P1: "🔥 P1",
@@ -47,15 +56,61 @@ const priorityMap = {
 };
 
 const normalizePriority = (priority = "P2") => {
-  if (priority.includes("P1")) return priorityMap.P1;
-  if (priority.includes("P3")) return priorityMap.P3;
+  const value = typeof priority === "string" ? priority : "P2";
+
+  if (value.includes("P1")) return priorityMap.P1;
+  if (value.includes("P3")) return priorityMap.P3;
   return priorityMap.P2;
 };
 
 const normalizeEnergyLevel = (energyLevel = "med") => {
-  if (["high", "med", "low"].includes(energyLevel)) return energyLevel;
+  const value = typeof energyLevel === "string" ? energyLevel : "med";
+
+  if (["high", "med", "low"].includes(value)) return value;
   return "med";
 };
+
+const formatDateDDMMYYYY = (date) =>
+  new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+
+const normalizeDate = (value, fallbackDate) => {
+  const rawDate = typeof value === "string" ? value.trim() : "";
+
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(rawDate)) {
+    return rawDate;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    const [year, month, day] = rawDate.split("-");
+    return `${day}.${month}.${year}`;
+  }
+
+  return fallbackDate;
+};
+
+// ---------------------------------------------------------------------------
+// Валидация входящих запросов Mind Hub
+// ---------------------------------------------------------------------------
+
+const getMindHubRequestPayload = (body) => {
+  const message = typeof body?.message === "string" ? body.message.trim() : "";
+  const hubMode = body?.hubMode === "chat" ? "chat" : "parse";
+  const messages = Array.isArray(body?.messages) ? body.messages : [];
+
+  return { message, hubMode, messages };
+};
+
+const buildValidationError = (message) =>
+  message ? null : "Сообщение не может быть пустым";
+
+// ---------------------------------------------------------------------------
+// JSON helpers для parse-режима
+// ---------------------------------------------------------------------------
 
 const stripJsonFence = (value) =>
   value
@@ -89,7 +144,33 @@ const parseJsonLoose = (value) => {
   }
 };
 
-const normalizeMindHubPayload = (payload) => {
+// ---------------------------------------------------------------------------
+// Логика парсинга задач: промпт, нормализация и сохранение в БД
+// ---------------------------------------------------------------------------
+
+const buildMindHubParsePrompt = (message, today) => `Ты — эксперт по планированию задач в приложении Glowy.
+Твоя цель — преобразовать хаотичный текст пользователя в строгий JSON.
+
+Сегодня: ${today}. Используй эту дату как точку отсчёта для слов "сегодня", "завтра", "в пятницу", "на выходных" и других относительных дат.
+
+Верни один из двух форматов:
+1. Если задачи есть:
+{"tasks":[{"title":"...","date":"DD.MM.YYYY","priority":"P1|P2|P3","energyLevel":"high|med|low","category":"..."}],"reply":null}
+2. Если задач нет:
+{"tasks":[],"reply":"короткий эмпатичный ответ коуча"}
+
+Правила атрибутов:
+- date: всегда формат "DD.MM.YYYY". Если дата не указана, используй сегодняшнюю дату.
+- category: определяй по контексту. Подходящие категории: "Здоровье", "Учеба", "Работа", "Быт", "Развитие".
+- energyLevel: "high" для сложных и долгих задач вроде "написать курсовую"; "low" для простых вроде "купить хлеб"; "med" для обычных средних задач.
+- priority: по умолчанию "P2"; срочные и важные задачи — "P1"; мелкие необязательные — "P3".
+- Не придумывай лишние задачи.
+- Не используй markdown, верни только валидный JSON.
+
+Текст пользователя:
+"""${message}"""`;
+
+const normalizeMindHubPayload = (payload, fallbackDate) => {
   const rawTasks = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.tasks)
@@ -99,6 +180,7 @@ const normalizeMindHubPayload = (payload) => {
   const tasks = rawTasks
     .map((task) => ({
       title: typeof task.title === "string" ? task.title.trim() : "",
+      date: normalizeDate(task.date, fallbackDate),
       priority: normalizePriority(task.priority),
       energyLevel: normalizeEnergyLevel(task.energyLevel),
       category:
@@ -116,28 +198,76 @@ const normalizeMindHubPayload = (payload) => {
   return { tasks, reply };
 };
 
-const parseMindHubFallback = (message) =>
+const inferFallbackCategory = (title) => {
+  const value = title.toLowerCase();
+
+  if (/врач|здоров|трениров|спорт|лекар|сон|психолог/.test(value)) {
+    return "Здоровье";
+  }
+
+  if (/уч|экзамен|тест|препод|курс|диплом|курсов/.test(value)) {
+    return "Учеба";
+  }
+
+  if (/работ|проект|презентац|созвон|клиент|отчет|отчёт/.test(value)) {
+    return "Работа";
+  }
+
+  if (/книг|курс|навык|английск|развит/.test(value)) {
+    return "Развитие";
+  }
+
+  return "Быт";
+};
+
+const inferFallbackEnergy = (title) => {
+  const value = title.toLowerCase();
+
+  if (/курсов|диплом|проект|переезд|ремонт|экзамен/.test(value)) {
+    return "high";
+  }
+
+  if (/купить|забрать|ответить|позвонить|оплатить/.test(value)) {
+    return "low";
+  }
+
+  return "med";
+};
+
+const parseMindHubFallback = (message, fallbackDate) =>
   message
     .split(/[\n,;]+|(?:\s+и\s+)/i)
     .map((title) => title.trim())
     .filter((title) => title.length > 0)
     .map((title) => ({
       title,
+      date: fallbackDate,
       priority: priorityMap.P2,
-      energyLevel: "med",
-      category: "Быт",
+      energyLevel: inferFallbackEnergy(title),
+      category: inferFallbackCategory(title),
     }));
 
-const createMindHubTasks = (tasks, userId, date) =>
+const parseMindHubTasks = async (message, today) => {
+  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const result = await model.generateContent(
+    buildMindHubParsePrompt(message, today)
+  );
+  const responseText = result.response.text();
+  const parsedPayload = parseJsonLoose(responseText);
+
+  return normalizeMindHubPayload(parsedPayload, today);
+};
+
+const createMindHubTasks = (tasks, userId) =>
   prisma.$transaction(
     tasks.map((task) =>
       prisma.task.create({
         data: {
           title: task.title,
+          date: task.date,
+          priority: task.priority,
           energyLevel: task.energyLevel,
           category: task.category,
-          date,
-          priority: task.priority,
           completed: false,
           userId,
         },
@@ -145,6 +275,115 @@ const createMindHubTasks = (tasks, userId, date) =>
       })
     )
   );
+
+// ---------------------------------------------------------------------------
+// Логика эмпатичного коуча:
+// - приводим историю фронтенда к формату Gemini;
+// - запускаем model.startChat({ history }), чтобы ответы не повторялись;
+// - отправляем текущее сообщение как живую реплику пользователя.
+// ---------------------------------------------------------------------------
+
+const COACH_SYSTEM_INSTRUCTION =
+  "Ты эмпатичный ИИ-коуч в приложении Glowy. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Отвечай каждый раз ПО-РАЗНОМУ, тепло, коротко (1-2 предложения) и задавай один наводящий вопрос. НЕ используй шаблонные фразы. Glowy — мужской персонаж, говори о себе в мужском роде.";
+
+const normalizeChatMessages = (messages, currentMessage) => {
+  const normalizedMessages = messages
+    .map((message) => ({
+      role:
+        message?.role === "assistant" || message?.role === "model"
+          ? "model"
+          : message?.role === "user"
+          ? "user"
+          : null,
+      text: typeof message?.text === "string" ? message.text.trim() : "",
+    }))
+    .filter((message) => message.role && message.text.length > 0)
+    .filter(
+      (message, index, list) =>
+        !(
+          index === list.length - 1 &&
+          message.role === "user" &&
+          message.text === currentMessage
+        )
+    )
+    .slice(-10);
+
+  const history = [];
+
+  for (const message of normalizedMessages) {
+    if (!history.length && message.role !== "user") continue;
+
+    const previousMessage = history.at(-1);
+    if (previousMessage?.role === message.role) {
+      previousMessage.parts[0].text += `\n${message.text}`;
+      continue;
+    }
+
+    history.push({
+      role: message.role,
+      parts: [{ text: message.text }],
+    });
+  }
+
+  return history;
+};
+
+const getCoachFallbackReply = () =>
+  "Я рядом. Давай не пытаться решить всё сразу: выбери один маленький следующий шаг и дай себе немного воздуха.";
+
+const getCoachReply = async (message, messages) => {
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    generationConfig: { temperature: 0.7 },
+    systemInstruction: COACH_SYSTEM_INSTRUCTION,
+  });
+  const chat = model.startChat({
+    history: normalizeChatMessages(messages, message),
+  });
+  const result = await chat.sendMessage(message);
+  const reply = result.response.text().trim();
+
+  return reply || getCoachFallbackReply();
+};
+
+// ---------------------------------------------------------------------------
+// Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу
+// ---------------------------------------------------------------------------
+
+const buildTaskAnalysisPrompt = (tasksString, energyLimit) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
+Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
+
+ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
+- Выбранный лимит энергии на сегодня: ${energyLimit}%.
+- Список его активных задач на сегодня с подзадачами:
+${tasksString}
+
+ЗАДАНИЕ:
+Проанализируй список, включая подзадачи. Сопоставь сложность задач с лимитом энергии на сегодня (${energyLimit}%).
+Дай один короткий, глубокий, теплый и практичный совет максимум в 2-3 предложения.
+
+ВАЖНО:
+1. Пиши связным, вдохновляющим текстом.
+2. Никаких списков, маркеров, форматирования по пунктам или жирного шрифта.
+3. Обращайся к пользователю на "ты", будь его понимающим другом.`;
+
+const stringifyActiveTasks = (tasks) =>
+  tasks
+    .map((task) => {
+      const subtasks = task.subtasks.length
+        ? task.subtasks
+            .map(
+              (subtask) =>
+                `${subtask.completed ? "готово" : "активно"}: ${
+                  subtask.title
+                }`
+            )
+            .join("; ")
+        : "подзадач нет";
+
+      return `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority}, Подзадачи: ${subtasks})`;
+    })
+    .join("\n");
 
 router.post("/analyze", async (req, res) => {
   try {
@@ -154,13 +393,7 @@ router.post("/analyze", async (req, res) => {
         subtasks: true,
       },
     });
-
     const activeTasks = tasks.filter((task) => !task.completed);
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-    });
-    const energyLimit = user?.energyLimit ?? 100;
 
     if (!activeTasks.length) {
       return res.json({
@@ -168,83 +401,66 @@ router.post("/analyze", async (req, res) => {
           "На сегодня активных задач нет! Отличный повод восполнить свой энергопотенциал и отдохнуть. Наберись сил перед новыми целями! ✨",
       });
     }
-    const tasksString = activeTasks
-      .map((task) => {
-        const subtasks = task.subtasks.length
-          ? task.subtasks
-              .map(
-                (subtask) =>
-                  `${subtask.completed ? "готово" : "активно"}: ${
-                    subtask.title
-                  }`
-              )
-              .join("; ")
-          : "подзадач нет";
 
-        return `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority}, Подзадачи: ${subtasks})`;
-      })
-      .join("\n");
-    const SYSTEM_PROMPT = `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
-    Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+    const energyLimit = user?.energyLimit ?? 100;
+    const tasksString = stringifyActiveTasks(activeTasks);
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const result = await model.generateContent(
+      buildTaskAnalysisPrompt(tasksString, energyLimit)
+    );
 
-    ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
-    - Выбранный лимит энергии на сегодня: ${energyLimit}% (где 100% — режим терминатора или максимум энергии, а 0% — полное истощение).
-    - Список его активных(невыполненных) задач на сегодня с подзадачами:
-    ${tasksString}
-
-    ЗАДАНИЕ:
-    Проанализируй этот список, включая подзадачи. Сопоставь сложность задач с его лимитом энергии на сегодня (${energyLimit}%).
-    Дай один короткий, глубокий, теплый и практичный совет (максимум 2-3 предложения) о том, как ему лучше распределить силы, с какой задачи начать с точки зрения энергозатратности, или как уберечь себя от перегрузки.
-    
-    ВАЖНО:
-    1. Пиши связным, вдохновляющим текстом.
-    2. Никаких списков, маркеров, форматирования по пунктам или жирного шрифта.
-    3. Обращайся к пользователю на "ты", будь его понимающим другом.`;
-
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(SYSTEM_PROMPT);
-    const responseText = result.response.text();
-
-    res.json({ message: responseText });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Glowy сейчас отдыхает, попробуй позже" });
+    res.json({ message: result.response.text() });
+  } catch (error) {
+    console.error("AI analyze failed:", error);
+    res.status(500).json({
+      error: "Glowy сейчас не смог подготовить совет. Попробуй немного позже.",
+    });
   }
 });
 
+// ---------------------------------------------------------------------------
+// Эндпоинт Mind Hub: два режима — chat и parse
+// ---------------------------------------------------------------------------
+
 router.post("/mind-hub", async (req, res) => {
   try {
-    const message =
-      typeof req.body?.message === "string" ? req.body.message.trim() : "";
+    const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
+    const validationError = buildValidationError(message);
 
-    if (!message) {
-      return res.status(400).json({ error: "Сообщение не может быть пустым" });
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    let tasks = [];
+    if (hubMode === "chat") {
+      try {
+        const reply = await getCoachReply(message, messages);
+        return res.json({ tasks: [], reply });
+      } catch (error) {
+        console.error("Mind Hub chat failed:", error);
+        return res.json({
+          tasks: [],
+          reply: getCoachFallbackReply(),
+        });
+      }
+    }
+
+    const today = formatDateDDMMYYYY(new Date());
+    let parsedTasks = [];
     let reply = null;
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent(`${MIND_HUB_SYSTEM_PROMPT}
-
-Сегодня: ${today}.
-Текст пользователя:
-"""${message}"""
-
-Верни только валидный JSON без markdown. Если задач нет, верни объект {"tasks":[],"reply":"..."} с короткой поддерживающей фразой.`);
-      const responseText = result.response.text();
-      const parsed = parseJsonLoose(responseText);
-      const normalized = normalizeMindHubPayload(parsed);
-      tasks = normalized.tasks;
-      reply = normalized.reply;
-    } catch (aiError) {
-      console.error("Mind Hub AI parsing failed, using fallback:", aiError);
-      tasks = parseMindHubFallback(message);
+      const parsedResult = await parseMindHubTasks(message, today);
+      parsedTasks = parsedResult.tasks;
+      reply = parsedResult.reply;
+    } catch (error) {
+      console.error("Mind Hub parsing failed, using fallback:", error);
+      parsedTasks = parseMindHubFallback(message, today);
     }
 
-    if (!tasks.length) {
+    if (!parsedTasks.length) {
       return res.json({
         tasks: [],
         reply:
@@ -253,16 +469,16 @@ router.post("/mind-hub", async (req, res) => {
       });
     }
 
-    const createdTasks = await createMindHubTasks(tasks, req.user.id, today);
+    const createdTasks = await createMindHubTasks(parsedTasks, req.user.id);
 
     res.status(201).json({
       tasks: createdTasks,
       reply: null,
     });
-  } catch (e) {
-    console.error(e);
+  } catch (error) {
+    console.error("Mind Hub request failed:", error);
     res.status(500).json({
-      error: "Glowy не смог разобрать мысли. Попробуй отправить ещё раз.",
+      error: "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",
     });
   }
 });

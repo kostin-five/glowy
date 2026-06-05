@@ -99,7 +99,7 @@ const parseTaskUpdateResponse = (response: Task | TaskUpdateResponse) =>
       };
 
 const applyOptimisticXpReward = (currentXP: number, task: Task) => {
-  const nextXP = currentXP + getXpReward(task.priority);
+  const nextXP = currentXP + getXpReward(task.energyLevel, task.priority);
 
   return {
     currentXP: nextXP,

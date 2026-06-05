@@ -14,7 +14,8 @@ const SuccessStairsPage = () => {
           Лестница успеха
         </h1>
         <p className="text-slate-400 mt-2">
-          Бесконечная прогрессия Glowy: выполняй задачи, набирай XP и поднимайся выше.
+          Бесконечная прогрессия Glowy: сохраняй баланс, грамотно расходуй
+          силы и получай XP за осознанно выполненные задачи.
         </p>
       </div>
 
@@ -57,27 +58,27 @@ const SuccessStairsPage = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
-                <p className="text-sm text-slate-400">Низкий приоритет</p>
+                <p className="text-sm text-slate-400">Лёгкая задача</p>
                 <p className="font-display text-2xl font-black text-emerald-300">
                   10 XP
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
-                <p className="text-sm text-slate-400">Средний приоритет</p>
+                <p className="text-sm text-slate-400">Средняя нагрузка</p>
                 <p className="font-display text-2xl font-black text-amber-300">
-                  25 XP
+                  20 XP
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
-                <p className="text-sm text-slate-400">Высокий приоритет</p>
+                <p className="text-sm text-slate-400">Высокая энергия</p>
                 <p className="font-display text-2xl font-black text-red-300">
-                  50 XP
+                  30 XP
                 </p>
               </div>
             </div>
             <p className="text-sm leading-6 text-slate-400 mt-4">
-              XP начисляется один раз, когда задача впервые становится
-              выполненной.
+              XP начисляется один раз при первом выполнении задачи. Приоритет
+              добавляет небольшой бонус: P1 x1.5, P2 x1.2, P3 x1.0.
             </p>
           </div>
         </div>

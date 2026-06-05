@@ -48,10 +48,20 @@ const getLevelByXp = (xp) => {
   return level;
 };
 
-const getXpReward = (priority = "") => {
-  if (priority.includes("P1")) return 50;
-  if (priority.includes("P2")) return 25;
-  return 10;
+const getXpReward = (energyLevel = "low", priority = "") => {
+  const baseRewardByEnergy = {
+    high: 30,
+    med: 20,
+    low: 10,
+  };
+  const priorityMultiplier = priority.includes("P1")
+    ? 1.5
+    : priority.includes("P2")
+    ? 1.2
+    : 1;
+  const baseReward = baseRewardByEnergy[energyLevel] ?? baseRewardByEnergy.low;
+
+  return Math.round(baseReward * priorityMultiplier);
 };
 
 const buildUserProgress = (user) => ({
@@ -140,7 +150,7 @@ router.put("/:id", async (req, res) => {
         completed === true && !uniqueTask.completed && !uniqueTask.xpAwarded;
 
       if (shouldAwardXp) {
-        xpReward = getXpReward(priority);
+        xpReward = getXpReward(energyLevel, priority);
         const user = await tx.user.findUnique({
           where: { id: req.user.id },
           select: { xp: true },

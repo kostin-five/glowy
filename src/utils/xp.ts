@@ -20,10 +20,20 @@ export const getLevelByXp = (xp: number) => {
   return level;
 };
 
-export const getXpReward = (priority = "") => {
-  if (priority.includes("P1")) return 50;
-  if (priority.includes("P2")) return 25;
-  return 10;
+export const getXpReward = (energyLevel = "low", priority = "") => {
+  const baseRewardByEnergy: Record<string, number> = {
+    high: 30,
+    med: 20,
+    low: 10,
+  };
+  const priorityMultiplier = priority.includes("P1")
+    ? 1.5
+    : priority.includes("P2")
+    ? 1.2
+    : 1;
+  const baseReward = baseRewardByEnergy[energyLevel] ?? baseRewardByEnergy.low;
+
+  return Math.round(baseReward * priorityMultiplier);
 };
 
 export const getLevelProgress = (currentXP: number, currentLevel: number) => {

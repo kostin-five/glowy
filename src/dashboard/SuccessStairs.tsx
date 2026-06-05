@@ -126,7 +126,7 @@ const SuccessStairs = ({
         }`}
       >
         <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black">
-          Бесконечная лестница: XP двигает уровень вперёд
+          Лестница баланса: силы расходуются осознанно
         </p>
       </div>
 

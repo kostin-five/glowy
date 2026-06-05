@@ -13,7 +13,7 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between w-full px-4 py-3 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 lg:hidden">
+    <header className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
       <Link
         to="/dashboard"
         className=" items-center gap-2 hidden md:flex cursor-pointer"

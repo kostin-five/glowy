@@ -1,8 +1,7 @@
-import { Suspense, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import BottomNav from "../components/layout/BottomNav";
-import Spinner from "../components/ui/Spinner";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,7 +16,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 pb-24 md:px-8 lg:pb-6">
-          <Suspense fallback={<Spinner />}>{children}</Suspense>
+          {children}
         </main>
       </div>
       <BottomNav />

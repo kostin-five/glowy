@@ -1,14 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
+import TaskPage from "./pages/TaskPage";
 
 import { useIsAuthenticated, useIsGuest } from "./store/useAuthStore";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
-import AuthLoader from "./components/ui/AuthLoader";
+import RouteLoader from "./components/ui/RouteLoader";
 
-const TaskPage = lazy(() => import("./pages/TaskPage"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
@@ -18,7 +18,13 @@ const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
+    {children}
+  </Suspense>
+);
+
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -26,6 +32,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return <>{children}</>;
 };
+
+const ProtectedLayoutRoute = ({
+  children,
+  lazy = true,
+}: {
+  children: ReactNode;
+  lazy?: boolean;
+}) => (
+  <ProtectedRoute>
+    <AppLayout>
+      {lazy ? (
+        <Suspense
+          fallback={
+            <RouteLoader className="min-h-[calc(100dvh-8rem)] bg-transparent" />
+          }
+        >
+          {children}
+        </Suspense>
+      ) : (
+        children
+      )}
+    </AppLayout>
+  </ProtectedRoute>
+);
 
 function App() {
   const isAuthenticated = useIsAuthenticated();
@@ -56,105 +86,80 @@ function App() {
         <Route
           path="/"
           element={
-            <Suspense
-              fallback={
-                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
-              }
-            >
+            <PublicLazyRoute>
               <LandingPage />
-            </Suspense>
+            </PublicLazyRoute>
           }
         />
         <Route
           path="/privacy"
           element={
-            <Suspense
-              fallback={
-                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
-              }
-            >
+            <PublicLazyRoute>
               <PrivacyPolicyPage />
-            </Suspense>
+            </PublicLazyRoute>
           }
         />
         <Route
           path="/terms"
           element={
-            <Suspense
-              fallback={
-                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
-              }
-            >
+            <PublicLazyRoute>
               <TermsOfServicePage />
-            </Suspense>
+            </PublicLazyRoute>
           }
         />
         <Route
           path="/login"
           element={
-            <Suspense
-              fallback={
-                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
-              }
-            >
+            <PublicLazyRoute>
               <LoginPage />
-            </Suspense>
+            </PublicLazyRoute>
           }
         />
         <Route
           path="/register"
           element={
-            <Suspense
-              fallback={
-                <AuthLoader className="fixed left-1/2 top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2" />
-              }
-            >
+            <PublicLazyRoute>
               <RegisterPage />
-            </Suspense>
+            </PublicLazyRoute>
           }
         />
 
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
-              <AppLayout>
-                <DashboardPage />
-              </AppLayout>
-            </ProtectedRoute>
+            <ProtectedLayoutRoute>
+              <DashboardPage />
+            </ProtectedLayoutRoute>
           }
         />
         <Route
           path="/tasks"
           element={
-            <ProtectedRoute>
-              <AppLayout>
-                <TaskPage />
-              </AppLayout>
-            </ProtectedRoute>
+            <ProtectedLayoutRoute lazy={false}>
+              <TaskPage />
+            </ProtectedLayoutRoute>
           }
         />
         <Route
           path="/analytics"
           element={
-            <ProtectedRoute>
-              <AppLayout>
-                <AnalyticsPage />
-              </AppLayout>
-            </ProtectedRoute>
+            <ProtectedLayoutRoute>
+              <AnalyticsPage />
+            </ProtectedLayoutRoute>
           }
         />
         <Route
           path="/stairs"
           element={
-            <ProtectedRoute>
-              <AppLayout>
-                <SuccessStairsPage />
-              </AppLayout>
-            </ProtectedRoute>
+            <ProtectedLayoutRoute>
+              <SuccessStairsPage />
+            </ProtectedLayoutRoute>
           }
         />
-        <Route path="/success-stairs" element={<Navigate to="/stairs" replace />} />
+        <Route
+          path="/success-stairs"
+          element={<Navigate to="/stairs" replace />}
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

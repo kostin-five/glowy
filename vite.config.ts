@@ -28,6 +28,12 @@ export default defineConfig({
         orientation: "portrait",
         icons: [
           {
+            src: "/icons/apple-icon-180.png",
+            sizes: "180x180",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
             src: "/icons/manifest-icon-192.maskable.png",
             sizes: "192x192",
             type: "image/png",

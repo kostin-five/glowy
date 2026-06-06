@@ -25,8 +25,6 @@ const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-router.use(authMiddleware);
-
 const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 15,
@@ -80,6 +78,12 @@ const formatDateDDMMYYYY = (date) =>
 
 const normalizeDate = (value, fallbackDate) => {
   const rawDate = typeof value === "string" ? value.trim() : "";
+  const dottedDateMatch = rawDate.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+
+  if (dottedDateMatch) {
+    const [, day, month, year] = dottedDateMatch;
+    return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
+  }
 
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(rawDate)) {
     return rawDate;
@@ -92,6 +96,22 @@ const normalizeDate = (value, fallbackDate) => {
 
   return fallbackDate;
 };
+
+const extractExactDateFromText = (value) => {
+  const text = typeof value === "string" ? value : "";
+  const match = text.match(/(?:^|\D)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:\D|$)/);
+
+  if (!match) return null;
+
+  const [, day, month, year] = match;
+  return `${day.padStart(2, "0")}.${month.padStart(2, "0")}.${year}`;
+};
+
+const stripExactDateFromTitle = (title) =>
+  title
+    .replace(/\b\d{1,2}[./-]\d{1,2}[./-]\d{4}\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
 // ---------------------------------------------------------------------------
 // Валидация входящих запросов Mind Hub
@@ -151,7 +171,7 @@ const parseJsonLoose = (value) => {
 const buildMindHubParsePrompt = (message, today) => `Ты — эксперт по планированию задач в приложении Glowy.
 Твоя цель — преобразовать хаотичный текст пользователя в строгий JSON.
 
-Сегодня: ${today}. Используй эту дату как точку отсчёта для слов "сегодня", "завтра", "в пятницу", "на выходных" и других относительных дат.
+Сегодня: ${today}. Используй эту дату ТОЛЬКО как точку отсчёта для относительных формулировок вроде "сегодня", "завтра", "через неделю", "в пятницу", "на выходных".
 
 Верни один из двух форматов:
 1. Если задачи есть:
@@ -160,8 +180,11 @@ const buildMindHubParsePrompt = (message, today) => `Ты — эксперт п�
 {"tasks":[],"reply":"короткий эмпатичный ответ коуча"}
 
 Правила атрибутов:
-- date: всегда формат "DD.MM.YYYY". Если дата не указана, используй сегодняшнюю дату.
+- date: всегда формат "DD.MM.YYYY". Если пользователь указал в тексте точную дату или день недели, ты ОБЯЗАН использовать именно её. Текущая дата передается тебе только как точка отсчета для слов "завтра" или "через неделю". Никогда не заменяй явно указанную дату на сегодняшнюю.
+- Если в заголовке задачи есть дата вроде "08.06.2026", "8.06", "08/06/2026" или день недели, перенеси её в поле date и убери из title, если без неё заголовок остаётся понятным.
+- Если дата вообще не указана, только тогда используй сегодняшнюю дату: ${today}.
 - category: определяй по контексту. Подходящие категории: "Здоровье", "Учеба", "Работа", "Быт", "Развитие".
+- Если пользователь явно указывает категорию, например пишет "Проект", "Дом", "Учеба", "Спорт" и т.д., ты ОБЯЗАН использовать именно это слово в поле category. Не заменяй его на синонимы и не придумывай свои категории, если пользователь уже назвал её.
 - energyLevel: "high" для сложных и долгих задач вроде "написать курсовую"; "low" для простых вроде "купить хлеб"; "med" для обычных средних задач.
 - priority: по умолчанию "P2"; срочные и важные задачи — "P1"; мелкие необязательные — "P3".
 - Не придумывай лишние задачи.
@@ -170,7 +193,8 @@ const buildMindHubParsePrompt = (message, today) => `Ты — эксперт п�
 Текст пользователя:
 """${message}"""`;
 
-const normalizeMindHubPayload = (payload, fallbackDate) => {
+const normalizeMindHubPayload = (payload, fallbackDate, sourceMessage = "") => {
+  const exactDateFromMessage = extractExactDateFromText(sourceMessage);
   const rawTasks = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.tasks)
@@ -178,16 +202,26 @@ const normalizeMindHubPayload = (payload, fallbackDate) => {
     : [];
 
   const tasks = rawTasks
-    .map((task) => ({
-      title: typeof task.title === "string" ? task.title.trim() : "",
-      date: normalizeDate(task.date, fallbackDate),
-      priority: normalizePriority(task.priority),
-      energyLevel: normalizeEnergyLevel(task.energyLevel),
-      category:
-        typeof task.category === "string" && task.category.trim()
-          ? task.category.trim()
-          : "Быт",
-    }))
+    .map((task) => {
+      const rawTitle = typeof task.title === "string" ? task.title.trim() : "";
+      const normalizedDate = normalizeDate(task.date, fallbackDate);
+      const taskDate =
+        exactDateFromMessage && normalizedDate === fallbackDate
+          ? exactDateFromMessage
+          : normalizedDate;
+      const titleWithoutDate = stripExactDateFromTitle(rawTitle);
+
+      return {
+        title: titleWithoutDate || rawTitle,
+        date: taskDate,
+        priority: normalizePriority(task.priority),
+        energyLevel: normalizeEnergyLevel(task.energyLevel),
+        category:
+          typeof task.category === "string" && task.category.trim()
+            ? task.category.trim()
+            : "Быт",
+      };
+    })
     .filter((task) => task.title.length > 0);
 
   const reply =
@@ -234,18 +268,25 @@ const inferFallbackEnergy = (title) => {
   return "med";
 };
 
-const parseMindHubFallback = (message, fallbackDate) =>
-  message
+const parseMindHubFallback = (message, fallbackDate) => {
+  const exactDate = extractExactDateFromText(message);
+
+  return message
     .split(/[\n,;]+|(?:\s+и\s+)/i)
     .map((title) => title.trim())
     .filter((title) => title.length > 0)
-    .map((title) => ({
-      title,
-      date: fallbackDate,
-      priority: priorityMap.P2,
-      energyLevel: inferFallbackEnergy(title),
-      category: inferFallbackCategory(title),
-    }));
+    .map((title) => {
+      const titleWithoutDate = stripExactDateFromTitle(title);
+
+      return {
+        title: titleWithoutDate || title,
+        date: exactDate || fallbackDate,
+        priority: priorityMap.P2,
+        energyLevel: inferFallbackEnergy(title),
+        category: inferFallbackCategory(title),
+      };
+    });
+};
 
 const parseMindHubTasks = async (message, today) => {
   const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
@@ -255,7 +296,7 @@ const parseMindHubTasks = async (message, today) => {
   const responseText = result.response.text();
   const parsedPayload = parseJsonLoose(responseText);
 
-  return normalizeMindHubPayload(parsedPayload, today);
+  return normalizeMindHubPayload(parsedPayload, today, message);
 };
 
 const createMindHubTasks = (tasks, userId) =>
@@ -284,7 +325,7 @@ const createMindHubTasks = (tasks, userId) =>
 // ---------------------------------------------------------------------------
 
 const COACH_SYSTEM_INSTRUCTION =
-  "Ты эмпатичный ИИ-коуч в приложении Glowy. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Отвечай каждый раз ПО-РАЗНОМУ, тепло, коротко (1-2 предложения) и задавай один наводящий вопрос. НЕ используй шаблонные фразы. Glowy — мужской персонаж, говори о себе в мужском роде.";
+  "Ты эмпатичный ИИ-коуч в приложении Glowy. Glowy — мужской персонаж, говори о себе в мужском роде. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Перед каждым ответом ОБЯЗАТЕЛЬНО анализируй всю доступную history: что пользователь уже спрашивал, какие ответы ты уже давал, какие эмоции и потребности проявились в диалоге. Каждый новый ответ должен быть уникальным, контекстным и не повторять предыдущие формулировки. Подстраивайся под состояние пользователя: усталость, тревогу, хаос, прокрастинацию, растерянность или запрос на совет. Отвечай живо, тепло и коротко: 1-2 предложения. Задавай максимум один наводящий вопрос, только если он действительно помогает продолжить диалог. НЕ используй шаблонные фразы и не повторяй fallback-текст.";
 
 const normalizeChatMessages = (messages, currentMessage) => {
   const normalizedMessages = messages
@@ -328,13 +369,13 @@ const normalizeChatMessages = (messages, currentMessage) => {
   return history;
 };
 
-const getCoachFallbackReply = () =>
-  "Я рядом. Давай не пытаться решить всё сразу: выбери один маленький следующий шаг и дай себе немного воздуха.";
-
 const getCoachReply = async (message, messages) => {
   const model = genAI.getGenerativeModel({
     model: GEMINI_MODEL,
-    generationConfig: { temperature: 0.7 },
+    generationConfig: {
+      temperature: 0.9,
+      topP: 0.95,
+    },
     systemInstruction: COACH_SYSTEM_INSTRUCTION,
   });
   const chat = model.startChat({
@@ -343,8 +384,17 @@ const getCoachReply = async (message, messages) => {
   const result = await chat.sendMessage(message);
   const reply = result.response.text().trim();
 
-  return reply || getCoachFallbackReply();
+  if (!reply) {
+    throw new Error("Gemini returned empty coach reply");
+  }
+
+  return reply;
 };
+
+const getMindHubAiErrorResponse = () => ({
+  error:
+    "Glowy не смог получить ответ от ИИ. Попробуй отправить сообщение ещё раз.",
+});
 
 // ---------------------------------------------------------------------------
 // Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу
@@ -384,6 +434,45 @@ const stringifyActiveTasks = (tasks) =>
       return `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority}, Подзадачи: ${subtasks})`;
     })
     .join("\n");
+
+// ---------------------------------------------------------------------------
+// Публичный Mind Hub для демо-режима:
+// Gemini отвечает и парсит задачи, но backend не сохраняет их в БД.
+// Фронтенд сам кладёт результат в локальный Zustand guest-сессии.
+// ---------------------------------------------------------------------------
+
+router.post("/mind-hub/public", async (req, res) => {
+  try {
+    const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
+    const validationError = buildValidationError(message);
+
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    if (hubMode === "chat") {
+      const reply = await getCoachReply(message, messages);
+      return res.json({ tasks: [], reply });
+    }
+
+    const today = formatDateDDMMYYYY(new Date());
+    const parsedResult = await parseMindHubTasks(message, today);
+
+    return res.json({
+      tasks: parsedResult.tasks,
+      reply:
+        parsedResult.reply ||
+        (parsedResult.tasks.length
+          ? null
+          : "Не удалось выделить конкретные задачи."),
+    });
+  } catch (error) {
+    console.error("Public Mind Hub request failed:", error);
+    return res.status(503).json(getMindHubAiErrorResponse());
+  }
+});
+
+router.use(authMiddleware);
 
 router.post("/analyze", async (req, res) => {
   try {
@@ -440,10 +529,7 @@ router.post("/mind-hub", async (req, res) => {
         return res.json({ tasks: [], reply });
       } catch (error) {
         console.error("Mind Hub chat failed:", error);
-        return res.json({
-          tasks: [],
-          reply: getCoachFallbackReply(),
-        });
+        return res.status(503).json(getMindHubAiErrorResponse());
       }
     }
 

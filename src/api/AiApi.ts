@@ -13,41 +13,23 @@ const aiInstance = axios.create({
   baseURL: url,
 });
 
-const splitGuestThoughts = (message: string) =>
-  message
-    .split(/[\n,;]+|(?:\s+и\s+)/i)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-
-const parseGuestMindHub = (message: string, hubMode: MindHubMode) => {
-  if (hubMode === "chat") {
-    return {
-      tasks: [],
-      reply:
-        "Я рядом. Давай мягко: выбери одну самую маленькую следующую мысль или действие, а всё остальное пока может просто полежать рядом.",
-    };
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const tasks = splitGuestThoughts(message).map<Task>((title, index) => ({
-    id: Date.now() + index,
-    title,
-    date: today,
-    priority: "⚡️ P2",
-    category: "Быт",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "med",
-    subtasks: [],
-  }));
-
-  return {
-    tasks,
-    reply: tasks.length
-      ? null
-      : "Я рядом. Напиши одну или несколько конкретных мыслей, и я превращу их в задачи.",
-  };
-};
+const normalizeGuestMindHubTasks = (tasks: Partial<Task>[]): Task[] =>
+  tasks
+    .map((task, index) => ({
+      id: Date.now() + index,
+      title: typeof task.title === "string" ? task.title : "",
+      date:
+        typeof task.date === "string"
+          ? task.date
+          : new Date().toISOString().slice(0, 10),
+      priority: task.priority ?? "⚡️ P2",
+      category: task.category ?? "Быт",
+      completed: false,
+      xpAwarded: false,
+      energyLevel: task.energyLevel ?? "med",
+      subtasks: [],
+    }))
+    .filter((task) => task.title.trim().length > 0);
 
 aiInstance.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -79,7 +61,16 @@ export default class AiApi {
     reply: string | null;
   }> {
     if (useAuthStore.getState().isGuest) {
-      return parseGuestMindHub(message, hubMode);
+      const response = await aiInstance.post("/mind-hub/public", {
+        message,
+        hubMode,
+        messages,
+      });
+
+      return {
+        tasks: normalizeGuestMindHubTasks(response.data.tasks ?? []),
+        reply: response.data.reply ?? null,
+      };
     }
 
     const response = await aiInstance.post("/mind-hub", {

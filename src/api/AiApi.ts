@@ -13,6 +13,14 @@ const aiInstance = axios.create({
   baseURL: url,
 });
 
+const GUEST_LIMIT_REPLY =
+  "Упс, твои демо-запросы на сегодня всё! 🐣 Зарегистрируйся бесплатно, чтобы сохранить свои задачи и общаться со мной без ограничений.";
+
+const getGuestLimitResponse = () => ({
+  tasks: [],
+  reply: GUEST_LIMIT_REPLY,
+});
+
 const normalizeGuestMindHubTasks = (tasks: Partial<Task>[]): Task[] =>
   tasks
     .map((task, index) => ({
@@ -60,17 +68,32 @@ export default class AiApi {
     tasks: Task[];
     reply: string | null;
   }> {
-    if (useAuthStore.getState().isGuest) {
-      const response = await aiInstance.post("/mind-hub/public", {
-        message,
-        hubMode,
-        messages,
-      });
+    const authStore = useAuthStore.getState();
 
-      return {
-        tasks: normalizeGuestMindHubTasks(response.data.tasks ?? []),
-        reply: response.data.reply ?? null,
-      };
+    if (authStore.isGuest) {
+      if (!authStore.consumeGuestRequest()) {
+        return getGuestLimitResponse();
+      }
+
+      try {
+        const response = await aiInstance.post("/mind-hub/public", {
+          message,
+          hubMode,
+          messages,
+        });
+
+        return {
+          tasks: normalizeGuestMindHubTasks(response.data.tasks ?? []),
+          reply: response.data.reply ?? null,
+        };
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 429) {
+          useAuthStore.getState().markGuestRequestsLimitReached();
+          return getGuestLimitResponse();
+        }
+
+        throw error;
+      }
     }
 
     const response = await aiInstance.post("/mind-hub", {

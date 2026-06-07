@@ -2,15 +2,33 @@ import axios from "axios";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+export const GUEST_REQUEST_LIMIT = 7;
+const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+const isGuestRequestWindowExpired = (resetDate: string | null) => {
+  if (!resetDate) return true;
+
+  const resetTime = new Date(resetDate).getTime();
+  if (Number.isNaN(resetTime)) return true;
+
+  return Date.now() - resetTime >= GUEST_REQUEST_WINDOW_MS;
+};
+
 interface AuthStore {
   isAuthenticated: boolean;
   isGuest: boolean;
   name: string;
   login: string | null;
   token: string | null;
+  guestRequestsCount: number;
+  guestRequestsResetDate: string | null;
   toLogin: (name: string, login: string, token: string) => void;
   toDemoLogin: () => void;
   toLogout: () => void;
+  consumeGuestRequest: () => boolean;
+  resetGuestRequests: () => void;
+  resetGuestRequestsIfNeeded: () => void;
+  markGuestRequestsLimitReached: () => void;
   energyLimit: number;
   energyDate: string;
   updateEnergyLimit: (limit: number) => Promise<void>;
@@ -25,6 +43,8 @@ export const useAuthStore = create<AuthStore>()(
       name: "",
       login: null,
       token: null,
+      guestRequestsCount: 0,
+      guestRequestsResetDate: null,
       toLogin: (name: string, login: string, token: string) =>
         set(() => ({
           isAuthenticated: true,
@@ -50,6 +70,44 @@ export const useAuthStore = create<AuthStore>()(
           name: "",
           login: null,
           token: null,
+        })),
+      consumeGuestRequest: () => {
+        const { guestRequestsCount, guestRequestsResetDate } = get();
+
+        if (isGuestRequestWindowExpired(guestRequestsResetDate)) {
+          set(() => ({
+            guestRequestsCount: 1,
+            guestRequestsResetDate: new Date().toISOString(),
+          }));
+          return true;
+        }
+
+        if (guestRequestsCount >= GUEST_REQUEST_LIMIT) return false;
+
+        set(() => ({
+          guestRequestsCount: guestRequestsCount + 1,
+          guestRequestsResetDate,
+        }));
+        return true;
+      },
+      resetGuestRequests: () =>
+        set(() => ({
+          guestRequestsCount: 0,
+          guestRequestsResetDate: null,
+        })),
+      resetGuestRequestsIfNeeded: () => {
+        if (!isGuestRequestWindowExpired(get().guestRequestsResetDate)) return;
+
+        set(() => ({
+          guestRequestsCount: 0,
+          guestRequestsResetDate: null,
+        }));
+      },
+      markGuestRequestsLimitReached: () =>
+        set(() => ({
+          guestRequestsCount: GUEST_REQUEST_LIMIT,
+          guestRequestsResetDate:
+            get().guestRequestsResetDate || new Date().toISOString(),
         })),
       energyLimit: 100,
       energyDate: "",
@@ -99,6 +157,10 @@ export const useToDemoLogin = () =>
   useAuthStore((state) => state.toDemoLogin);
 export const useToLogout = () => useAuthStore((state) => state.toLogout);
 export const useToken = () => useAuthStore((state) => state.token);
+export const useGuestRequestsCount = () =>
+  useAuthStore((state) => state.guestRequestsCount);
+export const useGuestRequestsResetDate = () =>
+  useAuthStore((state) => state.guestRequestsResetDate);
 
 export const useEnergyDate = () => useAuthStore((state) => state.energyDate);
 export const useEnergyLimit = () => useAuthStore((state) => state.energyLimit);

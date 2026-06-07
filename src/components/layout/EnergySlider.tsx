@@ -1,77 +1,82 @@
 import React from "react";
-import { useEnergyLimit, useUpdateEnergyLimit } from "../../store/useAuthStore";
-import { useTasks } from "../../store/useTaskStore";
+import {
+  useCurrentEnergy,
+  useUpdateCurrentEnergy,
+} from "../../store/useAuthStore";
 
 export const EnergySlider: React.FC = () => {
-  const energyLimit = useEnergyLimit();
-  const tasks = useTasks();
-  const updateEnergyLimit = useUpdateEnergyLimit();
-
-  const consumedEnergy = tasks
-    .filter((task) => !task.completed)
-    .reduce(
-      (acc, cur) =>
-        cur.energyLevel === "low"
-          ? acc + 10
-          : cur.energyLevel === "med"
-          ? acc + 25
-          : acc + 50,
-      0
-    );
-
-  const remainingEnergy = energyLimit - consumedEnergy;
+  const currentEnergy = useCurrentEnergy();
+  const updateCurrentEnergy = useUpdateCurrentEnergy();
+  const isCritical = currentEnergy <= 20;
 
   const energyStatuses: Record<number, string> = {
     0: "🫗 Полное истощение",
+    10: "🧊 Почти на нуле",
     20: "🍋 Выжатый лимон",
+    30: "🌧️ Нужен мягкий темп",
     40: "🧘 Низкий заряд",
+    50: "☕ Половина бака",
     60: "🔋 Стабильный режим",
+    70: "🌿 Хороший ресурс",
     80: "🚀 Продуктивный день",
+    90: "⚡ Почти максимум",
     100: "🔥 Режим терминатора",
   };
 
   return (
-    <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-3xl flex flex-col justify-between gap-4">
+    <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-          <h2 className="font-display text-lg 2xl:text-xl font-bold text-slate-200">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-200 2xl:text-xl">
             Энергопотенциал
           </h2>
-          <span className="min-w-0 max-w-full shrink whitespace-normal wrap-break-words text-right text-xs 2xl:text-sm font-semibold text-indigo-300">
-            {energyStatuses[energyLimit] || `${energyLimit}%`}
-          </span>
         </div>
-        <p className="whitespace-nowrap text-xs leading-relaxed text-slate-400">
-          Лимит сил на день.
+        <span
+          className={`inline-flex max-w-full self-start rounded-full border px-2.5 py-1 text-xs font-semibold leading-snug ${
+            isCritical
+              ? "border-red-500/20 bg-red-500/10 text-red-500 dark:text-red-300"
+              : "border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300"
+          }`}
+        >
+          <span className="min-w-0 wrap-break-words">
+            {energyStatuses[currentEnergy] || `${currentEnergy}%`}
+          </span>
+        </span>
+        <p className="text-xs leading-relaxed whitespace-nowrap text-slate-500 dark:text-slate-400">
+          Ручная оценка твоего заряда прямо сейчас.
         </p>
       </div>
 
       <input
         type="range"
-        min="0"
-        max="100"
-        step="20"
-        value={energyLimit}
-        onChange={(e) => updateEnergyLimit(Number(e.target.value))}
-        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none"
+        min={0}
+        max={100}
+        step={10}
+        value={currentEnergy}
+        onChange={(e) => updateCurrentEnergy(Number(e.target.value))}
+        className={`h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 focus:outline-none dark:bg-slate-800 ${
+          isCritical ? "accent-red-500" : "accent-indigo-500"
+        }`}
       />
 
-      <div className="flex flex-wrap justify-between items-center gap-x-4 gap-y-1 text-xs border-t border-slate-800/60 pt-3">
-        <span className="whitespace-nowrap text-slate-400">
-          Доступно на день:
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-slate-200 pt-3 text-xs dark:border-slate-800/60">
+        <span className="whitespace-nowrap text-slate-500 dark:text-slate-400">
+          Текущий заряд:
         </span>
         <span
           className={`font-display font-bold whitespace-nowrap ${
-            remainingEnergy < 0 ? "text-red-500" : "text-emerald-500"
+            isCritical
+              ? "text-red-500 dark:text-red-400"
+              : "text-emerald-600 dark:text-emerald-500"
           }`}
         >
-          {remainingEnergy}% из {energyLimit}%
+          {currentEnergy}% из 100%
         </span>
       </div>
 
-      {remainingEnergy < 0 && (
-        <p className="text-[11px] text-rose-400/90 mt-2 text-center bg-rose-500/5 border border-rose-500/10 py-1.5 rounded-xl animate-pulse">
-          ⚠️ Превышен лимит! Задачи требуют больше энергии, чем у тебя есть.
+      {isCritical && (
+        <p className="mt-1 rounded-xl border border-red-500/15 bg-red-500/10 px-3 py-2 text-center text-[11px] font-medium text-red-500 dark:text-red-300">
+          Критический уровень! Пора отдохнуть.
         </p>
       )}
     </div>

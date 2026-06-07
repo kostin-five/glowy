@@ -41,13 +41,17 @@ router.get("/progress", async (req, res) => {
 });
 
 router.put("/energy", async (req, res) => {
-  const today = new Date().toISOString().slice(0, 10);
-
   try {
-    const { energyLimit } = req.body;
+    const rawEnergy = req.body.currentEnergy ?? req.body.energyLimit;
+    const currentEnergy = Math.min(100, Math.max(0, Number(rawEnergy)));
+
+    if (Number.isNaN(currentEnergy)) {
+      return res.status(400).json({ error: "Некорректный уровень энергии" });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: { energyDate: today, energyLimit: Number(energyLimit) },
+      data: { currentEnergy },
     });
     res.json(updatedUser);
   } catch (e) {

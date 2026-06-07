@@ -6,7 +6,7 @@ import TaskPage from "./pages/TaskPage";
 import { useIsAuthenticated, useIsGuest } from "./store/useAuthStore";
 import { lazy, Suspense, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
-import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
+import { useToken } from "./store/useAuthStore";
 import RouteLoader from "./components/ui/RouteLoader";
 import { useIsDarkMode } from "./store/useSettingsStore";
 
@@ -65,7 +65,6 @@ function App() {
   const token = useToken();
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
-  const checkAndResetEnergy = useCheckAndResetEnergy();
   const isDarkMode = useIsDarkMode();
 
   useLayoutEffect(() => {
@@ -78,9 +77,7 @@ function App() {
 
     fetchTasks();
     fetchProgress();
-    checkAndResetEnergy();
   }, [
-    checkAndResetEnergy,
     fetchProgress,
     fetchTasks,
     isAuthenticated,

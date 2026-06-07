@@ -9,8 +9,10 @@ import {
   User,
 } from "lucide-react";
 import { useName } from "../../store/useAuthStore";
+import { useIsDarkMode } from "../../store/useSettingsStore";
 
 const SidebarContent = ({ location }: { location: Location }) => {
+  const isDarkMode = useIsDarkMode();
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
@@ -31,11 +33,20 @@ const SidebarContent = ({ location }: { location: Location }) => {
         to="/dashboard"
         className="mb-12 px-2 select-none flex items-center gap-3 cursor-pointer"
       >
-        <img
-          src="/Glowy.png"
-          alt="Логотип Glowy"
-          className="w-10 h-10 object-contain"
-        />
+        {isDarkMode ? (
+          <img
+            src="/Glowy.png"
+            alt="Логотип Glowy"
+            className="w-10 h-10 object-contain"
+          />
+        ) : (
+          <img
+            src="/Glowy-dark.png"
+            alt="Логотип Glowy"
+            className="w-10 h-10 object-contain"
+          />
+        )}
+
         <h2 className="font-display text-2xl font-black tracking-tighter text-indigo-500 italic">
           GLOWY<span className="text-slate-900 dark:text-slate-200">.AI</span>
         </h2>

@@ -402,16 +402,16 @@ const getMindHubAiErrorResponse = () => ({
 // Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу
 // ---------------------------------------------------------------------------
 
-const buildTaskAnalysisPrompt = (tasksString, energyLimit) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
+const buildTaskAnalysisPrompt = (tasksString, currentEnergy) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
 Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
 
 ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
-- Выбранный лимит энергии на сегодня: ${energyLimit}%.
+- Текущий ручной уровень энергии пользователя: ${currentEnergy}%.
 - Список его активных задач на сегодня с подзадачами:
 ${tasksString}
 
 ЗАДАНИЕ:
-Проанализируй список, включая подзадачи. Сопоставь сложность задач с лимитом энергии на сегодня (${energyLimit}%).
+Проанализируй список, включая подзадачи. Сопоставь сложность задач с текущим уровнем энергии пользователя (${currentEnergy}%).
 Дай один короткий, глубокий, теплый и практичный совет максимум в 2-3 предложения.
 
 ВАЖНО:
@@ -496,11 +496,11 @@ router.post("/analyze", async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
     });
-    const energyLimit = user?.energyLimit ?? 100;
+    const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
     const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent(
-      buildTaskAnalysisPrompt(tasksString, energyLimit)
+      buildTaskAnalysisPrompt(tasksString, currentEnergy)
     );
 
     res.json({ message: result.response.text() });

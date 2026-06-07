@@ -29,8 +29,7 @@ model User {
   name String
   login String @unique
   password String
-  energyLimit Int @default(100) @map("energy_limit")
-  energyDate String @default("") @map("energy_date")
+  currentEnergy Int @default(100) @map("current_energy")
   xp Int @default(0)
   level Int @default(1)
   tasks Task[]

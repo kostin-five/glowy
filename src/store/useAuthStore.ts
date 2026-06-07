@@ -29,10 +29,8 @@ interface AuthStore {
   resetGuestRequests: () => void;
   resetGuestRequestsIfNeeded: () => void;
   markGuestRequestsLimitReached: () => void;
-  energyLimit: number;
-  energyDate: string;
-  updateEnergyLimit: (limit: number) => Promise<void>;
-  checkAndResetEnergy: () => void;
+  currentEnergy: number;
+  updateCurrentEnergy: (energy: number) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -60,8 +58,7 @@ export const useAuthStore = create<AuthStore>()(
           name: "Демо",
           login: "demo",
           token: `demo-token-${Date.now()}`,
-          energyLimit: 80,
-          energyDate: new Date().toISOString().slice(0, 10),
+          currentEnergy: 100,
         })),
       toLogout: () =>
         set(() => ({
@@ -109,34 +106,26 @@ export const useAuthStore = create<AuthStore>()(
           guestRequestsResetDate:
             get().guestRequestsResetDate || new Date().toISOString(),
         })),
-      energyLimit: 100,
-      energyDate: "",
+      currentEnergy: 100,
 
-      updateEnergyLimit: async (limit: number) => {
+      updateCurrentEnergy: async (energy: number) => {
         try {
+          const normalizedEnergy = Math.min(100, Math.max(0, energy));
+
           set(() => ({
-            energyLimit: limit,
-            energyDate: new Date().toISOString().slice(0, 10),
+            currentEnergy: normalizedEnergy,
           }));
           if (get().isGuest) return;
 
           await axios.put(
             "https://glowy-backend.onrender.com/api/user/energy",
             {
-              energyLimit: limit,
+              currentEnergy: normalizedEnergy,
             },
             { headers: { Authorization: `Bearer ${get().token}` } }
           );
         } catch (e) {
           console.error(e);
-        }
-      },
-      checkAndResetEnergy: () => {
-        const today = new Date().toISOString().slice(0, 10);
-        const { isAuthenticated, energyDate, updateEnergyLimit } = get();
-
-        if (!isAuthenticated || !energyDate || energyDate !== today) {
-          updateEnergyLimit(100);
         }
       },
     }),
@@ -162,9 +151,7 @@ export const useGuestRequestsCount = () =>
 export const useGuestRequestsResetDate = () =>
   useAuthStore((state) => state.guestRequestsResetDate);
 
-export const useEnergyDate = () => useAuthStore((state) => state.energyDate);
-export const useEnergyLimit = () => useAuthStore((state) => state.energyLimit);
-export const useUpdateEnergyLimit = () =>
-  useAuthStore((state) => state.updateEnergyLimit);
-export const useCheckAndResetEnergy = () =>
-  useAuthStore((state) => state.checkAndResetEnergy);
+export const useCurrentEnergy = () =>
+  useAuthStore((state) => state.currentEnergy);
+export const useUpdateCurrentEnergy = () =>
+  useAuthStore((state) => state.updateCurrentEnergy);

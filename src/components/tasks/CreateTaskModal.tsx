@@ -68,7 +68,7 @@ const SortableSubTask = ({ sub, onRemove }: SortableSubTaskProps) => {
       style={style}
       {...attributes}
       {...listeners}
-      className="flex items-center justify-between text-sm text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg cursor-grab active:cursor-grabbing touch-none"
+      className="flex cursor-grab touch-none items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm active:cursor-grabbing dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-100 dark:shadow-none"
     >
       <span className="truncate">{sub.title}</span>
       <button
@@ -249,7 +249,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         onSubmit={sendTask}
       >
         <input
-          className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+          className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           type="text"
           placeholder="Введите задачу"
           value={values.title}
@@ -257,11 +257,11 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         />
         <div className="flex sm:flex-row flex-col gap-4 w-full">
           <div className="flex-1">
-            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
               Дата задачи
             </label>
             <input
-              className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+              className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
                  transition-all appearance-none scheme-dark"
               type="date"
@@ -270,12 +270,12 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
             />
           </div>
           <div className="flex-1 relative">
-            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
               Приоритет
             </label>
             <div className="relative">
               <select
-                className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+                className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
                  transition-all appearance-none cursor-pointer pr-10"
                 value={values.priority}
@@ -288,19 +288,19 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                 <option value="💤 P3">💤 Низкий</option>
               </select>
 
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400">
                 ▼
               </div>
             </div>
           </div>
         </div>
 
-        <div className="text-slate-200">
-          <p className="text-sm font-medium text-slate-400 mb-2">
+        <div className="text-slate-900 dark:text-slate-100">
+          <p className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-400">
             Энергозатратность задачи:
           </p>
           <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -317,7 +317,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               Низкая
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -334,7 +334,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               Средняя
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -353,7 +353,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           </div>
         </div>
         <input
-          className="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-slate-200 focus:outline-none focus:border-indigo-500 transition-colors"
+          className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           value={values.category || ""}
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
@@ -366,8 +366,8 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           ))}
         </datalist>
 
-        <div className="space-y-2 pt-2 border-t border-slate-800">
-          <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">
+        <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800">
+          <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
             Подзадачи
           </label>
 
@@ -375,7 +375,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
             <input
               ref={subTaskInputRef}
               type="text"
-              className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 px-3 py-2 rounded-xl focus:outline-none focus:border-indigo-500 text-sm"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
               placeholder="Что нужно сделать?"
               value={subTitle}
               onChange={(e) => setSubTitle(e.target.value)}
@@ -400,7 +400,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                 items={localSubTasks.map((sub) => sub.clientId)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="mt-2 p-3 bg-slate-900/50 border border-slate-800 rounded-xl space-y-2">
+                <div className="mt-2 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
                   {localSubTasks.map((sub) => (
                     <SortableSubTask
                       key={sub.clientId}
@@ -422,7 +422,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           {isSubmitting ? "Сохраняю..." : "Сохранить"}
         </button>
         {error && (
-          <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
             {error}
           </p>
         )}

@@ -29,7 +29,7 @@ const BottomNav = () => {
             className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all ${
               isActive
                 ? "text-indigo-400"
-                : "text-slate-500 active:text-slate-900 dark:text-slate-400 dark:active:text-slate-200"
+                : "text-slate-700 active:text-slate-900 dark:text-slate-400 dark:active:text-slate-200"
             }`}
           >
             <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />

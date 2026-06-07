@@ -62,7 +62,7 @@ const ChatMessageBubble = ({
         className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
           message.role === "user"
             ? "bg-indigo-600 text-white rounded-br-md"
-            : "bg-slate-800/80 text-slate-200 border border-slate-700/70 rounded-bl-md"
+            : "rounded-bl-md border border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-none"
         }`}
       >
         {displayedText}
@@ -188,15 +188,15 @@ const MindHubChat = () => {
   };
 
   return (
-    <section className="bg-slate-900/50 border border-slate-800 p-0 rounded-3xl flex flex-col xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-125 overflow-hidden">
-      <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-900/95 p-5 backdrop-blur">
+    <section className="flex min-h-125 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles size={18} className="text-indigo-300" />
-          <h2 className="font-display text-xl font-bold text-slate-200">
+          <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
             Хаб мыслей
           </h2>
         </div>
-        <p className="text-sm leading-6 text-slate-400">
+        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
           {hubMode === "parse"
             ? "Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли, разобью их на задачи и сам добавлю в список."
             : "Можно просто написать, что происходит. Я отвечу как спокойный коуч и помогу бережно разложить мысли."}
@@ -224,7 +224,7 @@ const MindHubChat = () => {
 
           {isSending && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-md border border-slate-700/70 bg-slate-800/80 px-4 py-3 text-sm text-slate-300">
+              <div className="rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/80 dark:text-slate-300 dark:shadow-none">
                 <span className="inline-flex gap-1">
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300" />
                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-300 [animation-delay:120ms]" />
@@ -240,9 +240,9 @@ const MindHubChat = () => {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-slate-800 bg-slate-900/95 p-4"
+        className="border-t border-slate-200 bg-white/95 p-4 dark:border-slate-800 dark:bg-slate-900/95"
       >
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-800 bg-slate-950/60 p-1">
+        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60">
           {[
             { value: "chat" as const, label: "💬 Диалог" },
             { value: "parse" as const, label: "⚡️ В задачи" },
@@ -254,7 +254,7 @@ const MindHubChat = () => {
               className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
                 hubMode === mode.value
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                  : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
               }`}
               aria-pressed={hubMode === mode.value}
             >
@@ -262,7 +262,7 @@ const MindHubChat = () => {
             </button>
           ))}
         </div>
-        <div className="flex items-end gap-3 rounded-2xl border border-slate-700 bg-slate-950/50 p-3 focus-within:border-indigo-500">
+        <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-950/50 dark:shadow-none">
           <textarea
             ref={textareaRef}
             value={text}
@@ -279,7 +279,7 @@ const MindHubChat = () => {
                 ? "Например: надо ответить преподу, купить продукты, подготовиться к тесту..."
                 : "Например: я устал, всё навалилось и не понимаю, с чего начать..."
             }
-            className="custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
+            className="custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500"
             disabled={isSending}
           />
           <button

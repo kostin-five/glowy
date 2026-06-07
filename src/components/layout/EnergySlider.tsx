@@ -27,7 +27,7 @@ export const EnergySlider: React.FC = () => {
     <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-200 2xl:text-xl">
+          <h2 className="font-display text-lg font-bold text-slate-950 dark:text-slate-100 2xl:text-xl">
             Энергопотенциал
           </h2>
         </div>
@@ -42,8 +42,8 @@ export const EnergySlider: React.FC = () => {
             {energyStatuses[currentEnergy] || `${currentEnergy}%`}
           </span>
         </span>
-        <p className="text-xs leading-relaxed whitespace-nowrap text-slate-500 dark:text-slate-400">
-          Ручная оценка твоего заряда прямо сейчас.
+        <p className="max-w-full text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          Ручная оценка твоего заряда.
         </p>
       </div>
 

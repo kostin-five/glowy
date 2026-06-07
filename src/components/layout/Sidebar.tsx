@@ -59,7 +59,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
             className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium ${
               location.pathname === item.to
                 ? "text-indigo-400 bg-indigo-500/10"
-                : "text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             }`}
           >
             <item.icon size={20} strokeWidth={2.5} />
@@ -69,7 +69,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
       </nav>
       <div className="flex items-center gap-3 mt-auto">
         <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
-          <User size={14} className="text-slate-400" />
+          <User size={14} className="text-slate-600 dark:text-slate-400" />
           <span className="text-s max-w-20 truncate font-medium text-slate-700 dark:text-slate-200">
             {name}
           </span>
@@ -77,7 +77,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
 
         <button
           onClick={handleLogout}
-          className="cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-500 active:text-red-500 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-red-400"
+          className="cursor-pointer rounded-lg p-2 text-slate-700 transition-colors hover:bg-red-500/10 hover:text-red-500 active:text-red-500 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-red-400"
           title="Выйти"
         >
           <LogOut size={20} />

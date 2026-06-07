@@ -7,7 +7,7 @@ const TaskFilter = () => {
   const filterTypes: FilterStatus[] = ["Активные", "Выполненные", "Все"];
 
   return (
-    <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl w-fit border border-slate-800 h-full">
+    <div className="flex h-full w-fit items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none">
       {filterTypes.map((filter: FilterStatus) => (
         <button
           key={filter}
@@ -15,7 +15,7 @@ const TaskFilter = () => {
           className={`px-4 py-2 rounded-lg text-sm  transition-all duration-200 ${
             filter === filterStatus
               ? "font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm"
-              : "font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              : "font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           }
             `}
         >

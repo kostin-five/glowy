@@ -74,7 +74,7 @@ const SortableSubTask = ({
       style={style}
       {...attributes}
       {...listeners}
-      className="flex items-center justify-between bg-slate-900/40 border border-slate-800 p-2.5 rounded-xl cursor-grab active:cursor-grabbing touch-none"
+      className="flex cursor-grab touch-none items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-none"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
@@ -91,7 +91,9 @@ const SortableSubTask = ({
         </button>
         <span
           className={`text-sm truncate ${
-            sub.completed ? "line-through text-slate-500" : "text-slate-200"
+            sub.completed
+              ? "text-slate-500 line-through"
+              : "text-slate-900 dark:text-slate-100"
           }`}
         >
           {sub.title}
@@ -101,7 +103,7 @@ const SortableSubTask = ({
         type="button"
         onClick={() => onDelete(sub.id)}
         onPointerDown={(e) => e.stopPropagation()}
-        className="text-slate-400 hover:text-red-400 p-1 rounded transition-colors"
+        className="rounded p-1 text-slate-500 transition-colors hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400"
       >
         <Trash2 size={14} />
       </button>
@@ -262,17 +264,17 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
       <form onSubmit={handleSave} className="space-y-4">
         <input
           type="text"
-          className="w-full bg-slate-800 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           value={values.title}
           onChange={(e) => setValues({ ...values, title: e.target.value })}
         />
         <div className="flex sm:flex-row flex-col gap-4 w-full">
           <div className="flex-1">
-            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
               Дата задачи
             </label>
             <input
-              className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+              className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
                  transition-all appearance-none scheme-dark"
               type="date"
@@ -281,12 +283,12 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
             />
           </div>
           <div className="flex-1 relative">
-            <label className="text-[11px] sm:text-xs font-medium text-slate-400 mb-1.5 block">
+            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
               Приоритет
             </label>
             <div className="relative">
               <select
-                className="w-full h-11.5 bg-slate-900 border border-slate-700 rounded-xl px-4 text-slate-200 
+                className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
                  focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
                  transition-all appearance-none cursor-pointer pr-10"
                 value={values.priority}
@@ -299,19 +301,19 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                 <option value="💤 P3">💤 Низкий</option>
               </select>
 
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400">
                 ▼
               </div>
             </div>
           </div>
         </div>
 
-        <div className="text-slate-200">
-          <p className="text-sm font-medium text-slate-400 mb-2">
+        <div className="text-slate-900 dark:text-slate-100">
+          <p className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-400">
             Энергозатратность задачи:
           </p>
           <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -328,7 +330,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
               Низкая
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -345,7 +347,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
               Средняя
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white transition-colors">
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
               <input
                 className="accent-indigo-500"
                 type="radio"
@@ -364,7 +366,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           </div>
         </div>
         <input
-          className="w-full bg-slate-800 border border-slate-700 text-slate-200 px-4 py-2.5 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           value={values.category || ""}
           onChange={(e) => setValues({ ...values, category: e.target.value })}
           type="text"
@@ -377,8 +379,8 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           ))}
         </datalist>
 
-        <div className="border-t border-slate-800 pt-4 mt-2">
-          <label className="text-[11px] sm:text-sm font-medium text-slate-400 mb-1.5 block">
+        <div className="mt-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
             Подзадачи
           </label>
 
@@ -390,7 +392,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
               value={subTitle}
               onChange={(e) => setSubTitle(e.target.value)}
               onKeyDown={handleSubTaskKeyDown}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
             <button
               type="button"
@@ -426,9 +428,9 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           )}
         </div>
 
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-800">
+        <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
           <button
-            className="px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors"
+            className="px-4 py-2 text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
             onClick={() => onClose()}
             type="button"
           >

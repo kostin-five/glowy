@@ -80,7 +80,7 @@ const TaskItem = ({
 
   const contentStyles = task.completed
     ? "line-through text-slate-400 opacity-60 dark:text-slate-500"
-    : "text-slate-800 dark:text-slate-200";
+    : "text-slate-900 dark:text-slate-100";
   const energyStyles =
     task.energyLevel === "high"
       ? "bg-red-50 dark:bg-[#4a202a]"
@@ -156,7 +156,7 @@ const TaskItem = ({
         {...attributes}
         {...listeners}
         draggable={false}
-        className={`relative z-10 flex w-full cursor-grab flex-col overflow-hidden rounded-2xl border border-slate-200 p-4 transition-all active:cursor-grabbing hover:bg-white dark:border-slate-800 dark:hover:bg-slate-800/60 ${
+        className={`relative z-10 flex w-full cursor-grab flex-col overflow-hidden rounded-2xl border border-slate-200 p-4 shadow-sm transition-all active:cursor-grabbing hover:bg-white dark:border-slate-800 dark:shadow-none dark:hover:bg-slate-800/60 ${
           isDragging
             ? "border-indigo-500 opacity-50 shadow-xl shadow-indigo-500/20"
             : ""
@@ -206,7 +206,9 @@ const TaskItem = ({
               >
                 {task.title}
               </span>
-              <span className="text-xs text-slate-400 mt-1">{task.date}</span>
+              <span className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                {task.date}
+              </span>
               {totalSubs > 0 && (
                 <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">
                   <ListChecks size={13} />
@@ -217,7 +219,7 @@ const TaskItem = ({
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-            <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2 overflow-x-auto text-sm text-slate-700 dark:text-slate-300">
               {category && (
                 <span
                   className={`rounded-md border border-slate-300 bg-white/60 px-2 py-1 transition-all duration-300 dark:border-slate-600 dark:bg-transparent ${contentStyles}`}

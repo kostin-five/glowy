@@ -22,14 +22,14 @@ const StepRunner = ({
   return (
     <motion.svg
       viewBox="0 0 72 72"
-      className="drop-shadow-[0_0_16px_rgba(255,255,255,0.8)]"
+      className="text-slate-800 drop-shadow-[0_0_14px_rgba(15,23,42,0.22)] dark:text-white dark:drop-shadow-[0_0_16px_rgba(255,255,255,0.8)]"
       style={{ width: size, height: size }}
       animate={{ y: isMoving ? [0, -3, 0] : 0 }}
       transition={stepTransition}
     >
       <motion.g
         fill="none"
-        stroke="rgba(255,255,255,0.95)"
+        stroke="currentColor"
         strokeWidth="5.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -37,7 +37,7 @@ const StepRunner = ({
         style={{ transformOrigin: "36px 28px" }}
         transition={stepTransition}
       >
-        <circle cx="36" cy="11" r="6" fill="white" stroke="none" />
+        <circle cx="36" cy="11" r="6" fill="currentColor" stroke="none" />
         <path d="M36 19 L34 35" />
         <motion.path
           d="M35 25 L22 33"

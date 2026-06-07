@@ -58,8 +58,8 @@ const TaskTrashDropZone = () => {
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
       className={`fixed inset-x-0 bottom-24 z-50 mx-auto flex w-[90%] max-w-sm items-center justify-center gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-[0_0_30px_rgba(239,68,68,0.35)] backdrop-blur-xl md:bottom-8 ${
         isOver
-          ? "border-red-200 bg-linerar-to-r from-red-600 to-rose-600 text-white shadow-[0_0_44px_rgba(244,63,94,0.65)]"
-          : "border-red-400/30 bg-slate-950/80 text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.25)]"
+          ? "border-red-200 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-[0_0_44px_rgba(244,63,94,0.65)]"
+          : "border-red-300 bg-white/90 text-red-700 shadow-[0_0_30px_rgba(239,68,68,0.2)] dark:border-red-400/30 dark:bg-slate-950/80 dark:text-red-100"
       }`}
       aria-label="Перетащи задачу сюда, чтобы удалить"
     >
@@ -87,18 +87,18 @@ const TaskDragOverlay = ({
   const category = (task.category || "").trim();
   const contentStyles = task.completed
     ? "line-through text-slate-500 opacity-50"
-    : "text-slate-200";
+    : "text-slate-900 dark:text-slate-100";
 
   return (
     <div
       style={{ width: width ?? undefined }}
-      className={`flex flex-col border-l-4 ${
+      className={`flex flex-col rounded-xl border border-slate-200 border-l-4 p-4 shadow-2xl ring-1 ring-indigo-400/20 dark:border-slate-800 ${
         task.energyLevel === "high"
-          ? "bg-red-500/20 border-l-red-500"
+          ? "bg-red-50 border-l-red-500 dark:bg-red-500/20"
           : task.energyLevel === "med"
-          ? "bg-yellow-500/20 border-l-yellow-500"
-          : "bg-green-500/30 border-l-green-500"
-      } p-4 rounded-xl shadow-2xl ring-1 ring-indigo-400/20 cursor-grabbing`}
+          ? "bg-yellow-50 border-l-yellow-500 dark:bg-yellow-500/20"
+          : "bg-green-50 border-l-green-500 dark:bg-green-500/30"
+      } cursor-grabbing`}
     >
       <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
         <div className="flex items-center gap-4 group w-full sm:w-auto flex-1 min-w-50">
@@ -123,9 +123,11 @@ const TaskDragOverlay = ({
             <span className={`font-medium block truncate ${contentStyles}`}>
               {task.title}
             </span>
-            <span className="text-xs text-slate-400 mt-1">{task.date}</span>
+            <span className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              {task.date}
+            </span>
             {totalSubs > 0 && (
-              <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-slate-700/70 bg-slate-900/50 px-2 py-1 text-xs font-medium text-indigo-300">
+              <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">
                 <ListChecks size={13} />
                 {completedSubs}/{totalSubs}
               </span>
@@ -134,12 +136,12 @@ const TaskDragOverlay = ({
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
-            <span className={`px-2 py-1 border border-slate-600 rounded-md ${contentStyles}`}>
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto text-sm text-slate-700 dark:text-slate-300">
+            <span className={`rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 ${contentStyles}`}>
               {task.priority}
             </span>
             {category && (
-              <span className={`px-2 py-1 border border-slate-600 rounded-md ${contentStyles}`}>
+              <span className={`rounded-md border border-slate-300 px-2 py-1 dark:border-slate-600 ${contentStyles}`}>
                 {category}
               </span>
             )}
@@ -148,9 +150,9 @@ const TaskDragOverlay = ({
       </div>
 
       {task.subtasks && task.subtasks.length > 0 && (
-        <div className="mt-3 pl-9 flex flex-col gap-2 border-t border-slate-800/50 pt-2.5">
+        <div className="mt-3 flex flex-col gap-2 border-t border-slate-200/70 pt-2.5 pl-9 dark:border-slate-800/50">
           {task.subtasks.map((sub: SubTask) => (
-            <div key={sub.id} className="flex items-center gap-2 text-xs text-slate-300">
+            <div key={sub.id} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
               {sub.completed ? (
                 <CheckSquare size={14} className="text-indigo-400" />
               ) : (
@@ -158,7 +160,9 @@ const TaskDragOverlay = ({
               )}
               <span
                 className={`truncate ${
-                  sub.completed ? "line-through text-slate-500" : "text-slate-300"
+                  sub.completed
+                    ? "line-through text-slate-500"
+                    : "text-slate-700 dark:text-slate-300"
                 }`}
               >
                 {sub.title}
@@ -340,7 +344,7 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-700/50 rounded-2xl bg-slate-800/20 text-center"
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white px-4 py-12 text-center shadow-sm dark:border-slate-700/50 dark:bg-slate-800/20 dark:shadow-none"
                 >
                   <div className="w-16 h-16 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mb-4">
                     <svg
@@ -357,10 +361,10 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
                       />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-bold text-slate-200 mb-1">
+                  <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-slate-100">
                     {onlyActive ? "Нет активных задач" : "Список задач пуст"}
                   </h3>
-                  <p className="text-sm text-slate-400 max-w-62.5">
+                  <p className="max-w-62.5 text-sm text-slate-600 dark:text-slate-400">
                     {onlyActive
                       ? "Все текущие задачи выполнены! Отличный уровень баланса энергии."
                       : "Добавь свою первую задачу, чтобы запустить трекинг энергии"}
@@ -387,7 +391,7 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
-            className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-950/95 px-4 py-3 text-sm text-slate-100 shadow-2xl shadow-black/30 backdrop-blur md:bottom-6"
+            className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-sm text-slate-900 shadow-2xl shadow-slate-900/15 backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-100 dark:shadow-black/30 md:bottom-6"
             role="status"
           >
             <span className="font-medium">Задача удалена</span>

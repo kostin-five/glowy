@@ -36,7 +36,7 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-2.5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
-          <User size={14} className="text-slate-400" />
+          <User size={14} className="text-slate-600 dark:text-slate-400" />
           <span className="max-w-20 truncate text-xs font-medium text-slate-700 dark:text-slate-200">
             {name}
           </span>

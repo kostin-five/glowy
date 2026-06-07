@@ -32,34 +32,34 @@ const AnalyticsPage = () => {
       value: tasks.filter((t) => t.energyLevel === "low").length,
       color: "#3b82f6",
     },
-  ].filter((item) => item.value > 0); 
+  ].filter((item) => item.value > 0);
 
 
   return (
-    <section className="flex flex-col gap-8 max-w-5xl mx-auto w-full px-4 md:px-8">
-      <h1 className="font-display text-3xl font-bold text-slate-100">
+    <section className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 md:px-8">
+      <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
         Твоя аналитика
       </h1>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex flex-col justify-center">
-          <span className="text-sm text-slate-400 font-medium mb-1">
+        <div className="flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+          <span className="mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
             Всего задач
           </span>
           <span className="font-display text-5xl font-black text-indigo-400">
             {countTasks}
           </span>
         </div>
-        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex flex-col justify-center">
-          <span className="text-sm text-slate-400 font-medium mb-1">
+        <div className="flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+          <span className="mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
             Выполнено
           </span>
           <span className="font-display text-5xl font-black text-emerald-400">
             {calcCompletedTasks}
           </span>
         </div>
-        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 flex flex-col justify-center">
-          <span className="text-sm text-slate-400 font-medium mb-1">
+        <div className="flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+          <span className="mb-1 text-sm font-medium text-slate-600 dark:text-slate-400">
             Прогресс
           </span>
           <span className="font-display text-5xl font-black text-indigo-400">
@@ -68,13 +68,15 @@ const AnalyticsPage = () => {
         </div>
       </section>
 
-      <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 min-h-125 hidden md:flex flex-col overflow-hidden">
+      <section className="hidden min-h-125 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none md:flex">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h2 className="font-display text-lg font-bold text-slate-200">
+            <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
               Лестница успеха
             </h2>
-            <p className="text-xs text-slate-500 mt-1">{currentXP} XP</p>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              {currentXP} XP
+            </p>
           </div>
           <span className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
             Уровень: {currentLevel}
@@ -85,8 +87,8 @@ const AnalyticsPage = () => {
         </div>
       </section>
 
-      <section className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700 h-100 flex flex-col">
-        <h2 className="font-display text-lg font-bold text-slate-200 mb-4">
+      <section className="flex h-100 flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+        <h2 className="mb-4 font-display text-lg font-bold text-slate-900 dark:text-slate-100">
           Распределение по энергии
         </h2>
         <div className="flex-1 w-full">

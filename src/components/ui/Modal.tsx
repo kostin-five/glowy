@@ -54,10 +54,10 @@ const Modal = ({ isOpen, onClose, title, children }: ICreateModal) => {
             >
               <DialogPanel
                 className={
-                  "w-full max-w-md bg-slate-900 transform text-left align-middle overflow-hidden border border-slate-800 p-6 rounded-2xl shadow-xl transition-all"
+                  "w-full max-w-md transform overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900"
                 }
               >
-                <h2 className="font-display text-2xl font-bold text-slate-100 mb-6">
+                <h2 className="mb-6 font-display text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {title}
                 </h2>
                 {children}

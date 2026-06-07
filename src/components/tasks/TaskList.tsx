@@ -27,10 +27,12 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
+  rectSortingStrategy,
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CheckSquare, ListChecks, Square, Trash2 } from "lucide-react";
+import { useTaskViewMode } from "../../store/useSettingsStore";
 
 interface TaskListProps {
   onlyActive?: boolean;
@@ -183,6 +185,7 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
   const restoreTaskLocally = useRestoreTaskLocally();
   const confirmTaskDeletion = useConfirmTaskDeletion();
   const processedTasks = useProcessedTasks();
+  const taskViewMode = useTaskViewMode();
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
@@ -206,6 +209,12 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
   const displayedTasks = onlyActive
     ? processedTasks.filter((task: Task) => !task.completed)
     : processedTasks;
+  const listContainerClass =
+    taskViewMode === "grid"
+      ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+      : "flex flex-col gap-3";
+  const sortingStrategy =
+    taskViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy;
   const activeTask = activeTaskId
     ? displayedTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -327,9 +336,9 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
       >
         <SortableContext
           items={displayedTasks.map((task) => task.id)}
-          strategy={verticalListSortingStrategy}
+          strategy={sortingStrategy}
         >
-          <ul className="flex flex-col gap-3 list-none">
+          <ul className={`${listContainerClass} list-none`}>
             <AnimatePresence>
               {displayedTasks.length ? (
                 displayedTasks.map((task: Task) => (

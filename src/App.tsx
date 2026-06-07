@@ -4,14 +4,16 @@ import AppLayout from "./layout/AppLayout";
 import TaskPage from "./pages/TaskPage";
 
 import { useIsAuthenticated, useIsGuest } from "./store/useAuthStore";
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useCheckAndResetEnergy, useToken } from "./store/useAuthStore";
 import RouteLoader from "./components/ui/RouteLoader";
+import { useIsDarkMode } from "./store/useSettingsStore";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -64,6 +66,12 @@ function App() {
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const checkAndResetEnergy = useCheckAndResetEnergy();
+  const isDarkMode = useIsDarkMode();
+
+  useLayoutEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+    document.body.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!isAuthenticated || !token || isGuest) return;
@@ -153,6 +161,14 @@ function App() {
           element={
             <ProtectedLayoutRoute>
               <SuccessStairsPage />
+            </ProtectedLayoutRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedLayoutRoute>
+              <SettingsPage />
             </ProtectedLayoutRoute>
           }
         />

@@ -18,6 +18,33 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+const getPriorityLabel = (priority: string) => {
+  if (priority.includes("P1")) return "Высокий приоритет";
+  if (priority.includes("P2")) return "Средний приоритет";
+  if (priority.includes("P3")) return "Низкий приоритет";
+
+  return priority;
+};
+
+const getPriorityRibbonStyles = (priority: string) => {
+  if (priority.includes("P1")) {
+    return "bg-red-500/85 text-white";
+  }
+
+  if (priority.includes("P2")) {
+    return "bg-amber-400/85 text-slate-950";
+  }
+
+  return "bg-indigo-500/85 text-white";
+};
+
+const getEnergyAccentStyles = (energyLevel: string) => {
+  if (energyLevel === "high") return "bg-red-500";
+  if (energyLevel === "med") return "bg-yellow-400";
+
+  return "bg-green-500";
+};
+
 const TaskItem = ({
   task: initialTask,
   toggle,
@@ -52,14 +79,14 @@ const TaskItem = ({
   };
 
   const contentStyles = task.completed
-    ? "line-through text-slate-500 opacity-50"
-    : "text-slate-200";
+    ? "line-through text-slate-400 opacity-60 dark:text-slate-500"
+    : "text-slate-800 dark:text-slate-200";
   const energyStyles =
     task.energyLevel === "high"
-      ? "bg-[#3a1820] border-l-red-500"
+      ? "bg-red-50 dark:bg-[#4a202a]"
       : task.energyLevel === "med"
-      ? "bg-[#3a3108] border-l-yellow-500"
-      : "bg-[#123525] border-l-green-500";
+      ? "bg-yellow-50 dark:bg-[#4b400c]"
+      : "bg-emerald-50 dark:bg-[#184633]";
 
   const handleToggleTask = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -103,6 +130,9 @@ const TaskItem = ({
   const totalSubs = task.subtasks?.length || 0;
   const completedSubs = task.subtasks?.filter((s) => s.completed).length || 0;
   const category = (task.category || "").trim();
+  const priorityLabel = getPriorityLabel(task.priority);
+  const priorityRibbonStyles = getPriorityRibbonStyles(task.priority);
+  const energyAccentStyles = getEnergyAccentStyles(task.energyLevel);
   const sortableStyle: CSSProperties = {
     transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition,
@@ -115,18 +145,27 @@ const TaskItem = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: isDragging ? 0.5 : 1 }}
       exit={{ opacity: 0 }}
-      className="group relative flex w-full flex-col overflow-hidden rounded-xl"
+      className="group relative flex w-full flex-col overflow-visible pt-3"
     >
+      <div
+        className={`absolute left-5 top-0 z-20 inline-flex h-7 max-w-[calc(100%-2.5rem)] items-center rounded-t-xl rounded-b-md px-3 text-xs font-black tracking-wide ${priorityRibbonStyles}`}
+      >
+        <span className="truncate">{priorityLabel}</span>
+      </div>
       <motion.div
         {...attributes}
         {...listeners}
         draggable={false}
-        className={`relative z-10 flex w-full cursor-grab flex-col rounded-xl border-l-4 p-4 transition-all active:cursor-grabbing hover:bg-slate-800/60 ${
+        className={`relative z-10 flex w-full cursor-grab flex-col overflow-hidden rounded-2xl border border-slate-200 p-4 transition-all active:cursor-grabbing hover:bg-white dark:border-slate-800 dark:hover:bg-slate-800/60 ${
           isDragging
             ? "border-indigo-500 opacity-50 shadow-xl shadow-indigo-500/20"
             : ""
         } ${energyStyles}`}
       >
+        <span
+          aria-hidden="true"
+          className={`absolute inset-y-0 left-0 w-1.5 ${energyAccentStyles}`}
+        />
         <div className="flex flex-wrap justify-between sm:items-center gap-x-4 gap-y-3 w-full">
           <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-50">
             <button
@@ -169,7 +208,7 @@ const TaskItem = ({
               </span>
               <span className="text-xs text-slate-400 mt-1">{task.date}</span>
               {totalSubs > 0 && (
-                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-slate-700/70 bg-slate-900/50 px-2 py-1 text-xs font-medium text-indigo-300">
+                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">
                   <ListChecks size={13} />
                   {completedSubs}/{totalSubs}
                 </span>
@@ -179,14 +218,9 @@ const TaskItem = ({
 
           <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
             <div className="flex items-center gap-2 overflow-x-auto text-sm text-slate-300 flex-wrap">
-              <span
-                className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
-              >
-                {task.priority}
-              </span>
               {category && (
                 <span
-                  className={`px-2 py-1 border border-slate-600 rounded-md transition-all duration-300 ${contentStyles}`}
+                  className={`rounded-md border border-slate-300 bg-white/60 px-2 py-1 transition-all duration-300 dark:border-slate-600 dark:bg-transparent ${contentStyles}`}
                 >
                   {category}
                 </span>
@@ -197,7 +231,7 @@ const TaskItem = ({
                 onClick={handleDelete}
                 onPointerDown={(e) => e.stopPropagation()}
                 type="button"
-                className="hidden md:flex cursor-pointer p-1.5 rounded-lg text-slate-400 transition-colors hover:bg-red-500/15 hover:text-red-300"
+                className="hidden cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/15 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-300 md:flex"
                 title="Удалить задачу"
                 aria-label="Удалить задачу"
               >
@@ -206,7 +240,7 @@ const TaskItem = ({
               <button
                 onClick={() => setIsAddingSub(!isAddingSub)}
                 type="button"
-                className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-indigo-500/20 hover:text-indigo-500 dark:text-slate-400 dark:hover:text-indigo-400"
                 title="Добавить подзадачу"
               >
                 <Plus size={16} />
@@ -214,7 +248,7 @@ const TaskItem = ({
               <button
                 onClick={() => editTask()}
                 type="button"
-                className="cursor-pointer p-1.5 hover:bg-indigo-500/20 rounded-lg text-slate-400 hover:text-indigo-400 transition-colors"
+                className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-indigo-500/20 hover:text-indigo-500 dark:text-slate-400 dark:hover:text-indigo-400"
               >
                 <Pencil size={15} />
               </button>
@@ -232,7 +266,7 @@ const TaskItem = ({
               onChange={(e) => setNewSubTitle(e.target.value)}
               onKeyDown={handleSubTaskKeyDown}
               onPointerDown={(e) => e.stopPropagation()}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200"
               autoFocus
             />
             <button
@@ -245,16 +279,16 @@ const TaskItem = ({
         )}
 
         {task.subtasks && task.subtasks.length > 0 && (
-          <div className="mt-3 pl-9 flex flex-col gap-2 border-t border-slate-800/50 pt-2.5">
+          <div className="mt-3 flex flex-col gap-2 border-t border-slate-200/70 pt-2.5 pl-9 dark:border-slate-800/50">
             {task.subtasks.map((sub: SubTask) => (
               <div
                 key={sub.id}
-                className="flex items-center gap-2 text-xs text-slate-300"
+                className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"
               >
                 <button
                   type="button"
                   onClick={() => toggleSubTask(sub.id, task.id, !sub.completed)}
-                  className="text-slate-500 hover:text-indigo-400 transition-colors"
+                  className="text-slate-400 transition-colors hover:text-indigo-500 dark:text-slate-500 dark:hover:text-indigo-400"
                 >
                   {sub.completed ? (
                     <CheckSquare size={14} className="text-indigo-400" />
@@ -265,8 +299,8 @@ const TaskItem = ({
                 <span
                   className={`truncate ${
                     sub.completed
-                      ? "line-through text-slate-500"
-                      : "text-slate-300"
+                      ? "text-slate-400 line-through dark:text-slate-500"
+                      : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   {sub.title}

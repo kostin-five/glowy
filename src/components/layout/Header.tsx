@@ -13,7 +13,7 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
+    <header className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 lg:hidden">
       <Link
         to="/dashboard"
         className=" items-center gap-2 hidden md:flex cursor-pointer"
@@ -24,7 +24,7 @@ const Header = () => {
           className="w-10 h-10 object-contain"
         />
         <h2 className="font-display text-xl font-black tracking-tighter text-indigo-500 italic">
-          GLOWY<span className="text-slate-200">.AI</span>
+          GLOWY<span className="text-slate-900 dark:text-slate-200">.AI</span>
         </h2>
       </Link>
 
@@ -35,16 +35,16 @@ const Header = () => {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/60 border border-slate-700/50 rounded-xl">
+        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-2.5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
           <User size={14} className="text-slate-400" />
-          <span className="text-xs font-medium text-slate-200 truncate max-w-20">
+          <span className="max-w-20 truncate text-xs font-medium text-slate-700 dark:text-slate-200">
             {name}
           </span>
         </div>
 
         <button
           onClick={handleLogout}
-          className="p-2 text-slate-400 hover:text-red-400 active:text-red-500 transition-colors cursor-pointer rounded-lg hover:bg-slate-800/40"
+          className="cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-500 active:text-red-500 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-red-400"
           title="Выйти"
         >
           <LogOut size={16} />

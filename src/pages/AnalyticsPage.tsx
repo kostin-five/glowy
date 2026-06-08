@@ -90,7 +90,7 @@ const AnalyticsPage = () => {
           <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
             Распределение по энергии
           </h2>
-          <div className="mt-4 h-[350px] w-full">
+          <div className="mt-4 h-87.5 w-full">
             {energyData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -132,7 +132,7 @@ const AnalyticsPage = () => {
           <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
             Баланс сфер жизни
           </h2>
-          <div className="mt-4 h-[350px] w-full">
+          <div className="mt-4 h-87.5 w-full">
             {categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={categoryData}>

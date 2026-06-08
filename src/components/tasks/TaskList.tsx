@@ -60,7 +60,7 @@ const TaskTrashDropZone = () => {
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
       className={`fixed inset-x-0 bottom-24 z-50 mx-auto flex w-[90%] max-w-sm items-center justify-center gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-[0_0_30px_rgba(239,68,68,0.35)] backdrop-blur-xl md:bottom-8 ${
         isOver
-          ? "border-red-200 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-[0_0_44px_rgba(244,63,94,0.65)]"
+          ? "border-red-200 bg-linear-to-r from-red-600 to-rose-600 text-white shadow-[0_0_44px_rgba(244,63,94,0.65)]"
           : "border-red-300 bg-white/90 text-red-700 shadow-[0_0_30px_rgba(239,68,68,0.2)] dark:border-red-400/30 dark:bg-slate-950/80 dark:text-red-100"
       }`}
       aria-label="Перетащи задачу сюда, чтобы удалить"

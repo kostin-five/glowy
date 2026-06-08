@@ -10,6 +10,31 @@ export default defineConfig({
     globals: true,
     include: ["src/**/*.test.ts"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            /node_modules\/(react|react-dom|react-router-dom|zustand)\//.test(id)
+          ) {
+            return "vendor";
+          }
+
+          if (/node_modules\/recharts\//.test(id)) {
+            return "charts";
+          }
+
+          if (
+            /node_modules\/(framer-motion|lucide-react|@headlessui\/react)\//.test(
+              id
+            )
+          ) {
+            return "ui";
+          }
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

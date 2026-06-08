@@ -19,23 +19,23 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
 const getPriorityLabel = (priority: string) => {
-  if (priority.includes("P1")) return "Высокий приоритет";
-  if (priority.includes("P2")) return "Средний приоритет";
-  if (priority.includes("P3")) return "Низкий приоритет";
+  if (priority.includes("P1")) return "Высокий";
+  if (priority.includes("P2")) return "Средний";
+  if (priority.includes("P3")) return "Низкий";
 
   return priority;
 };
 
 const getPriorityRibbonStyles = (priority: string) => {
   if (priority.includes("P1")) {
-    return "bg-red-500/85 text-white";
+    return "border-red-500/80 bg-white/80 text-red-600 dark:bg-slate-950/70 dark:text-red-300";
   }
 
   if (priority.includes("P2")) {
-    return "bg-amber-400/85 text-slate-950";
+    return "border-amber-400/80 bg-white/80 text-amber-700 dark:bg-slate-950/70 dark:text-amber-300";
   }
 
-  return "bg-indigo-500/85 text-white";
+  return "border-emerald-500/80 bg-white/80 text-emerald-700 dark:bg-slate-950/70 dark:text-emerald-300";
 };
 
 const getEnergyAccentStyles = (energyLevel: string) => {
@@ -81,12 +81,8 @@ const TaskItem = ({
   const contentStyles = task.completed
     ? "line-through text-slate-400 opacity-60 dark:text-slate-500"
     : "text-slate-900 dark:text-slate-100";
-  const energyStyles =
-    task.energyLevel === "high"
-      ? "bg-red-50 dark:bg-[#4a202a]"
-      : task.energyLevel === "med"
-      ? "bg-yellow-50 dark:bg-[#4b400c]"
-      : "bg-emerald-50 dark:bg-[#184633]";
+  const taskSurfaceStyles =
+    "bg-white/55 backdrop-blur-sm hover:bg-white/75 dark:bg-slate-900/25 dark:hover:bg-slate-900/40";
 
   const handleToggleTask = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -148,7 +144,7 @@ const TaskItem = ({
       className="group relative flex w-full flex-col overflow-visible pt-3"
     >
       <div
-        className={`absolute left-5 top-0 z-20 inline-flex h-7 max-w-[calc(100%-2.5rem)] items-center rounded-t-xl rounded-b-md px-3 text-xs font-black tracking-wide ${priorityRibbonStyles}`}
+        className={`absolute left-5 top-0 z-20 inline-flex h-7 max-w-[calc(100%-2.5rem)] items-center rounded-t-xl rounded-b-md border px-3 text-xs font-black tracking-wide shadow-sm backdrop-blur-md dark:shadow-none ${priorityRibbonStyles}`}
       >
         <span className="truncate">{priorityLabel}</span>
       </div>
@@ -156,11 +152,11 @@ const TaskItem = ({
         {...attributes}
         {...listeners}
         draggable={false}
-        className={`relative z-10 flex w-full cursor-grab flex-col overflow-hidden rounded-2xl border border-slate-200 p-4 shadow-sm transition-all active:cursor-grabbing hover:bg-white dark:border-slate-800 dark:shadow-none dark:hover:bg-slate-800/60 ${
+        className={`relative z-10 flex w-full cursor-grab flex-col overflow-hidden rounded-2xl border border-slate-200 p-4 shadow-sm transition-all active:cursor-grabbing dark:border-slate-800 dark:shadow-none ${
           isDragging
             ? "border-indigo-500 opacity-50 shadow-xl shadow-indigo-500/20"
             : ""
-        } ${energyStyles}`}
+        } ${taskSurfaceStyles}`}
       >
         <span
           aria-hidden="true"

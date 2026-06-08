@@ -164,6 +164,24 @@ const RegisterPage = () => {
             {isLoading ? <AuthLoader /> : "Зарегистрироваться"}
           </button>
 
+          <p className="text-xs text-slate-500 mt-4 text-center dark:text-slate-400">
+            Нажимая кнопку «Зарегистрироваться», вы соглашаетесь с{" "}
+            <Link
+              to="/privacy"
+              className="hover:text-indigo-400 transition-colors"
+            >
+              Политикой конфиденциальности
+            </Link>{" "}
+            и{" "}
+            <Link
+              to="/terms"
+              className="hover:text-indigo-400 transition-colors"
+            >
+              Условиями использования
+            </Link>
+            .
+          </p>
+
           <div className="mt-4 text-center text-sm text-slate-400">
             Уже есть аккаунт?{" "}
             <Link

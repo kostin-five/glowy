@@ -6,15 +6,17 @@ import {
   ResponsiveContainer,
   Tooltip,
   Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
-import SuccessStairs from "../dashboard/SuccessStairs";
-import { useCurrentXP, useTasks, useUserLevel } from "../store/useTaskStore";
+import { useTasks } from "../store/useTaskStore";
 
 const AnalyticsPage = () => {
   const { countTasks, calcCompletedTasks, progressPercent } = useTaskStats();
   const tasks = useTasks();
-  const currentLevel = useUserLevel();
-  const currentXP = useCurrentXP();
 
   const energyData = [
     {
@@ -33,10 +35,25 @@ const AnalyticsPage = () => {
       color: "#3b82f6",
     },
   ].filter((item) => item.value > 0);
-
+  const categoryMap = tasks.reduce<Record<string, number>>((acc, task) => {
+    const category = (task.category || "Без категории").trim() || "Без категории";
+    acc[category] = (acc[category] || 0) + 1;
+    return acc;
+  }, {
+    Работа: 0,
+    Учеба: 0,
+    Быт: 0,
+    Здоровье: 0,
+  });
+  const categoryData = Object.entries(categoryMap)
+    .map(([category, value]) => ({
+      category,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 md:px-8">
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8">
       <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-slate-100">
         Твоя аналитика
       </h1>
@@ -68,64 +85,90 @@ const AnalyticsPage = () => {
         </div>
       </section>
 
-      <section className="hidden min-h-125 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none md:flex">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
-              Лестница успеха
-            </h2>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-              {currentXP} XP
-            </p>
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+            Распределение по энергии
+          </h2>
+          <div className="mt-4 h-[350px] w-full">
+            {energyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={energyData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="34%"
+                    outerRadius="48%"
+                    paddingAngle={0}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {energyData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0f172a",
+                      borderColor: "#1e293b",
+                      borderRadius: "12px",
+                      color: "#f8fafc",
+                    }}
+                    itemStyle={{ color: "#e2e8f0" }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-slate-500 italic">
+                Добавь задачи, чтобы увидеть график
+              </div>
+            )}
           </div>
-          <span className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-300">
-            Уровень: {currentLevel}
-          </span>
         </div>
-        <div className="flex-1 min-h-0">
-          <SuccessStairs currentLevel={currentLevel} visibleSteps={5} />
-        </div>
-      </section>
 
-      <section className="flex h-100 flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
-        <h2 className="mb-4 font-display text-lg font-bold text-slate-900 dark:text-slate-100">
-          Распределение по энергии
-        </h2>
-        <div className="flex-1 w-full">
-          {energyData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={energyData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={120}
-                  paddingAngle={0}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {energyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#0f172a",
-                    borderColor: "#1e293b",
-                    borderRadius: "12px",
-                    color: "#f8fafc",
-                  }}
-                  itemStyle={{ color: "#e2e8f0" }}
-                />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-slate-500 italic">
-              Добавь задачи, чтобы увидеть график
-            </div>
-          )}
+        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+          <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+            Баланс сфер жизни
+          </h2>
+          <div className="mt-4 h-[350px] w-full">
+            {categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={categoryData}>
+                  <PolarGrid stroke="#334155" />
+                  <PolarAngleAxis
+                    dataKey="category"
+                    tick={{ fill: "#94a3b8", fontSize: 12 }}
+                  />
+                  <PolarRadiusAxis
+                    allowDecimals={false}
+                    tick={{ fill: "#94a3b8", fontSize: 11 }}
+                  />
+                  <Radar
+                    dataKey="value"
+                    name="Задачи"
+                    stroke="#818cf8"
+                    fill="#818cf8"
+                    fillOpacity={0.5}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#0f172a",
+                      borderColor: "#1e293b",
+                      borderRadius: "12px",
+                      color: "#f8fafc",
+                    }}
+                    itemStyle={{ color: "#e2e8f0" }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-slate-500 italic">
+                Добавь категории, чтобы увидеть баланс
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </section>

@@ -32,10 +32,16 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CheckSquare, ListChecks, Square, Trash2 } from "lucide-react";
-import { useTaskViewMode } from "../../store/useSettingsStore";
+import {
+  useTaskViewMode,
+  type TaskViewMode,
+} from "../../store/useSettingsStore";
 
 interface TaskListProps {
   onlyActive?: boolean;
+  maxItems?: number;
+  viewMode?: TaskViewMode;
+  onEmptyClick?: () => void;
 }
 
 type PendingTaskDeletion = {
@@ -177,7 +183,12 @@ const TaskDragOverlay = ({
   );
 };
 
-const TaskList = ({ onlyActive = false }: TaskListProps) => {
+const TaskList = ({
+  onlyActive = false,
+  maxItems,
+  viewMode,
+  onEmptyClick,
+}: TaskListProps) => {
   const toggle = useToggleTask();
   const tasks = useTasks();
   const setTasks = useSetTasks();
@@ -206,15 +217,22 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
     })
   );
 
-  const displayedTasks = onlyActive
+  const baseDisplayedTasks = onlyActive
     ? processedTasks.filter((task: Task) => !task.completed)
     : processedTasks;
+  const displayedTasks =
+    typeof maxItems === "number"
+      ? baseDisplayedTasks.slice(0, maxItems)
+      : baseDisplayedTasks;
+  const effectiveTaskViewMode = viewMode ?? taskViewMode;
   const listContainerClass =
-    taskViewMode === "grid"
-      ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+    effectiveTaskViewMode === "grid"
+      ? "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       : "flex flex-col gap-3";
   const sortingStrategy =
-    taskViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy;
+    effectiveTaskViewMode === "grid"
+      ? rectSortingStrategy
+      : verticalListSortingStrategy;
   const activeTask = activeTaskId
     ? displayedTasks.find((task) => task.id === activeTaskId) ?? null
     : null;
@@ -319,6 +337,18 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
     setActiveTaskWidth(null);
   };
 
+  const handleEmptyClick = () => {
+    onEmptyClick?.();
+  };
+
+  const handleEmptyKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onEmptyClick) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+
+    event.preventDefault();
+    onEmptyClick();
+  };
+
   return (
     <>
       <DndContext
@@ -353,7 +383,15 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white px-4 py-12 text-center shadow-sm dark:border-slate-700/50 dark:bg-slate-800/20 dark:shadow-none"
+                  onClick={handleEmptyClick}
+                  onKeyDown={handleEmptyKeyDown}
+                  role={onEmptyClick ? "button" : undefined}
+                  tabIndex={onEmptyClick ? 0 : undefined}
+                  className={`col-span-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-white px-4 py-12 text-center shadow-sm outline-none transition-colors dark:border-slate-700/50 dark:bg-slate-800/20 dark:shadow-none ${
+                    onEmptyClick
+                      ? "cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/60 focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-400/40 dark:hover:border-indigo-500/50 dark:hover:bg-slate-800/40"
+                      : ""
+                  }`}
                 >
                   <div className="w-16 h-16 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mb-4">
                     <svg

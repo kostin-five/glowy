@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import TaskList from "../components/tasks/TaskList";
 import SuccessStairs from "../dashboard/SuccessStairs";
@@ -8,6 +9,15 @@ import MindHubChat from "../components/mind/MindHubChat";
 const DashboardPage = () => {
   const currentLevel = useUserLevel();
   const currentXP = useCurrentXP();
+  const mindHubInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const focusMindHubInput = () => {
+    mindHubInputRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    window.requestAnimationFrame(() => mindHubInputRef.current?.focus());
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -44,7 +54,7 @@ const DashboardPage = () => {
         </div>
 
         <div className="xl:col-span-5">
-          <MindHubChat />
+          <MindHubChat inputRef={mindHubInputRef} />
         </div>
 
         <section className="flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:col-span-4 xl:h-[calc(100vh-12rem)] xl:min-h-160">
@@ -61,7 +71,12 @@ const DashboardPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <TaskList onlyActive={true} />
+            <TaskList
+              onlyActive={true}
+              maxItems={4}
+              viewMode="list"
+              onEmptyClick={focusMindHubInput}
+            />
           </div>
         </section>
       </div>

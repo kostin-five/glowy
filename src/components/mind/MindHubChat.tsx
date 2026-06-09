@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type MutableRefObject,
 } from "react";
 import { Send, Sparkles } from "lucide-react";
 import AiApi, {
@@ -26,6 +27,10 @@ type ChatMessage = {
   role: "user" | "assistant";
   text: string;
 };
+
+interface MindHubChatProps {
+  inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
+}
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -85,7 +90,7 @@ const ChatMessageBubble = ({
   );
 };
 
-const MindHubChat = () => {
+const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const [hubMode, setHubMode] = useState<MindHubMode>("parse");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -158,6 +163,14 @@ const MindHubChat = () => {
   const latestAssistantMessageId = [...messages]
     .reverse()
     .find((message) => message.role === "assistant")?.id;
+
+  const setTextareaRefs = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      textareaRef.current = node;
+      if (inputRef) inputRef.current = node;
+    },
+    [inputRef]
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -317,7 +330,7 @@ const MindHubChat = () => {
         )}
         <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-950/50 dark:shadow-none">
           <textarea
-            ref={textareaRef}
+            ref={setTextareaRefs}
             value={text}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {

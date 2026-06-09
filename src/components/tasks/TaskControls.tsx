@@ -1,16 +1,17 @@
-import { useState } from "react";
 import { LayoutGrid, List, type LucideIcon } from "lucide-react";
 import SortMenu from "../ui/SortMenu";
 import TaskFilter from "./TaskFilter";
-import CreateTaskForm from "./CreateTaskModal";
 import {
   useSetTaskViewMode,
   useTaskViewMode,
   type TaskViewMode,
 } from "../../store/useSettingsStore";
 
-const TaskControls = () => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+interface TaskControlsProps {
+  onCreateClick: () => void;
+}
+
+const TaskControls = ({ onCreateClick }: TaskControlsProps) => {
   const taskViewMode = useTaskViewMode();
   const setTaskViewMode = useSetTaskViewMode();
   const viewOptions: Array<{
@@ -64,17 +65,10 @@ const TaskControls = () => {
       <button
         type="button"
         className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 whitespace-nowrap h-11.5"
-        onClick={() => setIsCreateOpen(true)}
+        onClick={onCreateClick}
       >
         Добавить задачу +
       </button>
-
-      {isCreateOpen && (
-        <CreateTaskForm
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-        />
-      )}
     </div>
   );
 };

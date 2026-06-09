@@ -127,14 +127,21 @@ const stripExactDateFromTitle = (title) =>
 
 const getMindHubRequestPayload = (body) => {
   const message = typeof body?.message === "string" ? body.message.trim() : "";
-  const hubMode = body?.hubMode === "chat" ? "chat" : "parse";
+  const hubMode =
+    body?.hubMode === "chat" || body?.hubMode === "parse"
+      ? body.hubMode
+      : null;
   const messages = Array.isArray(body?.messages) ? body.messages : [];
 
   return { message, hubMode, messages };
 };
 
-const buildValidationError = (message) =>
-  message ? null : "Сообщение не может быть пустым";
+const buildValidationError = (message, hubMode) => {
+  if (!message) return "Сообщение не может быть пустым";
+  if (!hubMode) return "Некорректный режим Хаба мыслей";
+
+  return null;
+};
 
 // ---------------------------------------------------------------------------
 // Лимиты AI-запросов для авторизованных пользователей
@@ -254,8 +261,10 @@ const buildMindHubParsePrompt = (
 - date: всегда формат "DD.MM.YYYY". Если пользователь указал в тексте точную дату или день недели, ты ОБЯЗАН использовать именно её. Текущая дата передается тебе только как точка отсчета для слов "завтра" или "через неделю". Никогда не заменяй явно указанную дату на сегодняшнюю.
 - Если в заголовке задачи есть дата вроде "08.06.2026", "8.06", "08/06/2026" или день недели, перенеси её в поле date и убери из title, если без неё заголовок остаётся понятным.
 - Если дата вообще не указана, только тогда используй сегодняшнюю дату: ${today}.
-- category: определяй по контексту. Подходящие категории: "Здоровье", "Учеба", "Работа", "Быт", "Развитие".
+- category: определяй по контексту. Подходящие категории: "Здоровье", "Учеба", "Работа", "Быт", "Развитие", "Спорт".
 - Если пользователь явно указывает категорию, например пишет "Проект", "Дом", "Учеба", "Спорт", "Работа" и т.д., ты ОБЯЗАН использовать ровно это слово в поле category. Не заменяй его на синонимы и не придумывай свои категории.
+- Физические упражнения и тренировки всегда относятся к категории "Спорт": бег, пробежка, подтягивания, зал, тренировка, спорт, фитнес, упражнения. Никогда не относись их к "Быт".
+- Учебные задачи всегда относятся к категории "Учеба": отчет, отчёт, доклад, курсовая, CYVA, универ, экзамен, тест, преподаватель. Никогда не относись их к "Работа".
 - energyLevel: "high" для сложных и долгих задач вроде "написать курсовую"; "low" для простых вроде "купить хлеб"; "med" для обычных средних задач.
 - priority: по умолчанию "P2"; срочные и важные задачи — "P1"; мелкие необязательные — "P3".
 - Не придумывай лишние задачи.
@@ -306,15 +315,19 @@ const normalizeMindHubPayload = (payload, fallbackDate, sourceMessage = "") => {
 const inferFallbackCategory = (title) => {
   const value = title.toLowerCase();
 
-  if (/врач|здоров|трениров|спорт|лекар|сон|психолог/.test(value)) {
-    return "Здоровье";
+  if (/бег|пробеж|подтяг|зал|трениров|спорт|фитнес|упражнен/.test(value)) {
+    return "Спорт";
   }
 
-  if (/уч|экзамен|тест|препод|курс|диплом|курсов/.test(value)) {
+  if (/уч|экзамен|тест|препод|курс|диплом|курсов|отчет|отчёт|доклад|cyva|универ/.test(value)) {
     return "Учеба";
   }
 
-  if (/работ|проект|презентац|созвон|клиент|отчет|отчёт/.test(value)) {
+  if (/врач|здоров|лекар|сон|психолог/.test(value)) {
+    return "Здоровье";
+  }
+
+  if (/работ|проект|презентац|созвон|клиент/.test(value)) {
     return "Работа";
   }
 
@@ -516,7 +529,7 @@ const stringifyActiveTasks = (tasks) =>
 router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
   try {
     const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
-    const validationError = buildValidationError(message);
+    const validationError = buildValidationError(message, hubMode);
 
     if (validationError) {
       return res.status(400).json({ error: validationError });
@@ -589,7 +602,7 @@ router.post("/analyze", async (req, res) => {
 router.post("/mind-hub", async (req, res) => {
   try {
     const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
-    const validationError = buildValidationError(message);
+    const validationError = buildValidationError(message, hubMode);
 
     if (validationError) {
       return res.status(400).json({ error: validationError });

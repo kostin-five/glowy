@@ -4,12 +4,19 @@ import AppLayout from "./layout/AppLayout";
 import TaskPage from "./pages/TaskPage";
 
 import {
-  useHasAuthHydrated,
   useIsAuthenticated,
   useIsGuest,
   useRestoreAuthSession,
+  useAuthStore,
 } from "./store/useAuthStore";
-import { lazy, Suspense, useEffect, useLayoutEffect, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useToken } from "./store/useAuthStore";
 import RouteLoader from "./components/ui/RouteLoader";
@@ -65,7 +72,9 @@ const ProtectedLayoutRoute = ({
 );
 
 function App() {
-  const hasAuthHydrated = useHasAuthHydrated();
+  const [isHydrated, setIsHydrated] = useState(() =>
+    useAuthStore.persist.hasHydrated()
+  );
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const token = useToken();
@@ -80,10 +89,17 @@ function App() {
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (!hasAuthHydrated) return;
+    const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() =>
+      setIsHydrated(true)
+    );
 
+    return () => unsubFinishHydration();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
     restoreAuthSession();
-  }, [hasAuthHydrated, restoreAuthSession]);
+  }, [isHydrated, restoreAuthSession]);
 
   useEffect(() => {
     if (!isAuthenticated || !token || isGuest) return;
@@ -98,7 +114,7 @@ function App() {
     token,
   ]);
 
-  if (!hasAuthHydrated) {
+  if (!isHydrated) {
     return <RouteLoader className="fixed inset-0 min-h-dvh" />;
   }
 

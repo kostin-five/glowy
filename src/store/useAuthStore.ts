@@ -15,7 +15,6 @@ const isGuestRequestWindowExpired = (resetDate: string | null) => {
 };
 
 interface AuthStore {
-  _hasHydrated: boolean;
   isAuthenticated: boolean;
   isGuest: boolean;
   name: string;
@@ -23,7 +22,6 @@ interface AuthStore {
   token: string | null;
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
-  setHasHydrated: (value: boolean) => void;
   toLogin: (name: string, login: string, token: string) => void;
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
@@ -39,7 +37,6 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
-      _hasHydrated: false,
       isAuthenticated: false,
       isGuest: false,
       name: "",
@@ -47,10 +44,6 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
-      setHasHydrated: (value: boolean) =>
-        set(() => ({
-          _hasHydrated: value,
-        })),
       toLogin: (name: string, login: string, token: string) =>
         set(() => ({
           isAuthenticated: true,
@@ -149,25 +142,12 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) =>
-        Object.fromEntries(
-          Object.entries(state).filter(([key]) => key !== "_hasHydrated")
-        ) as AuthStore,
-      onRehydrateStorage: () => (state) => {
-        useAuthStore.setState({
-          _hasHydrated: true,
-          isAuthenticated: Boolean(state?.token),
-          isGuest: Boolean(state?.token?.startsWith("demo-token-")),
-        });
-      },
     }
   )
 );
 
 export const useIsAuthenticated = () =>
   useAuthStore((state) => state.isAuthenticated);
-export const useHasAuthHydrated = () =>
-  useAuthStore((state) => state._hasHydrated);
 export const useIsGuest = () => useAuthStore((state) => state.isGuest);
 export const useName = () => useAuthStore((state) => state.name);
 export const useLogin = () => useAuthStore((state) => state.login);

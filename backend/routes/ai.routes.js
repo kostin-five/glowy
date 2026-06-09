@@ -31,6 +31,7 @@ const demoMindHubLimiter = rateLimit({
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
+  skipFailedRequests: true,
   message: {
     error:
       "Превышен лимит демо-запросов (7/7). Пожалуйста, зарегистрируйтесь для безлимитного доступа.",
@@ -153,7 +154,7 @@ const buildAiLimitPayload = (count, resetAt) => ({
   resetAt: resetAt.toISOString(),
 });
 
-const consumeAuthenticatedAiRequest = async (userId) => {
+const getAuthenticatedAiRequestLimit = async (userId) => {
   const now = new Date();
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -182,11 +183,26 @@ const consumeAuthenticatedAiRequest = async (userId) => {
     };
   }
 
+  return {
+    allowed: true,
+    count: currentCount,
+    resetAt,
+    limit: buildAiLimitPayload(currentCount, resetAt),
+  };
+};
+
+const consumeAuthenticatedAiRequest = async (userId) => {
+  const currentLimit = await getAuthenticatedAiRequestLimit(userId);
+
+  if (!currentLimit.allowed) {
+    return currentLimit;
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
-      aiRequestsCount: currentCount + 1,
-      aiRequestsResetAt: resetAt,
+      aiRequestsCount: currentLimit.count + 1,
+      aiRequestsResetAt: currentLimit.resetAt,
     },
     select: {
       aiRequestsCount: true,
@@ -207,13 +223,20 @@ const consumeAuthenticatedAiRequest = async (userId) => {
 // JSON helpers для parse-режима
 // ---------------------------------------------------------------------------
 
-const stripJsonFence = (value) =>
-  value
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "")
+const stripJsonFence = (value) => {
+  const trimmed = value.trim();
+  const fencedJsonMatch = trimmed.match(/^```\s*(?:json)?\s*([\s\S]*?)\s*```$/i);
+
+  if (fencedJsonMatch) {
+    return fencedJsonMatch[1].trim();
+  }
+
+  return trimmed
+    .replace(/^\s*```\s*(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/i, "")
+    .replace(/^\s*json\s*(?=[[{])/i, "")
     .trim();
+};
 
 const parseJsonLoose = (value) => {
   const cleaned = stripJsonFence(value);
@@ -608,18 +631,27 @@ router.post("/mind-hub", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
-    const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
+    const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
 
-    if (!aiLimit.allowed) {
+    if (!aiLimitPreview.allowed) {
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
-        limit: aiLimit.limit,
+        limit: aiLimitPreview.limit,
       });
     }
 
     if (hubMode === "chat") {
       try {
         const reply = await getCoachReply(message, messages);
+        const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
+
+        if (!aiLimit.allowed) {
+          return res.status(429).json({
+            error: "Лимит запросов исчерпан.",
+            limit: aiLimit.limit,
+          });
+        }
+
         return res.json({ tasks: [], reply, limit: aiLimit.limit });
       } catch (error) {
         console.error("Mind Hub chat failed:", error);
@@ -630,17 +662,30 @@ router.post("/mind-hub", async (req, res) => {
     const today = formatDateDDMMYYYY(new Date());
     let parsedTasks = [];
     let reply = null;
+    let parsedSuccessfully = false;
 
     try {
       const parsedResult = await parseMindHubTasks(message, today);
       parsedTasks = parsedResult.tasks;
       reply = parsedResult.reply;
+      parsedSuccessfully = true;
     } catch (error) {
       console.error("Mind Hub parsing failed, using fallback:", error);
       parsedTasks = parseMindHubFallback(message, today);
     }
 
     if (!parsedTasks.length) {
+      const aiLimit = parsedSuccessfully
+        ? await consumeAuthenticatedAiRequest(req.user.id)
+        : aiLimitPreview;
+
+      if (!aiLimit.allowed) {
+        return res.status(429).json({
+          error: "Лимит запросов исчерпан.",
+          limit: aiLimit.limit,
+        });
+      }
+
       return res.json({
         tasks: [],
         reply:
@@ -651,6 +696,16 @@ router.post("/mind-hub", async (req, res) => {
     }
 
     const createdTasks = await createMindHubTasks(parsedTasks, req.user.id);
+    const aiLimit = parsedSuccessfully
+      ? await consumeAuthenticatedAiRequest(req.user.id)
+      : aiLimitPreview;
+
+    if (!aiLimit.allowed) {
+      return res.status(429).json({
+        error: "Лимит запросов исчерпан.",
+        limit: aiLimit.limit,
+      });
+    }
 
     res.status(201).json({
       tasks: createdTasks,

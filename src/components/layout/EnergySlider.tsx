@@ -3,10 +3,12 @@ import {
   useCurrentEnergy,
   useUpdateCurrentEnergy,
 } from "../../store/useAuthStore";
+import { useDailyEnergyLimit } from "../../store/useSettingsStore";
 
 export const EnergySlider: React.FC = () => {
   const currentEnergy = useCurrentEnergy();
   const updateCurrentEnergy = useUpdateCurrentEnergy();
+  const dailyEnergyLimit = useDailyEnergyLimit();
   const isCritical = currentEnergy <= 20;
 
   const energyStatuses: Record<number, string> = {
@@ -70,7 +72,7 @@ export const EnergySlider: React.FC = () => {
               : "text-emerald-600 dark:text-emerald-500"
           }`}
         >
-          {currentEnergy}% из 100%
+          {currentEnergy}% из {dailyEnergyLimit}%
         </span>
       </div>
 

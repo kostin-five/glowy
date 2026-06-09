@@ -12,6 +12,7 @@ import {
 import type { Task } from "../types";
 import { useToDemoLogin } from "../store/useAuthStore";
 import { useTaskStore } from "../store/useTaskStore";
+import { useStartRoute } from "../store/useSettingsStore";
 
 const demoTaskPool: Array<Omit<Task, "id">> = [
   {
@@ -69,6 +70,7 @@ const demoTaskPool: Array<Omit<Task, "id">> = [
 const LandingPage = () => {
   const navigate = useNavigate();
   const toDemoLogin = useToDemoLogin();
+  const startRoute = useStartRoute();
 
   const handleDemoLogin = () => {
     const shuffledTasks = [...demoTaskPool].sort(() => Math.random() - 0.5);
@@ -81,7 +83,7 @@ const LandingPage = () => {
     toDemoLogin();
     useTaskStore.getState().setTasks(demoTasks);
     useTaskStore.getState().setUserProgress({ xp: 40, level: 1 });
-    navigate("/dashboard");
+    navigate(startRoute);
   };
 
   return (

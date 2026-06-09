@@ -6,6 +6,7 @@ import { useToLogin } from "../store/useAuthStore";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
+import { useStartRoute } from "../store/useSettingsStore";
 
 const LoginPage = () => {
   const [login, setLogin] = useState<string>("");
@@ -16,6 +17,7 @@ const LoginPage = () => {
   const toLogin = useToLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [showWakeupToast, setShowWakeupToast] = useState(false);
+  const startRoute = useStartRoute();
 
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +32,7 @@ const LoginPage = () => {
     try {
       const data = await AuthApi.loginRequest({ login, password });
       toLogin(data.name, login, data.token);
-      navigate("/dashboard");
+      navigate(startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
         setError(e.response?.data?.error || "Неверный логин или пароль");

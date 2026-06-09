@@ -3,7 +3,6 @@ import {
   BarChart3,
   CheckSquare,
   LayoutDashboard,
-  LogOut,
   Settings,
   Trophy,
   User,
@@ -21,11 +20,6 @@ const SidebarContent = ({ location }: { location: Location }) => {
     { to: "/settings", label: "Настройки", icon: Settings },
   ];
   const name = useName();
-
-  const handleLogout = () => {
-    localStorage.removeItem("auth-storage");
-    window.location.pathname = "/";
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -67,21 +61,13 @@ const SidebarContent = ({ location }: { location: Location }) => {
           </Link>
         ))}
       </nav>
-      <div className="flex items-center gap-3 mt-auto">
-        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
+      <div className="mt-auto flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
           <User size={14} className="text-slate-600 dark:text-slate-400" />
           <span className="text-s max-w-20 truncate font-medium text-slate-700 dark:text-slate-200">
             {name}
           </span>
         </div>
-
-        <button
-          onClick={handleLogout}
-          className="cursor-pointer rounded-lg p-2 text-slate-700 transition-colors hover:bg-red-500/10 hover:text-red-500 active:text-red-500 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-red-400"
-          title="Выйти"
-        >
-          <LogOut size={20} />
-        </button>
       </div>
     </div>
   );

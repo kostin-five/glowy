@@ -243,9 +243,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Создать задачу">
       <form
-        className="flex flex-col
-       w-full gap-4
-       "
+        className="flex w-full flex-col gap-4"
         onSubmit={sendTask}
       >
         <input

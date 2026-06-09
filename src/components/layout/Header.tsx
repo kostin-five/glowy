@@ -1,16 +1,11 @@
 import { Link } from "react-router-dom";
 import { useName } from "../../store/useAuthStore";
 import { useUserLevel } from "../../store/useTaskStore";
-import { LogOut, User } from "lucide-react";
+import { User } from "lucide-react";
 
 const Header = () => {
   const name = useName();
   const currentLevel = useUserLevel();
-
-  const handleLogout = () => {
-    localStorage.removeItem("auth-storage");
-    window.location.pathname = "/";
-  };
 
   return (
     <header className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 lg:hidden">
@@ -42,13 +37,6 @@ const Header = () => {
           </span>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-500 active:text-red-500 dark:text-slate-400 dark:hover:bg-slate-800/40 dark:hover:text-red-400"
-          title="Выйти"
-        >
-          <LogOut size={16} />
-        </button>
       </div>
     </header>
   );

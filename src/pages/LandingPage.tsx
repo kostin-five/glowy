@@ -12,6 +12,7 @@ import {
 import type { Task } from "../types";
 import { useToDemoLogin } from "../store/useAuthStore";
 import { useTaskStore } from "../store/useTaskStore";
+import { useStartRoute } from "../store/useSettingsStore";
 
 const demoTaskPool: Array<Omit<Task, "id">> = [
   {
@@ -69,6 +70,7 @@ const demoTaskPool: Array<Omit<Task, "id">> = [
 const LandingPage = () => {
   const navigate = useNavigate();
   const toDemoLogin = useToDemoLogin();
+  const startRoute = useStartRoute();
 
   const handleDemoLogin = () => {
     const shuffledTasks = [...demoTaskPool].sort(() => Math.random() - 0.5);
@@ -81,25 +83,25 @@ const LandingPage = () => {
     toDemoLogin();
     useTaskStore.getState().setTasks(demoTasks);
     useTaskStore.getState().setUserProgress({ xp: 40, level: 1 });
-    navigate("/dashboard");
+    navigate(startRoute);
   };
 
   return (
-    <main className="min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+    <main className="min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
       <section className="relative flex min-h-screen flex-col">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(79,70,229,0.25),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.18),transparent_30%)]" />
-        <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-6 lg:px-8">
+        <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
           <header className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <img
                 src="/Glowy.png"
                 alt="Glowy"
-                className="h-10 w-10 object-contain"
+                className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
               />
-              <span className="font-display text-2xl font-black italic text-indigo-400">
+              <span className="truncate font-display text-xl font-black italic text-indigo-400 sm:text-2xl">
                 GLOWY<span className="text-slate-100">.AI</span>
               </span>
-            </Link>
+            </div>
             <Link
               to="/login"
               className="hidden items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-indigo-400 hover:text-white sm:flex"
@@ -109,16 +111,18 @@ const LandingPage = () => {
             </Link>
           </header>
 
-          <div className="grid flex-1 items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr]">
-            <div>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-2 text-sm font-semibold text-indigo-200">
-                <Sparkles size={16} />
-                Таск-трекер, который бережет энергию
+          <div className="grid flex-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="min-w-0">
+              <div className="mb-6 inline-flex max-w-full items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-200 sm:px-4 sm:text-sm">
+                <Sparkles size={16} className="shrink-0" />
+                <span className="min-w-0 whitespace-normal">
+                  Таск-трекер, который бережет энергию
+                </span>
               </div>
-              <h1 className="font-display max-w-4xl text-5xl font-black leading-tight tracking-tight text-white md:text-7xl">
+              <h1 className="max-w-4xl text-wrap font-display text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl md:text-7xl">
                 Превращай хаос мыслей в спокойный план дня
               </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
                 Glowy помогает выгрузить дела из головы, оценить
                 энергозатратность задач и двигаться без перегруза. ИИ-ассистент
                 разбирает мысли, создает задачи и подсказывает мягкий фокус.
@@ -127,14 +131,14 @@ const LandingPage = () => {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-bold text-white shadow-[0_0_28px_rgba(79,70,229,0.35)] transition-colors hover:bg-indigo-500"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 font-bold text-white shadow-[0_0_28px_rgba(79,70,229,0.35)] transition-colors hover:bg-indigo-500 sm:w-auto sm:px-6"
                 >
                   Регистрация
                   <ArrowRight size={18} />
                 </Link>
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-6 py-3 font-bold text-slate-100 transition-colors hover:border-indigo-400"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-5 py-3 font-bold text-slate-100 transition-colors hover:border-indigo-400 sm:w-auto sm:px-6"
                 >
                   <LogIn size={18} />
                   Войти
@@ -142,7 +146,7 @@ const LandingPage = () => {
                 <button
                   type="button"
                   onClick={handleDemoLogin}
-                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-6 py-3 font-bold text-cyan-100 transition-colors hover:bg-cyan-400/15"
+                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-5 py-3 font-bold text-cyan-100 transition-colors hover:bg-cyan-400/15 sm:w-auto sm:px-6"
                 >
                   <PlayCircle size={18} />
                   Демо-вход
@@ -156,14 +160,16 @@ const LandingPage = () => {
               </div>
             </div>
 
-            <div className="relative">
-              <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-5 shadow-2xl backdrop-blur">
+            <div className="relative min-w-0">
+              <div className="w-full max-w-full rounded-[1.5rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur sm:rounded-[2rem] sm:p-5">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/15">
                     <img src="/Glowy.png" alt="" className="h-8 w-8" />
                   </div>
-                  <div>
-                    <p className="font-display text-xl font-bold">Пункт управления</p>
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-lg font-bold sm:text-xl">
+                      Пункт управления
+                    </p>
                     <p className="text-sm text-slate-400">Демо-пространство Glowy</p>
                   </div>
                 </div>
@@ -184,13 +190,15 @@ const LandingPage = () => {
                   ].map(([priority, title, category]) => (
                     <div
                       key={title}
-                      className="flex items-center justify-between rounded-2xl border-l-4 border-l-indigo-500 bg-slate-800/70 p-4"
+                      className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border-l-4 border-l-indigo-500 bg-slate-800/70 p-4"
                     >
-                      <div>
-                        <p className="font-semibold text-slate-100">{title}</p>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-100">
+                          {title}
+                        </p>
                         <p className="text-xs text-slate-400">{category}</p>
                       </div>
-                      <span className="rounded-lg bg-slate-700 px-2 py-1 text-sm">
+                      <span className="shrink-0 rounded-lg bg-slate-700 px-2 py-1 text-sm">
                         {priority}
                       </span>
                     </div>
@@ -200,13 +208,24 @@ const LandingPage = () => {
             </div>
           </div>
 
-          <footer className="relative z-10 flex flex-col gap-3 border-t border-slate-800 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <span>© 2026 Glowy.AI</span>
-            <div className="flex gap-4">
-              <Link to="/privacy" className="hover:text-slate-200">
+          <footer className="relative z-10 flex flex-col gap-5 border-t border-slate-800 py-6 text-sm text-slate-500 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-1">
+              <span>Версия: v1.4.0</span>
+              <span>Поддержка: contact@example.test</span>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <a
+                href="https://t.me/glowy_ai"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-indigo-300 transition-colors hover:text-indigo-200"
+              >
+                Новости проекта в Telegram (@glowy_ai)
+              </a>
+              <Link to="/privacy" className="transition-colors hover:text-slate-200">
                 Политика конфиденциальности
               </Link>
-              <Link to="/terms" className="hover:text-slate-200">
+              <Link to="/terms" className="transition-colors hover:text-slate-200">
                 Условия использования
               </Link>
             </div>
@@ -226,7 +245,7 @@ const Feature = ({
   title: string;
   text: string;
 }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+  <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
     <Icon size={20} className="mb-3 text-indigo-300" />
     <p className="font-semibold text-slate-100">{title}</p>
     <p className="mt-1 text-sm leading-5 text-slate-400">{text}</p>

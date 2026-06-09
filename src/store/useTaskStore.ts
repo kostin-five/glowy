@@ -21,6 +21,7 @@ import axios from "axios";
 interface TaskStore {
   tasks: Task[];
   filterStatus: FilterStatus;
+  searchQuery: string;
   sortField: SortField;
   sortDirection: SortDirection;
   userLevel: number;
@@ -33,6 +34,7 @@ interface TaskStore {
   restoreTaskLocally: (task: Task, index: number) => void;
   confirmTaskDeletion: (id: number) => Promise<void>;
   setFilterStatus: (filterStatus: FilterStatus) => void;
+  setSearchQuery: (searchQuery: string) => void;
   setSort: (sortField: SortField, sortDirection: SortDirection) => void;
   createTask: (newTask: TaskDraft) => Promise<Task | undefined>;
   deleteTask: (id: number) => Promise<void>;
@@ -135,6 +137,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   tasks: initialTasks,
 
   filterStatus: "Активные",
+  searchQuery: "",
   sortField: null,
   sortDirection: "asc",
 
@@ -195,6 +198,10 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   setFilterStatus: (filterStatus: FilterStatus) =>
     set(() => ({
       filterStatus: filterStatus,
+    })),
+  setSearchQuery: (searchQuery: string) =>
+    set(() => ({
+      searchQuery,
     })),
   setSort: (sortField: SortField, sortDirection: SortDirection) =>
     set(() => ({
@@ -581,11 +588,14 @@ export const useTaskStore = create<TaskStore>()(
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
 export const useFilter = () => useTaskStore((state) => state.filterStatus);
+export const useSearchQuery = () => useTaskStore((state) => state.searchQuery);
 export const useSortField = () => useTaskStore((state) => state.sortField);
 export const useSortDirection = () =>
   useTaskStore((state) => state.sortDirection);
 export const useSetFilter = () =>
   useTaskStore((state) => state.setFilterStatus);
+export const useSetSearchQuery = () =>
+  useTaskStore((state) => state.setSearchQuery);
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
 export const useCurrentXP = () => useTaskStore((state) => state.currentXP);
 export const useIsLoading = () => useTaskStore((state) => state.isLoading);

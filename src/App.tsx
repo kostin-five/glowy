@@ -20,7 +20,11 @@ import {
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useToken } from "./store/useAuthStore";
 import RouteLoader from "./components/ui/RouteLoader";
-import { useIsDarkMode } from "./store/useSettingsStore";
+import {
+  useSetDarkMode,
+  useStartRoute,
+  useThemeMode,
+} from "./store/useSettingsStore";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -49,8 +53,10 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
 const PublicRoute = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
+  const startRoute = useStartRoute();
+
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={startRoute} replace />;
   }
 
   return <>{children}</>;
@@ -89,13 +95,32 @@ function App() {
   const token = useToken();
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
-  const isDarkMode = useIsDarkMode();
+  const themeMode = useThemeMode();
+  const setDarkMode = useSetDarkMode();
+  const startRoute = useStartRoute();
   const restoreAuthSession = useRestoreAuthSession();
 
   useLayoutEffect(() => {
-    document.documentElement.classList.toggle("dark", isDarkMode);
-    document.body.classList.toggle("dark", isDarkMode);
-  }, [isDarkMode]);
+    const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = () => {
+      const shouldUseDark =
+        themeMode === "system"
+          ? systemThemeMedia.matches
+          : themeMode === "dark";
+
+      document.documentElement.classList.toggle("dark", shouldUseDark);
+      document.body.classList.toggle("dark", shouldUseDark);
+      setDarkMode(shouldUseDark);
+    };
+
+    applyTheme();
+
+    if (themeMode !== "system") return;
+
+    systemThemeMedia.addEventListener("change", applyTheme);
+    return () => systemThemeMedia.removeEventListener("change", applyTheme);
+  }, [setDarkMode, themeMode]);
 
   useEffect(() => {
     const unsubFinishHydration = useAuthStore.persist.onFinishHydration(() =>
@@ -221,7 +246,7 @@ function App() {
           path="/success-stairs"
           element={<Navigate to="/stairs" replace />}
         />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to={startRoute} replace />} />
       </Routes>
     </BrowserRouter>
   );

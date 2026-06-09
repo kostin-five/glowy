@@ -23,6 +23,7 @@ interface AuthStore {
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
   toLogin: (name: string, login: string, token: string) => void;
+  restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
   consumeGuestRequest: () => boolean;
@@ -51,6 +52,15 @@ export const useAuthStore = create<AuthStore>()(
           login: login,
           token: token,
         })),
+      restoreAuthSession: () =>
+        set((state) => {
+          if (!state.token) return state;
+
+          return {
+            isAuthenticated: true,
+            isGuest: state.token.startsWith("demo-token-"),
+          };
+        }),
       toDemoLogin: () =>
         set(() => ({
           isAuthenticated: true,
@@ -132,6 +142,12 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (!state?.token) return;
+
+        state.isAuthenticated = true;
+        state.isGuest = state.token.startsWith("demo-token-");
+      },
     }
   )
 );
@@ -142,6 +158,8 @@ export const useIsGuest = () => useAuthStore((state) => state.isGuest);
 export const useName = () => useAuthStore((state) => state.name);
 export const useLogin = () => useAuthStore((state) => state.login);
 export const useToLogin = () => useAuthStore((state) => state.toLogin);
+export const useRestoreAuthSession = () =>
+  useAuthStore((state) => state.restoreAuthSession);
 export const useToDemoLogin = () =>
   useAuthStore((state) => state.toDemoLogin);
 export const useToLogout = () => useAuthStore((state) => state.toLogout);

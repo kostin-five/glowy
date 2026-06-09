@@ -3,7 +3,11 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import TaskPage from "./pages/TaskPage";
 
-import { useIsAuthenticated, useIsGuest } from "./store/useAuthStore";
+import {
+  useIsAuthenticated,
+  useIsGuest,
+  useRestoreAuthSession,
+} from "./store/useAuthStore";
 import { lazy, Suspense, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import { useToken } from "./store/useAuthStore";
@@ -66,11 +70,16 @@ function App() {
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const isDarkMode = useIsDarkMode();
+  const restoreAuthSession = useRestoreAuthSession();
 
   useLayoutEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
     document.body.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    restoreAuthSession();
+  }, [restoreAuthSession]);
 
   useEffect(() => {
     if (!isAuthenticated || !token || isGuest) return;

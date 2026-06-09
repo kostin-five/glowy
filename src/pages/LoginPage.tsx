@@ -15,11 +15,17 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const toLogin = useToLogin();
   const [showPassword, setShowPassword] = useState(false);
+  const [showWakeupToast, setShowWakeupToast] = useState(false);
 
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
+    setShowWakeupToast(false);
+
+    const wakeupToastTimer = window.setTimeout(() => {
+      setShowWakeupToast(true);
+    }, 5000);
 
     try {
       const data = await AuthApi.loginRequest({ login, password });
@@ -32,7 +38,9 @@ const LoginPage = () => {
         setError("Что-то пошло не так");
       }
     } finally {
+      window.clearTimeout(wakeupToastTimer);
       setIsLoading(false);
+      setShowWakeupToast(false);
     }
   };
 
@@ -127,6 +135,15 @@ const LoginPage = () => {
           </div>
         </form>
       </motion.div>
+
+      {showWakeupToast && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-2xl border border-indigo-400/30 bg-slate-900/95 px-4 py-3 text-center text-sm font-medium text-slate-100 shadow-[0_0_30px_rgba(79,70,229,0.25)] backdrop-blur-xl"
+        >
+          Сервер просыпается 😴 Это может занять до 60 секунд...
+        </div>
+      )}
     </div>
   );
 };

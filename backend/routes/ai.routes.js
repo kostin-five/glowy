@@ -42,6 +42,8 @@ const demoMindHubLimiter = rateLimit({
 // ---------------------------------------------------------------------------
 
 const GEMINI_MODEL = "gemini-2.5-flash";
+const AUTHENTICATED_AI_REQUEST_LIMIT = 25;
+const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const taskInclude = {
   subtasks: {
@@ -80,7 +82,9 @@ const formatDateDDMMYYYY = (date) =>
 
 const normalizeDate = (value, fallbackDate) => {
   const rawDate = typeof value === "string" ? value.trim() : "";
-  const dottedDateMatch = rawDate.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  const dottedDateMatch = rawDate.match(
+    /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/
+  );
 
   if (dottedDateMatch) {
     const [, day, month, year] = dottedDateMatch;
@@ -101,7 +105,9 @@ const normalizeDate = (value, fallbackDate) => {
 
 const extractExactDateFromText = (value) => {
   const text = typeof value === "string" ? value : "";
-  const match = text.match(/(?:^|\D)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:\D|$)/);
+  const match = text.match(
+    /(?:^|\D)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:\D|$)/
+  );
 
   if (!match) return null;
 
@@ -129,6 +135,66 @@ const getMindHubRequestPayload = (body) => {
 
 const buildValidationError = (message) =>
   message ? null : "Сообщение не может быть пустым";
+
+// ---------------------------------------------------------------------------
+// Лимиты AI-запросов для авторизованных пользователей
+// ---------------------------------------------------------------------------
+
+const buildAiLimitPayload = (count, resetAt) => ({
+  limit: AUTHENTICATED_AI_REQUEST_LIMIT,
+  remaining: Math.max(0, AUTHENTICATED_AI_REQUEST_LIMIT - count),
+  resetAt: resetAt.toISOString(),
+});
+
+const consumeAuthenticatedAiRequest = async (userId) => {
+  const now = new Date();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      aiRequestsCount: true,
+      aiRequestsResetAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error(`User ${userId} not found for AI limit check`);
+  }
+
+  const isWindowExpired =
+    !user.aiRequestsResetAt ||
+    user.aiRequestsResetAt.getTime() <= now.getTime();
+  const currentCount = isWindowExpired ? 0 : user.aiRequestsCount;
+  const resetAt = isWindowExpired
+    ? new Date(now.getTime() + AI_REQUEST_WINDOW_MS)
+    : user.aiRequestsResetAt;
+
+  if (currentCount >= AUTHENTICATED_AI_REQUEST_LIMIT) {
+    return {
+      allowed: false,
+      limit: buildAiLimitPayload(currentCount, resetAt),
+    };
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      aiRequestsCount: currentCount + 1,
+      aiRequestsResetAt: resetAt,
+    },
+    select: {
+      aiRequestsCount: true,
+      aiRequestsResetAt: true,
+    },
+  });
+
+  return {
+    allowed: true,
+    limit: buildAiLimitPayload(
+      updatedUser.aiRequestsCount,
+      updatedUser.aiRequestsResetAt
+    ),
+  };
+};
 
 // ---------------------------------------------------------------------------
 // JSON helpers для parse-режима
@@ -170,7 +236,10 @@ const parseJsonLoose = (value) => {
 // Логика парсинга задач: промпт, нормализация и сохранение в БД
 // ---------------------------------------------------------------------------
 
-const buildMindHubParsePrompt = (message, today) => `Ты — эксперт по планированию задач в приложении Glowy.
+const buildMindHubParsePrompt = (
+  message,
+  today
+) => `Ты — эксперт по планированию задач в приложении Glowy.
 Твоя цель — преобразовать хаотичный текст пользователя в строгий JSON.
 
 Сегодня: ${today}. Используй эту дату ТОЛЬКО как точку отсчёта для относительных формулировок вроде "сегодня", "завтра", "через неделю", "в пятницу", "на выходных".
@@ -402,7 +471,10 @@ const getMindHubAiErrorResponse = () => ({
 // Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу
 // ---------------------------------------------------------------------------
 
-const buildTaskAnalysisPrompt = (tasksString, currentEnergy) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
+const buildTaskAnalysisPrompt = (
+  tasksString,
+  currentEnergy
+) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. 
 Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
 
 ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
@@ -426,9 +498,7 @@ const stringifyActiveTasks = (tasks) =>
         ? task.subtasks
             .map(
               (subtask) =>
-                `${subtask.completed ? "готово" : "активно"}: ${
-                  subtask.title
-                }`
+                `${subtask.completed ? "готово" : "активно"}: ${subtask.title}`
             )
             .join("; ")
         : "подзадач нет";
@@ -525,10 +595,19 @@ router.post("/mind-hub", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
+    const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
+
+    if (!aiLimit.allowed) {
+      return res.status(429).json({
+        error: "Лимит запросов исчерпан.",
+        limit: aiLimit.limit,
+      });
+    }
+
     if (hubMode === "chat") {
       try {
         const reply = await getCoachReply(message, messages);
-        return res.json({ tasks: [], reply });
+        return res.json({ tasks: [], reply, limit: aiLimit.limit });
       } catch (error) {
         console.error("Mind Hub chat failed:", error);
         return res.status(503).json(getMindHubAiErrorResponse());
@@ -554,6 +633,7 @@ router.post("/mind-hub", async (req, res) => {
         reply:
           reply ||
           "Я рядом. Похоже, сейчас здесь больше чувства, чем конкретные задачи. Можно просто выдохнуть и написать ещё немного.",
+        limit: aiLimit.limit,
       });
     }
 
@@ -562,6 +642,7 @@ router.post("/mind-hub", async (req, res) => {
     res.status(201).json({
       tasks: createdTasks,
       reply: null,
+      limit: aiLimit.limit,
     });
   } catch (error) {
     console.error("Mind Hub request failed:", error);

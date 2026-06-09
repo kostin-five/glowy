@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { Task } from "../types";
-import { useAuthStore } from "../store/useAuthStore";
+import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 const url = "https://glowy-backend.onrender.com/api/ai";
 
 export type MindHubMode = "chat" | "parse";
@@ -8,17 +8,46 @@ export type MindHubMessage = {
   role: "user" | "assistant";
   text: string;
 };
+export type MindHubLimit = {
+  limit: number;
+  remaining: number;
+  resetAt: string | null;
+};
+
+export type MindHubResponse = {
+  tasks: Task[];
+  reply: string | null;
+  limit?: MindHubLimit;
+};
 
 const aiInstance = axios.create({
   baseURL: url,
 });
 
+const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GUEST_LIMIT_REPLY =
   "Упс, твои демо-запросы на сегодня всё! 🐣 Зарегистрируйся бесплатно, чтобы сохранить свои задачи и общаться со мной без ограничений.";
 
-const getGuestLimitResponse = () => ({
+const getGuestMindHubLimit = (): MindHubLimit => {
+  const authStore = useAuthStore.getState();
+  const resetAt = authStore.guestRequestsResetDate
+    ? new Date(
+        new Date(authStore.guestRequestsResetDate).getTime() +
+          GUEST_REQUEST_WINDOW_MS
+      ).toISOString()
+    : null;
+
+  return {
+    limit: GUEST_REQUEST_LIMIT,
+    remaining: Math.max(0, GUEST_REQUEST_LIMIT - authStore.guestRequestsCount),
+    resetAt,
+  };
+};
+
+const getGuestLimitResponse = (): MindHubResponse => ({
   tasks: [],
   reply: GUEST_LIMIT_REPLY,
+  limit: getGuestMindHubLimit(),
 });
 
 const normalizeGuestMindHubTasks = (tasks: Partial<Task>[]): Task[] =>
@@ -64,10 +93,7 @@ export default class AiApi {
     message: string,
     hubMode: MindHubMode = "parse",
     messages: MindHubMessage[] = []
-  ): Promise<{
-    tasks: Task[];
-    reply: string | null;
-  }> {
+  ): Promise<MindHubResponse> {
     const authStore = useAuthStore.getState();
 
     if (authStore.isGuest) {
@@ -85,6 +111,7 @@ export default class AiApi {
         return {
           tasks: normalizeGuestMindHubTasks(response.data.tasks ?? []),
           reply: response.data.reply ?? null,
+          limit: getGuestMindHubLimit(),
         };
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 429) {
@@ -96,11 +123,23 @@ export default class AiApi {
       }
     }
 
-    const response = await aiInstance.post("/mind-hub", {
-      message,
-      hubMode,
-      messages,
-    });
-    return response.data;
+    try {
+      const response = await aiInstance.post("/mind-hub", {
+        message,
+        hubMode,
+        messages,
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        return {
+          tasks: [],
+          reply: error.response.data?.error ?? "Лимит запросов исчерпан.",
+          limit: error.response.data?.limit,
+        };
+      }
+
+      throw error;
+    }
   }
 }

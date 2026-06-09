@@ -1,14 +1,25 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent,
 } from "react";
 import { Send, Sparkles } from "lucide-react";
-import AiApi, { type MindHubMessage, type MindHubMode } from "../../api/AiApi";
+import AiApi, {
+  type MindHubLimit,
+  type MindHubMessage,
+  type MindHubMode,
+} from "../../api/AiApi";
 import { useTaskStore } from "../../store/useTaskStore";
 import useTypewriter from "../../hooks/useTypewriter";
+import {
+  GUEST_REQUEST_LIMIT,
+  useGuestRequestsCount,
+  useGuestRequestsResetDate,
+  useIsGuest,
+} from "../../store/useAuthStore";
 
 type ChatMessage = {
   id: number;
@@ -88,8 +99,29 @@ const MindHubChat = () => {
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(
     () => new Set([1])
   );
+  const [registeredAiLimit, setRegisteredAiLimit] =
+    useState<MindHubLimit | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const isGuest = useIsGuest();
+  const guestRequestsCount = useGuestRequestsCount();
+  const guestRequestsResetDate = useGuestRequestsResetDate();
+
+  const guestAiLimit = useMemo<MindHubLimit | null>(() => {
+    if (!isGuest || !guestRequestsResetDate) return null;
+
+    return {
+      limit: GUEST_REQUEST_LIMIT,
+      remaining: Math.max(0, GUEST_REQUEST_LIMIT - guestRequestsCount),
+      resetAt: new Date(
+        new Date(guestRequestsResetDate).getTime() + 24 * 60 * 60 * 1000
+      ).toISOString(),
+    };
+  }, [guestRequestsCount, guestRequestsResetDate, isGuest]);
+
+  const activeAiLimit = isGuest ? guestAiLimit : registeredAiLimit;
+  const shouldShowAiLimit =
+    Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -155,6 +187,7 @@ const MindHubChat = () => {
         hubMode,
         requestMessages
       );
+      setRegisteredAiLimit(result.limit ?? null);
 
       if (result.tasks.length) {
         const store = useTaskStore.getState();
@@ -262,6 +295,23 @@ const MindHubChat = () => {
             </button>
           ))}
         </div>
+        {shouldShowAiLimit && activeAiLimit && (
+          <p
+            className={`mb-3 rounded-xl border px-3 py-2 text-center text-xs font-medium ${
+              activeAiLimit.remaining === 0
+                ? "border-rose-400/30 bg-rose-500/10 text-rose-600 dark:text-rose-300"
+                : "border-indigo-400/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+            }`}
+          >
+            {activeAiLimit.remaining === 0
+              ? `Лимит запросов исчерпан. Восстановится в ${formatLimitResetTime(
+                  activeAiLimit.resetAt
+                )}.`
+              : `Осталось ${activeAiLimit.remaining} ${getRequestWord(
+                  activeAiLimit.remaining
+                )} к ИИ сегодня.`}
+          </p>
+        )}
         <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-950/50 dark:shadow-none">
           <textarea
             ref={textareaRef}
@@ -294,6 +344,32 @@ const MindHubChat = () => {
       </form>
     </section>
   );
+};
+
+const formatLimitResetTime = (resetAt: string | null) => {
+  if (!resetAt) return "ближайшее время";
+
+  const resetDate = new Date(resetAt);
+  if (Number.isNaN(resetDate.getTime())) return "ближайшее время";
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(resetDate);
+};
+
+const getRequestWord = (count: number) => {
+  const lastDigit = count % 10;
+  const lastTwoDigits = count % 100;
+
+  if (lastDigit === 1 && lastTwoDigits !== 11) return "запрос";
+  if ([2, 3, 4].includes(lastDigit) && ![12, 13, 14].includes(lastTwoDigits)) {
+    return "запроса";
+  }
+
+  return "запросов";
 };
 
 const getTaskWord = (count: number) => {

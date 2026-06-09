@@ -32,10 +32,15 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CheckSquare, ListChecks, Square, Trash2 } from "lucide-react";
-import { useTaskViewMode } from "../../store/useSettingsStore";
+import {
+  useTaskViewMode,
+  type TaskViewMode,
+} from "../../store/useSettingsStore";
 
 interface TaskListProps {
   onlyActive?: boolean;
+  maxItems?: number;
+  viewMode?: TaskViewMode;
 }
 
 type PendingTaskDeletion = {
@@ -177,7 +182,11 @@ const TaskDragOverlay = ({
   );
 };
 
-const TaskList = ({ onlyActive = false }: TaskListProps) => {
+const TaskList = ({
+  onlyActive = false,
+  maxItems,
+  viewMode,
+}: TaskListProps) => {
   const toggle = useToggleTask();
   const tasks = useTasks();
   const setTasks = useSetTasks();
@@ -206,15 +215,22 @@ const TaskList = ({ onlyActive = false }: TaskListProps) => {
     })
   );
 
-  const displayedTasks = onlyActive
+  const baseDisplayedTasks = onlyActive
     ? processedTasks.filter((task: Task) => !task.completed)
     : processedTasks;
+  const displayedTasks =
+    typeof maxItems === "number"
+      ? baseDisplayedTasks.slice(0, maxItems)
+      : baseDisplayedTasks;
+  const effectiveTaskViewMode = viewMode ?? taskViewMode;
   const listContainerClass =
-    taskViewMode === "grid"
-      ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+    effectiveTaskViewMode === "grid"
+      ? "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       : "flex flex-col gap-3";
   const sortingStrategy =
-    taskViewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy;
+    effectiveTaskViewMode === "grid"
+      ? rectSortingStrategy
+      : verticalListSortingStrategy;
   const activeTask = activeTaskId
     ? displayedTasks.find((task) => task.id === activeTaskId) ?? null
     : null;

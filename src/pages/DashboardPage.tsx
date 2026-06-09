@@ -61,7 +61,7 @@ const DashboardPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <TaskList onlyActive={true} />
+            <TaskList onlyActive={true} maxItems={4} viewMode="list" />
           </div>
         </section>
       </div>

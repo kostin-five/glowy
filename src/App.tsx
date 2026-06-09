@@ -4,6 +4,7 @@ import AppLayout from "./layout/AppLayout";
 import TaskPage from "./pages/TaskPage";
 
 import {
+  useHasAuthHydrated,
   useIsAuthenticated,
   useIsGuest,
   useRestoreAuthSession,
@@ -64,6 +65,7 @@ const ProtectedLayoutRoute = ({
 );
 
 function App() {
+  const hasAuthHydrated = useHasAuthHydrated();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const token = useToken();
@@ -78,8 +80,10 @@ function App() {
   }, [isDarkMode]);
 
   useEffect(() => {
+    if (!hasAuthHydrated) return;
+
     restoreAuthSession();
-  }, [restoreAuthSession]);
+  }, [hasAuthHydrated, restoreAuthSession]);
 
   useEffect(() => {
     if (!isAuthenticated || !token || isGuest) return;
@@ -93,6 +97,10 @@ function App() {
     isGuest,
     token,
   ]);
+
+  if (!hasAuthHydrated) {
+    return <RouteLoader className="fixed inset-0 min-h-dvh" />;
+  }
 
   return (
     <BrowserRouter>

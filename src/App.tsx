@@ -47,6 +47,15 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   return <>{children}</>;
 };
 
+const PublicRoute = ({ children }: { children: ReactNode }) => {
+  const isAuthenticated = useIsAuthenticated();
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const ProtectedLayoutRoute = ({
   children,
   lazy = true,
@@ -124,9 +133,11 @@ function App() {
         <Route
           path="/"
           element={
-            <PublicLazyRoute>
-              <LandingPage />
-            </PublicLazyRoute>
+            <PublicRoute>
+              <PublicLazyRoute>
+                <LandingPage />
+              </PublicLazyRoute>
+            </PublicRoute>
           }
         />
         <Route
@@ -148,17 +159,21 @@ function App() {
         <Route
           path="/login"
           element={
-            <PublicLazyRoute>
-              <LoginPage />
-            </PublicLazyRoute>
+            <PublicRoute>
+              <PublicLazyRoute>
+                <LoginPage />
+              </PublicLazyRoute>
+            </PublicRoute>
           }
         />
         <Route
           path="/register"
           element={
-            <PublicLazyRoute>
-              <RegisterPage />
-            </PublicLazyRoute>
+            <PublicRoute>
+              <PublicLazyRoute>
+                <RegisterPage />
+              </PublicLazyRoute>
+            </PublicRoute>
           }
         />
 

@@ -18,11 +18,11 @@ interface AuthStore {
   isAuthenticated: boolean;
   isGuest: boolean;
   name: string;
-  login: string | null;
+  email: string | null;
   token: string | null;
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
-  toLogin: (name: string, login: string, token: string) => void;
+  toLogin: (name: string, email: string, token: string) => void;
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
@@ -40,16 +40,16 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       isGuest: false,
       name: "",
-      login: null,
+      email: null,
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
-      toLogin: (name: string, login: string, token: string) =>
+      toLogin: (name: string, email: string, token: string) =>
         set(() => ({
           isAuthenticated: true,
           isGuest: false,
           name: name,
-          login: login,
+          email: email,
           token: token,
         })),
       restoreAuthSession: () =>
@@ -66,7 +66,7 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: true,
           isGuest: true,
           name: "Демо",
-          login: "demo",
+          email: "demo",
           token: `demo-token-${Date.now()}`,
           currentEnergy: 100,
         })),
@@ -75,7 +75,7 @@ export const useAuthStore = create<AuthStore>()(
           isAuthenticated: false,
           isGuest: false,
           name: "",
-          login: null,
+          email: null,
           token: null,
         })),
       consumeGuestRequest: () => {
@@ -142,6 +142,19 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<AuthStore> & {
+          login?: string | null;
+        };
+
+        if (!state.email && state.login) {
+          state.email = state.login;
+        }
+
+        delete state.login;
+        return state;
+      },
     }
   )
 );
@@ -150,7 +163,7 @@ export const useIsAuthenticated = () =>
   useAuthStore((state) => state.isAuthenticated);
 export const useIsGuest = () => useAuthStore((state) => state.isGuest);
 export const useName = () => useAuthStore((state) => state.name);
-export const useLogin = () => useAuthStore((state) => state.login);
+export const useEmail = () => useAuthStore((state) => state.email);
 export const useToLogin = () => useAuthStore((state) => state.toLogin);
 export const useRestoreAuthSession = () =>
   useAuthStore((state) => state.restoreAuthSession);

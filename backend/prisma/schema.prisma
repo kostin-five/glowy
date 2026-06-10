@@ -27,7 +27,7 @@ model Task {
 model User {
   id Int @id @default(autoincrement())
   name String
-  login String @unique
+  email String @unique
   password String
   currentEnergy Int @default(100) @map("current_energy")
   aiRequestsCount Int @default(0) @map("ai_requests_count")

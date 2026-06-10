@@ -20,6 +20,10 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 
+const getAuthEmail = (body) => {
+  return String(body.email || body.login || "").trim().toLowerCase();
+};
+
 const generateAccessToken = (id) => {
   const payload = {
     id,
@@ -32,7 +36,10 @@ router.post(
   "/register",
   [
     check("name", "Имя пользователя не может быть пустым").notEmpty(),
-    check("login", "Логин пользователя не может быть пустым").notEmpty(),
+    check("email", "Укажите корректную почту").custom((_, { req }) => {
+      const email = getAuthEmail(req.body);
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }),
     check(
       "password",
       "Пароль должен быть больше 4 и меньше 20 символов"
@@ -46,17 +53,18 @@ router.post(
           .status(400)
           .json({ message: "Ошибка при регистрации", errors: errors.array() });
       }
-      const { name, login, password } = req.body;
-      const candidate = await prisma.user.findUnique({ where: { login } });
+      const { name, password } = req.body;
+      const email = getAuthEmail(req.body);
+      const candidate = await prisma.user.findUnique({ where: { email } });
       if (candidate) {
         res
           .status(400)
-          .json({ error: "Пользователь с таким логином уже существует" });
+          .json({ error: "Пользователь с такой почтой уже существует" });
         return;
       }
       const hashPassword = bcrypt.hashSync(password, 7);
       const newUser = await prisma.user.create({
-        data: { name, login, password: hashPassword },
+        data: { name, email, password: hashPassword },
       });
       res.status(201).json(newUser);
     } catch (e) {
@@ -68,8 +76,14 @@ router.post(
 
 router.post("/login", async (req, res) => {
   try {
-    const { login, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { login } });
+    const { password } = req.body;
+    const email = getAuthEmail(req.body);
+
+    if (!email) {
+      return res.status(400).json({ error: "Укажите почту" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
       return res.status(400).json({ error: `Пользователь не найден` });
@@ -84,7 +98,7 @@ router.post("/login", async (req, res) => {
     res.status(200).json({
       token: token,
       name: user.name,
-      login: user.login,
+      email: user.email,
       xp: user.xp,
       level: user.level,
     });

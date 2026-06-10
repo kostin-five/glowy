@@ -48,12 +48,12 @@ export const schemaTaskDraft = schemaTask
 
 export const schemaAuthData = z.object({
   name: z.string(),
-  login: z.string(),
+  email: z.string().email(),
   password: z.string(),
 });
 
 export const schemaLoginData = z.object({
-  login: z.string(),
+  email: z.string().email(),
   password: z.string(),
 });
 

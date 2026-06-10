@@ -9,7 +9,7 @@ import AuthLoader from "../components/ui/AuthLoader";
 import { useStartRoute } from "../store/useSettingsStore";
 
 const LoginPage = () => {
-  const [login, setLogin] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,12 +30,12 @@ const LoginPage = () => {
     }, 5000);
 
     try {
-      const data = await AuthApi.loginRequest({ login, password });
-      toLogin(data.name, login, data.token);
+      const data = await AuthApi.loginRequest({ email, password });
+      toLogin(data.name, data.email || email, data.token);
       navigate(startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        setError(e.response?.data?.error || "Неверный логин или пароль");
+        setError(e.response?.data?.error || "Неверная почта или пароль");
       } else {
         setError("Что-то пошло не так");
       }
@@ -77,13 +77,14 @@ const LoginPage = () => {
         >
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
-              Логин
+              Почта
             </label>
             <input
-              type="text"
-              placeholder="Юзернейм"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
+              type="email"
+              placeholder="Введите почту"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-4 py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
               required
             />

@@ -8,7 +8,7 @@ import AuthLoader from "../components/ui/AuthLoader";
 
 const RegisterPage = () => {
   const [name, setName] = useState<string>("");
-  const [login, setLogin] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +27,7 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      await AuthApi.registerRequest({ name, login, password });
+      await AuthApi.registerRequest({ name, email, password });
       navigate("/login");
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -92,13 +92,14 @@ const RegisterPage = () => {
 
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
-              Юзернейм
+              Почта
             </label>
             <input
-              type="text"
-              placeholder="Напишите юзернейм"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
+              type="email"
+              placeholder="Введите почту"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
               required
             />

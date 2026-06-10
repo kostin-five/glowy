@@ -16,8 +16,8 @@ import {
   type ThemeMode,
 } from "../store/useSettingsStore";
 import {
+  useEmail,
   useIsGuest,
-  useLogin,
   useName,
   useToLogout,
 } from "../store/useAuthStore";
@@ -37,7 +37,7 @@ const SettingsPage = () => {
   const savedToastTimerRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const name = useName();
-  const login = useLogin();
+  const email = useEmail();
   const isGuest = useIsGuest();
   const toLogout = useToLogout();
   const themeMode = useThemeMode();
@@ -110,7 +110,7 @@ const SettingsPage = () => {
                 {name || "Пользователь"}
               </h2>
               <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-400">
-                {login || "login не указан"}
+                {email || "Почта не указана"}
               </p>
               {isGuest && (
                 <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">

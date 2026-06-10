@@ -30,6 +30,13 @@ type ChatMessage = {
   text: string;
 };
 
+const WELCOME_MESSAGE_BY_MODE: Record<MindHubMode, string> = {
+  parse:
+    "Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли, разобью их на задачи и сам добавлю в список.",
+  chat:
+    "Привет! Я здесь, чтобы просто выслушать, поддержать или помочь распутать мысли. В этом режиме я не создаю задачи, а работаю как твой спокойный коуч.",
+};
+
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
 }
@@ -118,17 +125,11 @@ const ChatMessageBubble = ({
 
 const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const [hubMode, setHubMode] = useState<MindHubMode>("parse");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 1,
-      role: "assistant",
-      text: "Я готов разобрать мысли на конкретные задачи.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(
-    () => new Set([1])
+    () => new Set()
   );
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
@@ -315,6 +316,19 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
         className="custom-scrollbar flex-1 overflow-y-auto px-5 py-5"
       >
         <div className="flex flex-col gap-3">
+          {!messages.length && (
+            <ChatMessageBubble
+              message={{
+                id: 0,
+                role: "assistant",
+                text: WELCOME_MESSAGE_BY_MODE[hubMode],
+              }}
+              shouldType={false}
+              onTypeComplete={handleTypeComplete}
+              onTextUpdate={() => scrollToBottom("auto")}
+            />
+          )}
+
           {messages.map((message) => {
             const shouldType =
               message.role === "assistant" &&

@@ -1,17 +1,20 @@
-import { Link, useLocation, type Location } from "react-router-dom";
+import { Link, useLocation, useNavigate, type Location } from "react-router-dom";
 import {
   BarChart3,
   CheckSquare,
+  LogOut,
   LayoutDashboard,
   Settings,
   Trophy,
   User,
 } from "lucide-react";
-import { useName } from "../../store/useAuthStore";
+import { useName, useToLogout } from "../../store/useAuthStore";
 import { useIsDarkMode } from "../../store/useSettingsStore";
 
 const SidebarContent = ({ location }: { location: Location }) => {
   const isDarkMode = useIsDarkMode();
+  const navigate = useNavigate();
+  const toLogout = useToLogout();
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
@@ -20,6 +23,11 @@ const SidebarContent = ({ location }: { location: Location }) => {
     { to: "/settings", label: "Настройки", icon: Settings },
   ];
   const name = useName();
+
+  const handleLogout = () => {
+    toLogout();
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -68,6 +76,15 @@ const SidebarContent = ({ location }: { location: Location }) => {
             {name}
           </span>
         </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-300"
+          aria-label="Выйти из аккаунта"
+          title="Выйти"
+        >
+          <LogOut size={20} />
+        </button>
       </div>
     </div>
   );

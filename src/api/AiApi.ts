@@ -52,20 +52,40 @@ const getGuestLimitResponse = (): MindHubResponse => ({
 
 const normalizeGuestMindHubTasks = (tasks: Partial<Task>[]): Task[] =>
   tasks
-    .map((task, index) => ({
-      id: Date.now() + index,
-      title: typeof task.title === "string" ? task.title : "",
-      date:
-        typeof task.date === "string"
-          ? task.date
-          : new Date().toISOString().slice(0, 10),
-      priority: task.priority ?? "⚡️ P2",
-      category: task.category ?? "Быт",
-      completed: false,
-      xpAwarded: false,
-      energyLevel: task.energyLevel ?? "med",
-      subtasks: [],
-    }))
+    .map((task, index) => {
+      const taskId = Date.now() + index;
+
+      return {
+        id: taskId,
+        title: typeof task.title === "string" ? task.title : "",
+        date:
+          typeof task.date === "string"
+            ? task.date
+            : new Date().toISOString().slice(0, 10),
+        priority: task.priority ?? "⚡️ P2",
+        category: task.category ?? "Быт",
+        completed: false,
+        xpAwarded: false,
+        energyLevel: task.energyLevel ?? "med",
+        subtasks: Array.isArray(task.subtasks)
+          ? task.subtasks
+              .map((subtask, subtaskIndex) => ({
+                id: taskId + subtaskIndex + 1,
+                taskId,
+                title:
+                  typeof subtask?.title === "string"
+                    ? subtask.title.trim()
+                    : "",
+                completed: Boolean(subtask?.completed),
+                position:
+                  typeof subtask?.position === "number"
+                    ? subtask.position
+                    : subtaskIndex,
+              }))
+              .filter((subtask) => subtask.title.length > 0)
+          : [],
+      };
+    })
     .filter((task) => task.title.trim().length > 0);
 
 aiInstance.interceptors.request.use((config) => {

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import type { ComponentType } from "react";
 import {
   ArrowRight,
@@ -6,8 +7,10 @@ import {
   CheckCircle2,
   Gauge,
   LogIn,
+  Menu,
   PlayCircle,
   Sparkles,
+  X,
 } from "lucide-react";
 import type { Task } from "../types";
 import { useToDemoLogin } from "../store/useAuthStore";
@@ -68,9 +71,15 @@ const demoTaskPool: Array<Omit<Task, "id">> = [
 ];
 
 const LandingPage = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const toDemoLogin = useToDemoLogin();
   const startRoute = useStartRoute();
+  const navLinks = [
+    { href: "#about", label: "О проекте" },
+    { href: "#faq", label: "FAQ" },
+    { href: "#pricing", label: "Цены" },
+  ];
 
   const handleDemoLogin = () => {
     const shuffledTasks = [...demoTaskPool].sort(() => Math.random() - 0.5);
@@ -85,6 +94,8 @@ const LandingPage = () => {
     useTaskStore.getState().setUserProgress({ xp: 40, level: 1 });
     navigate(startRoute);
   };
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -102,14 +113,113 @@ const LandingPage = () => {
                 GLOWY<span className="text-slate-100">.AI</span>
               </span>
             </div>
-            <Link
-              to="/login"
-              className="hidden items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-indigo-400 hover:text-white sm:flex"
+
+            <nav
+              className="hidden items-center gap-7 text-sm font-semibold text-slate-300 lg:flex"
+              aria-label="Публичная навигация"
             >
-              <LogIn size={16} />
-              Войти
-            </Link>
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="transition-colors hover:text-white"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </nav>
+
+            <div className="hidden items-center gap-3 sm:flex">
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-indigo-400 hover:text-white"
+              >
+                <LogIn size={16} />
+                Войти
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_22px_rgba(79,70,229,0.3)] transition-colors hover:bg-indigo-500"
+              >
+                Регистрация
+              </Link>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/70 text-slate-100 transition-colors hover:border-indigo-400 sm:hidden"
+              aria-label="Открыть меню"
+              aria-expanded={isMobileMenuOpen}
+            >
+              <Menu size={22} />
+            </button>
           </header>
+
+          <div
+            className={`fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 sm:hidden ${
+              isMobileMenuOpen
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+            aria-hidden={!isMobileMenuOpen}
+            onClick={closeMobileMenu}
+          >
+            <aside
+              className={`ml-auto flex h-full w-full max-w-sm flex-col border-l border-slate-800 bg-slate-950 p-5 shadow-2xl transition-transform duration-300 ${
+                isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+              }`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img src="/Glowy.png" alt="Glowy" className="h-10 w-10" />
+                  <span className="font-display text-2xl font-black italic text-indigo-400">
+                    GLOWY<span className="text-slate-100">.AI</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 text-slate-300 transition-colors hover:border-indigo-400 hover:text-white"
+                  aria-label="Закрыть меню"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              <nav className="mt-12 flex flex-col gap-3" aria-label="Мобильная публичная навигация">
+                {navLinks.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMobileMenu}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/70 px-5 py-4 text-xl font-bold text-slate-100 transition-colors hover:border-indigo-400"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </nav>
+
+              <div className="mt-auto grid gap-3 pb-2">
+                <Link
+                  to="/login"
+                  onClick={closeMobileMenu}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 px-5 py-4 font-bold text-slate-100 transition-colors hover:border-indigo-400"
+                >
+                  <LogIn size={18} />
+                  Войти
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={closeMobileMenu}
+                  className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-4 font-bold text-white shadow-[0_0_28px_rgba(79,70,229,0.35)] transition-colors hover:bg-indigo-500"
+                >
+                  Регистрация
+                </Link>
+              </div>
+            </aside>
+          </div>
 
           <div className="grid flex-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="min-w-0">
@@ -153,7 +263,7 @@ const LandingPage = () => {
                 </button>
               </div>
 
-              <div className="mt-10 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
+              <div id="about" className="mt-10 grid max-w-3xl scroll-mt-24 grid-cols-1 gap-4 sm:grid-cols-3">
                 <Feature icon={Brain} title="Хаб мыслей" text="ИИ разбирает поток мыслей на задачи." />
                 <Feature icon={Gauge} title="Энергия" text="День планируется с учетом сил." />
                 <Feature icon={CheckCircle2} title="Фокус" text="Активные задачи остаются в центре." />
@@ -206,6 +316,37 @@ const LandingPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-4 pb-10 lg:grid-cols-2">
+            <section
+              id="faq"
+              className="scroll-mt-24 rounded-3xl border border-slate-800 bg-slate-900/60 p-5"
+            >
+              <h2 className="font-display text-xl font-bold text-white">FAQ</h2>
+              <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-400">
+                <p>
+                  Glowy можно попробовать без регистрации: демо-режим покажет,
+                  как Хаб мыслей превращает текст в задачи.
+                </p>
+                <p>
+                  Зарегистрированный аккаунт сохраняет задачи, прогресс, уровни
+                  и настройки между устройствами.
+                </p>
+              </div>
+            </section>
+
+            <section
+              id="pricing"
+              className="scroll-mt-24 rounded-3xl border border-indigo-400/30 bg-indigo-500/10 p-5"
+            >
+              <h2 className="font-display text-xl font-bold text-white">Цены</h2>
+              <p className="mt-4 text-sm leading-6 text-indigo-100/80">
+                Сейчас Glowy доступен бесплатно в рамках ранней версии. Демо
+                ограничено по количеству ИИ-запросов, а регистрация открывает
+                полноценное сохранение задач.
+              </p>
+            </section>
           </div>
 
           <footer className="relative z-10 flex flex-col gap-5 border-t border-slate-800 py-6 text-sm text-slate-500 lg:flex-row lg:items-end lg:justify-between">

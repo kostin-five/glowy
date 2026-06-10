@@ -15,6 +15,7 @@ import AiApi, {
 } from "../../api/AiApi";
 import { useTaskStore } from "../../store/useTaskStore";
 import useTypewriter from "../../hooks/useTypewriter";
+import useNetworkStatus from "../../hooks/useNetworkStatus";
 import {
   GUEST_REQUEST_LIMIT,
   useGuestRequestsCount,
@@ -133,6 +134,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const isOnline = useNetworkStatus();
   const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
   const guestRequestsResetDate = useGuestRequestsResetDate();
@@ -223,7 +225,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     event.preventDefault();
 
     const message = text.trim();
-    if (!message || isSending) return;
+    if (!message || isSending || !isOnline) return;
 
     const userMessage: ChatMessage = {
       id: Date.now() + messages.length,
@@ -342,6 +344,11 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
         onSubmit={handleSubmit}
         className="border-t border-slate-200 bg-white/95 p-4 dark:border-slate-800 dark:bg-slate-900/95"
       >
+        {!isOnline && (
+          <div className="mb-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-200">
+            Нет подключения к интернету. Хаб мыслей временно недоступен.
+          </div>
+        )}
         <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60">
           {[
             { value: "chat" as const, label: "💬 Диалог" },
@@ -379,7 +386,13 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
                 )} к ИИ сегодня.`}
           </p>
         )}
-        <div className="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-950/50 dark:shadow-none">
+        <div
+          className={`flex items-end gap-3 rounded-2xl border p-3 shadow-sm transition-colors dark:shadow-none ${
+            isOnline
+              ? "border-slate-200 bg-white focus-within:border-indigo-500 dark:border-slate-700 dark:bg-slate-950/50"
+              : "cursor-not-allowed border-amber-400/30 bg-amber-50/80 dark:bg-amber-400/5"
+          }`}
+        >
           <textarea
             ref={setTextareaRefs}
             value={text}
@@ -392,16 +405,22 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             }}
             rows={1}
             placeholder={
-              hubMode === "parse"
+              !isOnline
+                ? "Ввод заблокирован до восстановления подключения..."
+                : hubMode === "parse"
                 ? "Например: надо ответить преподу, купить продукты, подготовиться к тесту..."
                 : "Например: я устал, всё навалилось и не понимаю, с чего начать..."
             }
-            className="custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500"
-            disabled={isSending}
+            className={`custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 outline-none ${
+              isOnline
+                ? "text-slate-900 placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500"
+                : "cursor-not-allowed text-slate-500 placeholder:text-amber-700/80 dark:text-slate-500 dark:placeholder:text-amber-200/70"
+            }`}
+            disabled={isSending || !isOnline}
           />
           <button
             type="submit"
-            disabled={!text.trim() || isSending}
+            disabled={!text.trim() || isSending || !isOnline}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Отправить мысли"
           >

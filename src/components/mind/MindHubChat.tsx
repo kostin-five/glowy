@@ -106,7 +106,8 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   );
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
@@ -128,9 +129,35 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const shouldShowAiLimit =
     Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
 
+  const isNearChatBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return true;
+
+    const distanceToBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    return distanceToBottom < 48;
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    shouldAutoScrollRef.current = isNearChatBottom();
+  }, [isNearChatBottom]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    if (!shouldAutoScrollRef.current) return;
+
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior,
+    });
+  }, []);
+
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, isSending]);
+    scrollToBottom("smooth");
+  }, [messages.length, isSending, scrollToBottom]);
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -154,10 +181,6 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
 
   const handleTypeComplete = useCallback((messageId: number) => {
     setTypedMessageIds((current) => new Set(current).add(messageId));
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
 
   const latestAssistantMessageId = [...messages]
@@ -190,6 +213,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       })
     );
 
+    shouldAutoScrollRef.current = true;
     setMessages((current) => [...current, userMessage]);
     setText("");
     setIsSending(true);
@@ -252,7 +276,11 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
         </p>
       </div>
 
-      <div className="custom-scrollbar flex-1 overflow-y-auto px-5 py-5">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className="custom-scrollbar flex-1 overflow-y-auto px-5 py-5"
+      >
         <div className="flex flex-col gap-3">
           {messages.map((message) => {
             const shouldType =
@@ -266,7 +294,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
                 message={message}
                 shouldType={shouldType}
                 onTypeComplete={handleTypeComplete}
-                onTextUpdate={scrollToBottom}
+                onTextUpdate={() => scrollToBottom("auto")}
               />
             );
           })}
@@ -283,7 +311,6 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             </div>
           )}
 
-          <div ref={scrollRef} />
         </div>
       </div>
 

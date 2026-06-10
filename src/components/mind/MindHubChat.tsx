@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type MutableRefObject,
 } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Check, Copy, Send, Sparkles } from "lucide-react";
 import AiApi, {
   type MindHubLimit,
   type MindHubMessage,
@@ -45,6 +45,7 @@ const ChatMessageBubble = ({
   onTypeComplete,
   onTextUpdate,
 }: ChatMessageBubbleProps) => {
+  const [isCopied, setIsCopied] = useState(false);
   const { displayedText: typedText, isTyping } = useTypewriter(
     shouldType ? message.text : "",
     38
@@ -68,16 +69,28 @@ const ChatMessageBubble = ({
     shouldType,
   ]);
 
+  const handleCopy = async () => {
+    if (!message.text.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(message.text);
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy chat message:", error);
+    }
+  };
+
   return (
     <div
-      className={`flex ${
+      className={`group flex flex-col ${
         message.role === "user" ? "justify-end" : "justify-start"
       }`}
     >
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
           message.role === "user"
-            ? "bg-indigo-600 text-white rounded-br-md"
+            ? "self-end bg-indigo-600 text-white rounded-br-md"
             : "rounded-bl-md border border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-none"
         }`}
       >
@@ -86,6 +99,17 @@ const ChatMessageBubble = ({
           <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-indigo-300" />
         )}
       </div>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={`mt-1 inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 opacity-70 transition-all hover:bg-slate-100 hover:text-slate-700 group-hover:opacity-100 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 ${
+          message.role === "user" ? "self-end" : "self-start"
+        } ${isCopied ? "text-emerald-500 dark:text-emerald-300" : ""}`}
+        aria-label={isCopied ? "Сообщение скопировано" : "Скопировать сообщение"}
+        title={isCopied ? "Скопировано" : "Скопировать"}
+      >
+        {isCopied ? <Check size={15} /> : <Copy size={15} />}
+      </button>
     </div>
   );
 };

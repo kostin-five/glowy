@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type MutableRefObject,
 } from "react";
+import axios from "axios";
 import { Check, Copy, Send, Sparkles } from "lucide-react";
 import AiApi, {
   type MindHubLimit,
@@ -274,12 +275,18 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       }
     } catch (error) {
       console.error(error);
+      const serverError =
+        axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
+          ? error.response.data.error
+          : null;
+
       appendMessage({
         role: "assistant",
         text:
-          hubMode === "chat"
+          serverError ||
+          (hubMode === "chat"
             ? "Не получилось ответить в диалоге. Попробуй отправить сообщение ещё раз."
-            : "Не получилось разобрать мысли. Попробуй отправить ещё раз, можно короче или отдельными фразами.",
+            : "Не получилось разобрать мысли. Попробуй отправить ещё раз, можно короче или отдельными фразами."),
       });
     } finally {
       setIsSending(false);

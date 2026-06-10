@@ -42,7 +42,13 @@ const demoMindHubLimiter = rateLimit({
 // Общие константы и нормализация данных
 // ---------------------------------------------------------------------------
 
-const GEMINI_MODEL = "gemini-2.5-flash";
+const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const FALLBACK_GEMINI_MODEL =
+  process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash";
+const GEMINI_MODELS = [
+  ...new Set([PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODEL].filter(Boolean)),
+];
+const GEMINI_RETRY_DELAYS_MS = [700, 1400];
 const AUTHENTICATED_AI_REQUEST_LIMIT = 25;
 const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -395,10 +401,64 @@ const parseMindHubFallback = (message, fallbackDate) => {
     });
 };
 
+const sleep = (delayMs) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+
+const isGeminiOverloadedError = (error) => {
+  const status = error?.status || error?.response?.status;
+  const text = `${error?.message || ""} ${error?.statusText || ""}`.toLowerCase();
+
+  return (
+    status === 503 &&
+    (text.includes("high demand") ||
+      text.includes("service unavailable") ||
+      text.includes("try again later"))
+  );
+};
+
+const runGeminiWithRetry = async (requestFactory, contextLabel) => {
+  let lastError = null;
+
+  for (const modelName of GEMINI_MODELS) {
+    for (
+      let attemptIndex = 0;
+      attemptIndex <= GEMINI_RETRY_DELAYS_MS.length;
+      attemptIndex += 1
+    ) {
+      try {
+        return await requestFactory(modelName);
+      } catch (error) {
+        lastError = error;
+
+        if (!isGeminiOverloadedError(error)) {
+          throw error;
+        }
+
+        const isLastAttemptForModel =
+          attemptIndex === GEMINI_RETRY_DELAYS_MS.length;
+        console.warn(
+          `${contextLabel} Gemini model ${modelName} overloaded, attempt ${attemptIndex + 1}`
+        );
+
+        if (!isLastAttemptForModel) {
+          await sleep(GEMINI_RETRY_DELAYS_MS[attemptIndex]);
+        }
+      }
+    }
+  }
+
+  throw lastError;
+};
+
 const parseMindHubTasks = async (message, today) => {
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-  const result = await model.generateContent(
-    buildMindHubParsePrompt(message, today)
+  const result = await runGeminiWithRetry(
+    async (modelName) => {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      return model.generateContent(buildMindHubParsePrompt(message, today));
+    },
+    "Mind Hub parse"
   );
   const responseText = result.response.text();
   const parsedPayload = parseJsonLoose(responseText);
@@ -432,7 +492,7 @@ const createMindHubTasks = (tasks, userId) =>
 // ---------------------------------------------------------------------------
 
 const COACH_SYSTEM_INSTRUCTION =
-  "Ты эмпатичный ИИ-коуч в приложении Glowy. Glowy — мужской персонаж, говори о себе в мужском роде. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Перед каждым ответом ОБЯЗАТЕЛЬНО анализируй всю доступную history: что пользователь уже спрашивал, какие ответы ты уже давал, какие эмоции и потребности проявились в диалоге. Каждый новый ответ должен быть уникальным, контекстным и не повторять предыдущие формулировки. Подстраивайся под состояние пользователя: усталость, тревогу, хаос, прокрастинацию, растерянность или запрос на совет. Отвечай живо, тепло и коротко: 1-2 предложения. Задавай максимум один наводящий вопрос, только если он действительно помогает продолжить диалог. НЕ используй шаблонные фразы и не повторяй fallback-текст.";
+  "Ты эмпатичный ИИ-коуч в приложении Glowy. Glowy — мужской персонаж, говори о себе в мужском роде. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Перед каждым ответом ОБЯЗАТЕЛЬНО анализируй всю доступную history: что пользователь уже спрашивал, какие ответы ты уже давал, какие эмоции и потребности проявились в диалоге. Каждый новый ответ должен быть уникальным, контекстным и не повторять предыдущие формулировки. Подстраивайся под состояние пользователя: усталость, тревогу, хаос, прокрастинацию, растерянность или запрос на совет. Отвечай живо, тепло и коротко: 1-2 предложения. Задавай максимум один наводящий вопрос, только если он действительно помогает продолжить диалог. НЕ используй шаблонные фразы и не повторяй fallback-текст. Не используй Markdown и любое форматирование: никаких **жирных слов**, списков, нумерации, заголовков, bullet points, таблиц или спецразметки. Пиши только обычный гладкий текст.";
 
 const normalizeChatMessages = (messages, currentMessage) => {
   const normalizedMessages = messages
@@ -477,18 +537,23 @@ const normalizeChatMessages = (messages, currentMessage) => {
 };
 
 const getCoachReply = async (message, messages) => {
-  const model = genAI.getGenerativeModel({
-    model: GEMINI_MODEL,
-    generationConfig: {
-      temperature: 0.9,
-      topP: 0.95,
+  const result = await runGeminiWithRetry(
+    async (modelName) => {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature: 0.9,
+          topP: 0.95,
+        },
+        systemInstruction: COACH_SYSTEM_INSTRUCTION,
+      });
+      const chat = model.startChat({
+        history: normalizeChatMessages(messages, message),
+      });
+      return chat.sendMessage(message);
     },
-    systemInstruction: COACH_SYSTEM_INSTRUCTION,
-  });
-  const chat = model.startChat({
-    history: normalizeChatMessages(messages, message),
-  });
-  const result = await chat.sendMessage(message);
+    "Mind Hub chat"
+  );
   const reply = result.response.text().trim();
 
   if (!reply) {
@@ -502,6 +567,22 @@ const getMindHubAiErrorResponse = () => ({
   error:
     "Glowy не смог получить ответ от ИИ. Попробуй отправить сообщение ещё раз.",
 });
+
+const getMindHubErrorResponse = (error) => {
+  if (isGeminiOverloadedError(error)) {
+    return {
+      status: 503,
+      body: {
+        error: "ИИ сейчас перегружен, попробуй через минуту.",
+      },
+    };
+  }
+
+  return {
+    status: 503,
+    body: getMindHubAiErrorResponse(),
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу
@@ -564,7 +645,17 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
     }
 
     const today = formatDateDDMMYYYY(new Date());
-    const parsedResult = await parseMindHubTasks(message, today);
+    let parsedResult = null;
+
+    try {
+      parsedResult = await parseMindHubTasks(message, today);
+    } catch (error) {
+      console.error("Public Mind Hub parsing failed, using fallback:", error);
+      parsedResult = {
+        tasks: parseMindHubFallback(message, today),
+        reply: null,
+      };
+    }
 
     return res.json({
       tasks: parsedResult.tasks,
@@ -576,7 +667,8 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error("Public Mind Hub request failed:", error);
-    return res.status(503).json(getMindHubAiErrorResponse());
+    const { status, body } = getMindHubErrorResponse(error);
+    return res.status(status).json(body);
   }
 });
 
@@ -604,9 +696,14 @@ router.post("/analyze", async (req, res) => {
     });
     const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-    const result = await model.generateContent(
-      buildTaskAnalysisPrompt(tasksString, currentEnergy)
+    const result = await runGeminiWithRetry(
+      async (modelName) => {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        return model.generateContent(
+          buildTaskAnalysisPrompt(tasksString, currentEnergy)
+        );
+      },
+      "Task analysis"
     );
 
     res.json({ message: result.response.text() });
@@ -655,7 +752,8 @@ router.post("/mind-hub", async (req, res) => {
         return res.json({ tasks: [], reply, limit: aiLimit.limit });
       } catch (error) {
         console.error("Mind Hub chat failed:", error);
-        return res.status(503).json(getMindHubAiErrorResponse());
+        const { status, body } = getMindHubErrorResponse(error);
+        return res.status(status).json(body);
       }
     }
 

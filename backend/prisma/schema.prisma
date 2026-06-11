@@ -7,45 +7,45 @@ datasource db {
 }
 
 model Task {
-  id Int @id @default(autoincrement())
-  userId Int @map("user_id")
-  user User @relation(fields: [userId], references: [id])
-  title String 
-  date String
-  priority String
-  energyLevel String @map("energy_level")
-  category String
-  completed Boolean @default(false)
-  xpAwarded Boolean @default(false) @map("xp_awarded")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  subtasks SubTask[]
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  date        String
+  priority    String
+  energyLevel String    @map("energy_level")
+  category    String
+  completed   Boolean   @default(false)
+  xpAwarded   Boolean   @default(false) @map("xp_awarded")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  subtasks    SubTask[]
 
   @@map("tasks")
 }
 
 model User {
-  id Int @id @default(autoincrement())
-  name String
-  email String @unique
-  password String
-  currentEnergy Int @default(100) @map("current_energy")
-  aiRequestsCount Int @default(0) @map("ai_requests_count")
+  id                Int       @id @default(autoincrement())
+  name              String
+  email             String    @unique
+  password          String
+  currentEnergy     Int       @default(100) @map("current_energy")
+  aiRequestsCount   Int       @default(0) @map("ai_requests_count")
   aiRequestsResetAt DateTime? @map("ai_requests_reset_at")
-  xp Int @default(0)
-  level Int @default(1)
-  tasks Task[]
+  xp                Int       @default(0)
+  level             Int       @default(1)
+  tasks             Task[]
 
-  @@map("users")  
+  @@map("users")
 }
 
 model SubTask {
-  id Int @id @default(autoincrement())
-  taskId Int @map("task_id")
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  title String 
-  completed Boolean @default(false)
-  position Int @default(0)
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean  @default(false)
+  position  Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

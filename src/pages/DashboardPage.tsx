@@ -40,7 +40,7 @@ const DashboardPage = () => {
             <div className="flex items-start justify-between gap-3 mb-6">
               <div>
                 <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Лестница успеха
+                  Лестница
                 </h2>
                 <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                   {currentXP} XP

@@ -57,7 +57,7 @@ const TaskControls = ({ onCreateClick }: TaskControlsProps) => {
           </div>
 
           <div
-            className="flex h-11.5 w-fit items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none"
+            className="hidden h-11.5 w-fit items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none sm:flex"
             aria-label="Режим отображения задач"
           >
             {viewOptions.map(({ mode, label, icon: Icon }) => {

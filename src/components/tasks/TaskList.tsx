@@ -227,7 +227,7 @@ const TaskList = ({
   const effectiveTaskViewMode = viewMode ?? taskViewMode;
   const listContainerClass =
     effectiveTaskViewMode === "grid"
-      ? "grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      ? "flex flex-col gap-3 sm:grid sm:auto-rows-fr sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
       : "flex flex-col gap-3";
   const sortingStrategy =
     effectiveTaskViewMode === "grid"

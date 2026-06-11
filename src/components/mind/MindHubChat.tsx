@@ -8,7 +8,7 @@ import {
   type MutableRefObject,
 } from "react";
 import axios from "axios";
-import { Check, Copy, Send, Sparkles } from "lucide-react";
+import { Check, Copy, Info, Send, Sparkles, X } from "lucide-react";
 import AiApi, {
   type MindHubLimit,
   type MindHubMessage,
@@ -131,6 +131,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(
     () => new Set()
   );
+  const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -370,7 +371,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             Нет подключения к интернету. Хаб мыслей временно недоступен.
           </div>
         )}
-        <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60">
+        <div className="relative mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60">
           {[
             { value: "chat" as const, label: "💬 Диалог" },
             { value: "parse" as const, label: "⚡️ В задачи" },
@@ -380,6 +381,8 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
               type="button"
               onClick={() => setHubMode(mode.value)}
               className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
+                mode.value === "parse" ? "pr-10" : ""
+              } ${
                 hubMode === mode.value
                   ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
                   : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
@@ -389,6 +392,67 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
               {mode.label}
             </button>
           ))}
+          {hubMode === "parse" && (
+            <button
+              type="button"
+              title="Как писать запросы?"
+              onClick={() => setIsPromptHelpOpen((current) => !current)}
+              className="absolute right-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+              aria-expanded={isPromptHelpOpen}
+              aria-label="Как писать запросы?"
+            >
+              <Info size={15} />
+            </button>
+          )}
+
+          {isPromptHelpOpen && hubMode === "parse" && (
+            <div className="absolute bottom-full right-0 z-20 mb-3 w-[min(20rem,calc(100vw-4rem))] rounded-2xl border border-slate-700/70 bg-slate-950 p-3 text-xs leading-5 text-slate-200 shadow-2xl shadow-slate-950/40">
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <p className="font-semibold text-slate-100">Подсказка для ИИ</p>
+                <button
+                  type="button"
+                  onClick={() => setIsPromptHelpOpen(false)}
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
+                  aria-label="Закрыть подсказку"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="mb-2 text-slate-300">
+                Напиши детали прямо в фразе:
+              </p>
+              <ul className="space-y-1.5 text-slate-300">
+                <li>
+                  <span className="font-semibold text-indigo-200">
+                    Категория:
+                  </span>{" "}
+                  «по учебе», «для дома».
+                </li>
+                <li>
+                  <span className="font-semibold text-indigo-200">
+                    Приоритет:
+                  </span>{" "}
+                  «срочно», «до завтра».
+                </li>
+                <li>
+                  <span className="font-semibold text-indigo-200">
+                    Энергия:
+                  </span>{" "}
+                  «много сил», «быстро».
+                </li>
+                <li>
+                  <span className="font-semibold text-indigo-200">
+                    Подзадачи:
+                  </span>{" "}
+                  «сначала..., потом...».
+                </li>
+              </ul>
+              <div className="mt-3 rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-2.5 text-slate-200">
+                «Срочно сделать курсач по учебе, много сил. Сначала собрать
+                источники, потом написать введение.»
+              </div>
+            </div>
+          )}
         </div>
         {shouldShowAiLimit && activeAiLimit && (
           <p

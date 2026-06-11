@@ -11,12 +11,22 @@ import {
   useDeleteSubTask,
   useDeleteTask,
   useToggleSubTask,
+  useUpdateSubTask,
   useUpdateTask,
 } from "../../store/useTaskStore";
 import { useTaskStore } from "../../store/useTaskStore";
 import { useRef, useState, type CSSProperties } from "react";
 import Modal from "../ui/Modal";
-import { Trash2, Plus, CheckSquare, Square } from "lucide-react";
+import {
+  Check,
+  CheckSquare,
+  GripVertical,
+  Pencil,
+  Plus,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -44,21 +54,26 @@ interface SortableSubTaskProps {
   sub: SubTask;
   onToggle: (subId: number, currentStatus: boolean) => void;
   onDelete: (subId: number) => void;
+  onRename: (subId: number, title: string) => Promise<void>;
 }
 
 const SortableSubTask = ({
   sub,
   onToggle,
   onDelete,
+  onRename,
 }: SortableSubTaskProps) => {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: sub.id });
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(sub.title);
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -68,14 +83,40 @@ const SortableSubTask = ({
     opacity: isDragging ? 0.92 : 1,
   };
 
+  const saveTitle = async () => {
+    const trimmedTitle = draftTitle.trim();
+    if (!trimmedTitle) {
+      setDraftTitle(sub.title);
+      setIsEditing(false);
+      return;
+    }
+
+    await onRename(sub.id, trimmedTitle);
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setDraftTitle(sub.title);
+    setIsEditing(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="flex cursor-grab touch-none items-center justify-between rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm active:cursor-grabbing dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-none"
+      className="flex touch-none items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-none"
     >
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-indigo-500 active:cursor-grabbing dark:text-slate-500 dark:hover:bg-slate-700/60 dark:hover:text-indigo-300"
+        aria-label="Перетащить подзадачу"
+      >
+        <GripVertical size={15} />
+      </button>
+
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           type="button"
@@ -89,16 +130,70 @@ const SortableSubTask = ({
             <Square size={16} />
           )}
         </button>
-        <span
-          className={`text-sm truncate ${
-            sub.completed
-              ? "text-slate-500 line-through"
-              : "text-slate-900 dark:text-slate-100"
-          }`}
-        >
-          {sub.title}
-        </span>
+        {isEditing ? (
+          <input
+            value={draftTitle}
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void saveTitle();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancelEdit();
+              }
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="min-w-0 flex-1 rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400/40 dark:border-indigo-500/50 dark:bg-slate-950 dark:text-slate-100"
+            autoFocus
+          />
+        ) : (
+          <span
+            className={`text-sm truncate ${
+              sub.completed
+                ? "text-slate-500 line-through"
+                : "text-slate-900 dark:text-slate-100"
+            }`}
+          >
+            {sub.title}
+          </span>
+        )}
       </div>
+
+      {isEditing ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void saveTitle()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="rounded p-1 text-emerald-500 transition-colors hover:bg-emerald-500/10"
+            aria-label="Сохранить название подзадачи"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={cancelEdit}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-500/10"
+            aria-label="Отменить редактирование"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="rounded p-1 text-slate-500 transition-colors hover:text-indigo-500 dark:text-slate-400 dark:hover:text-indigo-300"
+          aria-label="Редактировать название подзадачи"
+        >
+          <Pencil size={14} />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onDelete(sub.id)}
@@ -124,17 +219,19 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const remove = useDeleteTask();
   const addSubTask = useAddSubTask();
   const toggleSubTask = useToggleSubTask();
+  const updateSubTask = useUpdateSubTask();
   const deleteSubTask = useDeleteSubTask();
   const categories = useAllCategories();
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        delay: 250,
+        tolerance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 100,
+        delay: 300,
         tolerance: 5,
       },
     })
@@ -196,6 +293,13 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     await deleteSubTask(values.id, subId);
 
     refreshSubtasks(values.id);
+  };
+
+  const handleRenameSub = async (subId: number, title: string) => {
+    const updatedSubTask = await updateSubTask(values.id, subId, { title });
+    if (!updatedSubTask) return;
+
+    refreshSubtasks(updatedSubTask.taskId);
   };
 
   const handleSubTaskDragEnd = ({ active, over }: DragEndEvent) => {
@@ -420,6 +524,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                       sub={sub}
                       onToggle={handleToggleSub}
                       onDelete={handleDeleteSub}
+                      onRename={handleRenameSub}
                     />
                   ))}
                 </div>

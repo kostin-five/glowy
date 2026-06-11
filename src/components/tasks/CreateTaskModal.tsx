@@ -11,7 +11,7 @@ import {
   type TaskDraft,
 } from "../../types";
 import Modal from "../ui/Modal";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -42,17 +42,25 @@ interface LocalSubTask {
 interface SortableSubTaskProps {
   sub: LocalSubTask;
   onRemove: (clientId: number) => void;
+  onRename: (clientId: number, title: string) => void;
 }
 
-const SortableSubTask = ({ sub, onRemove }: SortableSubTaskProps) => {
+const SortableSubTask = ({
+  sub,
+  onRemove,
+  onRename,
+}: SortableSubTaskProps) => {
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: sub.clientId });
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(sub.title);
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -62,15 +70,95 @@ const SortableSubTask = ({ sub, onRemove }: SortableSubTaskProps) => {
     opacity: isDragging ? 0.92 : 1,
   };
 
+  const saveTitle = () => {
+    const trimmedTitle = draftTitle.trim();
+    if (!trimmedTitle) {
+      setDraftTitle(sub.title);
+      setIsEditing(false);
+      return;
+    }
+
+    onRename(sub.clientId, trimmedTitle);
+    setIsEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setDraftTitle(sub.title);
+    setIsEditing(false);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="flex cursor-grab touch-none items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm active:cursor-grabbing dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-100 dark:shadow-none"
+      className="flex touch-none items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/40 dark:text-slate-100 dark:shadow-none"
     >
-      <span className="truncate">{sub.title}</span>
+      <button
+        ref={setActivatorNodeRef}
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="cursor-grab rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-indigo-500 active:cursor-grabbing dark:text-slate-500 dark:hover:bg-slate-700/60 dark:hover:text-indigo-300"
+        aria-label="Перетащить подзадачу"
+      >
+        <GripVertical size={14} />
+      </button>
+
+      {isEditing ? (
+        <input
+          value={draftTitle}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              saveTitle();
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancelEdit();
+            }
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="min-w-0 flex-1 rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-400/40 dark:border-indigo-500/50 dark:bg-slate-950 dark:text-slate-100"
+          autoFocus
+        />
+      ) : (
+        <span className="min-w-0 flex-1 truncate">{sub.title}</span>
+      )}
+
+      {isEditing ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={saveTitle}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="rounded p-1 text-emerald-500 transition-colors hover:bg-emerald-500/10"
+            aria-label="Сохранить название подзадачи"
+          >
+            <Check size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={cancelEdit}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-500/10"
+            aria-label="Отменить редактирование"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="rounded p-1 text-slate-500 transition-colors hover:text-indigo-500 dark:text-slate-400 dark:hover:text-indigo-300"
+          aria-label="Редактировать название подзадачи"
+        >
+          <Pencil size={14} />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={() => onRemove(sub.clientId)}
@@ -104,12 +192,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        delay: 250,
+        tolerance: 5,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 100,
+        delay: 300,
         tolerance: 5,
       },
     })
@@ -162,6 +251,14 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const handleRemoveLocalSub = (clientId: number) => {
     setLocalSubTasks(localSubTasks.filter((sub) => sub.clientId !== clientId));
+  };
+
+  const handleRenameLocalSub = (clientId: number, title: string) => {
+    setLocalSubTasks((currentSubTasks) =>
+      currentSubTasks.map((sub) =>
+        sub.clientId === clientId ? { ...sub, title } : sub
+      )
+    );
   };
 
   const handleSubTaskDragEnd = ({ active, over }: DragEndEvent) => {
@@ -404,6 +501,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                       key={sub.clientId}
                       sub={sub}
                       onRemove={handleRemoveLocalSub}
+                      onRename={handleRenameLocalSub}
                     />
                   ))}
                 </div>

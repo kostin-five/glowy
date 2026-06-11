@@ -34,6 +34,14 @@ export const SubTaskApi = {
     return response.data;
   },
 
+  async updateSubTask(
+    id: number,
+    data: Partial<Pick<SubTask, "title" | "completed" | "position">>
+  ): Promise<SubTask> {
+    const response = await api.put(`/${id}`, data);
+    return response.data;
+  },
+
   async deleteSubTask(id: number) {
     const response = await api.delete(`/${id}`);
     return response.data;

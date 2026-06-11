@@ -51,6 +51,11 @@ interface TaskStore {
     taskId: number,
     completed: boolean
   ) => Promise<SubTask | undefined>;
+  updateSubTask: (
+    taskId: number,
+    subTaskId: number,
+    data: Partial<Pick<SubTask, "title" | "completed" | "position">>
+  ) => Promise<SubTask | undefined>;
   deleteSubTask: (taskId: number, subTaskId: number) => Promise<void>;
 }
 
@@ -534,6 +539,63 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     }
   },
 
+  updateSubTask: async (taskId, subTaskId, data) => {
+    const trimmedTitle =
+      typeof data.title === "string" ? data.title.trim() : undefined;
+    const payload = {
+      ...data,
+      ...(trimmedTitle !== undefined ? { title: trimmedTitle } : {}),
+    };
+
+    if (trimmedTitle !== undefined && !trimmedTitle) return;
+
+    if (isGuestSession()) {
+      let updatedSub: SubTask | undefined;
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                subtasks: sortSubTasks(
+                  task.subtasks?.map((sub) => {
+                    if (sub.id !== subTaskId) return sub;
+                    updatedSub = { ...sub, ...payload };
+                    return updatedSub;
+                  })
+                ),
+              }
+            : task
+        ),
+      }));
+
+      return updatedSub;
+    }
+
+    try {
+      const updatedSub = await SubTaskApi.updateSubTask(subTaskId, payload);
+
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === taskId || task.id === updatedSub.taskId
+            ? {
+                ...task,
+                subtasks: sortSubTasks(
+                  task.subtasks?.map((sub) =>
+                    sub.id === subTaskId ? updatedSub : sub
+                  )
+                ),
+              }
+            : task
+        ),
+      }));
+
+      return updatedSub;
+    } catch (e) {
+      console.error("Ошибка при обновлении подзадачи:", e);
+    }
+  },
+
   deleteSubTask: async (taskId: number, subTaskId: number) => {
     if (isGuestSession()) {
       set((state) => ({
@@ -630,5 +692,7 @@ export const useFetchProgress = () =>
 export const useAddSubTask = () => useTaskStore((state) => state.addSubTask);
 export const useToggleSubTask = () =>
   useTaskStore((state) => state.toggleSubTask);
+export const useUpdateSubTask = () =>
+  useTaskStore((state) => state.updateSubTask);
 export const useDeleteSubTask = () =>
   useTaskStore((state) => state.deleteSubTask);

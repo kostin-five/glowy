@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
+import { useToLogin } from "../store/useAuthStore";
+import { useStartRoute } from "../store/useSettingsStore";
 
 const RegisterPage = () => {
   const [name, setName] = useState<string>("");
@@ -15,6 +17,8 @@ const RegisterPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const toLogin = useToLogin();
+  const startRoute = useStartRoute();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +31,9 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      await AuthApi.registerRequest({ name, email, password });
-      navigate("/login");
+      const data = await AuthApi.registerRequest({ name, email, password });
+      toLogin(data.name || name, data.email || email);
+      navigate(startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
         const serverError =

@@ -12,9 +12,28 @@ const PORT = process.env.PORT ?? 3001;
 
 const app = express();
 
+const allowedOrigins = [
+  "https://glowy-ai.ru",
+  "https://www.glowy-ai.ru",
+  "https://dev.glowy-ai.ru",
+  "http://localhost:5173",
+  "http://localhost:4173",
+];
+
 app.set("trust proxy", 1);
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
 
 app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", userRoutes);

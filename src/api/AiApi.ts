@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Task } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
+import { attachUnauthorizedInterceptor } from "./authSession";
 const url = "https://glowy-backend.onrender.com/api/ai";
 
 export type MindHubMode = "chat" | "parse";
@@ -22,6 +23,7 @@ export type MindHubResponse = {
 
 const aiInstance = axios.create({
   baseURL: url,
+  withCredentials: true,
 });
 
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -97,6 +99,8 @@ aiInstance.interceptors.request.use((config) => {
 
   return config;
 });
+
+attachUnauthorizedInterceptor(aiInstance);
 
 export default class AiApi {
   static async getAdvice() {

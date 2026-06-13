@@ -32,6 +32,26 @@ const generateAccessToken = (id) => {
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
 };
 
+const AUTH_COOKIE_NAME = "glowy_token";
+const AUTH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  maxAge: 24 * 60 * 60 * 1000,
+  path: "/",
+};
+
+const AUTH_COOKIE_CLEAR_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+};
+
+const setAuthCookie = (res, token) => {
+  res.cookie(AUTH_COOKIE_NAME, token, AUTH_COOKIE_OPTIONS);
+};
+
 router.post(
   "/register",
   [
@@ -66,7 +86,14 @@ router.post(
       const newUser = await prisma.user.create({
         data: { name, email, password: hashPassword },
       });
-      res.status(201).json(newUser);
+      const token = generateAccessToken(newUser.id);
+      setAuthCookie(res, token);
+      res.status(201).json({
+        name: newUser.name,
+        email: newUser.email,
+        xp: newUser.xp,
+        level: newUser.level,
+      });
     } catch (e) {
       console.error("КРИТИЧЕСКАЯ ОШИБКА БАЗЫ:", e);
       res.status(400).json({ error: "Ошибка при регистрации: " + e.message });
@@ -95,8 +122,8 @@ router.post("/login", async (req, res) => {
     }
 
     const token = generateAccessToken(user.id);
+    setAuthCookie(res, token);
     res.status(200).json({
-      token: token,
       name: user.name,
       email: user.email,
       xp: user.xp,
@@ -105,6 +132,11 @@ router.post("/login", async (req, res) => {
   } catch (e) {
     res.status(400).json({ error: "Ошибка при входе" });
   }
+});
+
+router.post("/logout", (_req, res) => {
+  res.clearCookie(AUTH_COOKIE_NAME, AUTH_COOKIE_CLEAR_OPTIONS);
+  res.status(200).json({ message: "Выход выполнен" });
 });
 
 export default router;

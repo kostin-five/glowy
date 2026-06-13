@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate, type Location } from "react-router-dom";
+import { Link, useLocation, type Location } from "react-router-dom";
 import {
   BarChart3,
   CheckSquare,
@@ -8,13 +8,13 @@ import {
   Trophy,
   User,
 } from "lucide-react";
-import { useName, useToLogout } from "../../store/useAuthStore";
+import { useName } from "../../store/useAuthStore";
 import { useIsDarkMode } from "../../store/useSettingsStore";
+import { useLogout } from "../../hooks/useLogout";
 
 const SidebarContent = ({ location }: { location: Location }) => {
   const isDarkMode = useIsDarkMode();
-  const navigate = useNavigate();
-  const toLogout = useToLogout();
+  const handleLogout = useLogout();
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
@@ -23,11 +23,6 @@ const SidebarContent = ({ location }: { location: Location }) => {
     { to: "/settings", label: "Настройки", icon: Settings },
   ];
   const name = useName();
-
-  const handleLogout = () => {
-    toLogout();
-    navigate("/", { replace: true });
-  };
 
   return (
     <div className="flex h-full flex-col">

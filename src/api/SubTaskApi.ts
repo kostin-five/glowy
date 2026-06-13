@@ -1,11 +1,13 @@
 import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 import type { SubTask } from "../types";
+import { attachUnauthorizedInterceptor } from "./authSession";
 
 const url = "https://glowy-backend.onrender.com/api/subtasks";
 
 const api = axios.create({
   baseURL: url,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -17,6 +19,8 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+attachUnauthorizedInterceptor(api);
 
 export const SubTaskApi = {
   async fetchSubTasks(taskId: number): Promise<SubTask[]> {

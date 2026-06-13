@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   LogOut,
   Mail,
@@ -19,8 +18,8 @@ import {
   useEmail,
   useIsGuest,
   useName,
-  useToLogout,
 } from "../store/useAuthStore";
+import { useLogout } from "../hooks/useLogout";
 
 const themeOptions: Array<{
   value: ThemeMode;
@@ -35,11 +34,10 @@ const themeOptions: Array<{
 const SettingsPage = () => {
   const [showSavedToast, setShowSavedToast] = useState(false);
   const savedToastTimerRef = useRef<number | null>(null);
-  const navigate = useNavigate();
   const name = useName();
   const email = useEmail();
   const isGuest = useIsGuest();
-  const toLogout = useToLogout();
+  const handleLogout = useLogout();
   const themeMode = useThemeMode();
   const setThemeMode = useSetThemeMode();
 
@@ -66,11 +64,6 @@ const SettingsPage = () => {
   const handleThemeModeChange = (themeMode: ThemeMode) => {
     setThemeMode(themeMode);
     showSettingsSavedToast();
-  };
-
-  const handleLogout = () => {
-    toLogout();
-    navigate("/", { replace: true });
   };
 
   const handleClearLocalCache = () => {

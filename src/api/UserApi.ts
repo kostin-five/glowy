@@ -1,11 +1,13 @@
 import axios from "axios";
 import type { UserProgress } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
+import { attachUnauthorizedInterceptor } from "./authSession";
 
 const url = "https://glowy-backend.onrender.com/api/user";
 
 const api = axios.create({
   baseURL: url,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -17,6 +19,8 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+attachUnauthorizedInterceptor(api);
 
 export const UserApi = {
   async getProgress(): Promise<UserProgress> {

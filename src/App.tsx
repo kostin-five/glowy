@@ -18,13 +18,18 @@ import {
   type ReactNode,
 } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
-import { useToken } from "./store/useAuthStore";
 import RouteLoader from "./components/ui/RouteLoader";
+import CookieConsent from "./components/CookieConsent";
 import {
   useSetDarkMode,
   useStartRoute,
   useThemeMode,
 } from "./store/useSettingsStore";
+import {
+  clearLocalAuthSession,
+  hasLegacyAuthToken,
+  redirectToLogin,
+} from "./api/authSession";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -92,13 +97,13 @@ function App() {
   );
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
-  const token = useToken();
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const themeMode = useThemeMode();
   const setDarkMode = useSetDarkMode();
   const startRoute = useStartRoute();
   const restoreAuthSession = useRestoreAuthSession();
+  const hasLegacyToken = isHydrated && hasLegacyAuthToken();
 
   useLayoutEffect(() => {
     const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
@@ -132,23 +137,25 @@ function App() {
 
   useEffect(() => {
     if (!isHydrated) return;
+
+    if (hasLegacyAuthToken()) {
+      clearLocalAuthSession();
+      redirectToLogin();
+      return;
+    }
+
     restoreAuthSession();
   }, [isHydrated, restoreAuthSession]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token || isGuest) return;
+    if (hasLegacyToken) return;
+    if (!isAuthenticated || isGuest) return;
 
     fetchTasks();
     fetchProgress();
-  }, [
-    fetchProgress,
-    fetchTasks,
-    isAuthenticated,
-    isGuest,
-    token,
-  ]);
+  }, [fetchProgress, fetchTasks, hasLegacyToken, isAuthenticated, isGuest]);
 
-  if (!isHydrated) {
+  if (!isHydrated || hasLegacyToken) {
     return <RouteLoader className="fixed inset-0 min-h-dvh" />;
   }
 
@@ -248,6 +255,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to={startRoute} replace />} />
       </Routes>
+      <CookieConsent />
     </BrowserRouter>
   );
 }

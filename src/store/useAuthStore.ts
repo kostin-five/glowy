@@ -22,7 +22,7 @@ interface AuthStore {
   token: string | null;
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
-  toLogin: (name: string, email: string, token: string) => void;
+  toLogin: (name: string, email: string, token?: string | null) => void;
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
-      toLogin: (name: string, email: string, token: string) =>
+      toLogin: (name: string, email: string, token: string | null = null) =>
         set(() => ({
           isAuthenticated: true,
           isGuest: false,
@@ -54,11 +54,18 @@ export const useAuthStore = create<AuthStore>()(
         })),
       restoreAuthSession: () =>
         set((state) => {
-          if (!state.token) return state;
+          if (state.token) {
+            return {
+              isAuthenticated: true,
+              isGuest: state.token.startsWith("demo-token-"),
+            };
+          }
+
+          if (!state.name || !state.email) return state;
 
           return {
             isAuthenticated: true,
-            isGuest: state.token.startsWith("demo-token-"),
+            isGuest: false,
           };
         }),
       toDemoLogin: () =>
@@ -132,7 +139,12 @@ export const useAuthStore = create<AuthStore>()(
             {
               currentEnergy: normalizedEnergy,
             },
-            { headers: { Authorization: `Bearer ${get().token}` } }
+            {
+              withCredentials: true,
+              headers: get().token
+                ? { Authorization: `Bearer ${get().token}` }
+                : undefined,
+            }
           );
         } catch (e) {
           console.error(e);

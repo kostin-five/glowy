@@ -6,7 +6,7 @@
   "scripts": {
     "serve": "nodemon server.js",
     "migrate:deploy": "prisma migrate deploy",
-    "start": "npx prisma generate && node server.js"
+    "start": "npx --yes prisma generate && node server.js"
   },
   "keywords": [],
   "author": "",

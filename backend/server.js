@@ -46,6 +46,8 @@ app.listen(PORT, () => {
   console.log(`Server has been started on port ${PORT}...`);
 });
 
+app.get("/", (req, res) => res.status(200).send("Glowy Backend is alive!"));
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server has been started on port ${PORT}...`);
 });

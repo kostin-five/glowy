@@ -42,12 +42,6 @@ app.use("/api/subtasks", subTaskRoutes);
 app.use("/api/user", userEnergyRoutes);
 app.use("/api/chat", chatRouter);
 
-// app.listen(PORT, () => {
-//   console.log(`Server has been started on port ${PORT}...`);
-// });
-
-app.get("/", (req, res) => res.status(200).send("Glowy Backend is alive!"));
-
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`Server has been started on port ${PORT}...`);
 });

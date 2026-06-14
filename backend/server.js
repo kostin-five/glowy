@@ -45,3 +45,7 @@ app.use("/api/chat", chatRouter);
 app.listen(PORT, () => {
   console.log(`Server has been started on port ${PORT}...`);
 });
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server has been started on port ${PORT}...`);
+});

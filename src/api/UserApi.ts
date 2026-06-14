@@ -2,11 +2,10 @@ import axios from "axios";
 import type { UserProgress } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./authSession";
-
-const url = "https://glowy-backend.onrender.com/api/user";
+import { API_BASE_URL } from "./config";
 
 const api = axios.create({
-  baseURL: url,
+  baseURL: `${API_BASE_URL}/user`,
   withCredentials: true,
 });
 

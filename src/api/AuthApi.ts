@@ -1,11 +1,10 @@
 import axios from "axios";
 import type { Auth, LoginData } from "../types";
 import { attachUnauthorizedInterceptor } from "./authSession";
-
-const url = "https://glowy-backend.onrender.com/api/auth";
+import { API_BASE_URL } from "./config";
 
 const authInstance = axios.create({
-  baseURL: url,
+  baseURL: `${API_BASE_URL}/auth`,
   withCredentials: true,
 });
 

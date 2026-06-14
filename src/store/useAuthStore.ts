@@ -1,6 +1,7 @@
 import axios from "axios";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { API_BASE_URL } from "../api/config";
 
 export const GUEST_REQUEST_LIMIT = 7;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -135,7 +136,7 @@ export const useAuthStore = create<AuthStore>()(
           if (get().isGuest) return;
 
           await axios.put(
-            "https://glowy-backend.onrender.com/api/user/energy",
+            `${API_BASE_URL}/user/energy`,
             {
               currentEnergy: normalizedEnergy,
             },

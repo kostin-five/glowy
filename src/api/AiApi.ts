@@ -2,7 +2,7 @@ import axios from "axios";
 import type { Task } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./authSession";
-const url = "https://glowy-backend.onrender.com/api/ai";
+import { API_BASE_URL } from "./config";
 
 export type MindHubMode = "chat" | "parse";
 export type MindHubMessage = {
@@ -22,7 +22,7 @@ export type MindHubResponse = {
 };
 
 const aiInstance = axios.create({
-  baseURL: url,
+  baseURL: `${API_BASE_URL}/ai`,
   withCredentials: true,
 });
 

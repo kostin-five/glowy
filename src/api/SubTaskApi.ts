@@ -2,11 +2,10 @@ import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 import type { SubTask } from "../types";
 import { attachUnauthorizedInterceptor } from "./authSession";
-
-const url = "https://glowy-backend.onrender.com/api/subtasks";
+import { API_BASE_URL } from "./config";
 
 const api = axios.create({
-  baseURL: url,
+  baseURL: `${API_BASE_URL}/subtasks`,
   withCredentials: true,
 });
 

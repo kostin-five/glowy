@@ -8,17 +8,23 @@ import subTaskRoutes from "./routes/subtask.routes.js";
 import userEnergyRoutes from "./routes/user.routes.js";
 import chatRouter from "./routes/chat.routes.js";
 
-const PORT = process.env.PORT ?? 3001;
+const PORT = process.env.PORT || 3001;
 
 const app = express();
 
-const allowedOrigins = [
+const fallbackAllowedOrigins = [
   "https://glowy-ai.ru",
   "https://www.glowy-ai.ru",
   "https://dev.glowy-ai.ru",
   "http://localhost:5173",
   "http://localhost:4173",
 ];
+
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  : fallbackAllowedOrigins;
 
 app.set("trust proxy", 1);
 app.use(express.json());
@@ -34,6 +40,13 @@ app.use(
     credentials: true,
   })
 );
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "glowy-backend",
+  });
+});
 
 app.use("/api/tasks", taskRoutes);
 app.use("/api/auth", userRoutes);

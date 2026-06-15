@@ -23,7 +23,7 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+let genAI = null;
 
 const demoMindHubLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
@@ -49,6 +49,10 @@ const GEMINI_MODELS = [
   ...new Set([PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODEL].filter(Boolean)),
 ];
 const GEMINI_RETRY_DELAYS_MS = [700, 1400];
+const AI_PROVIDER = (process.env.AI_PROVIDER || "gemini").toLowerCase();
+const AI_PROXY_URL = (process.env.AI_PROXY_URL || "").replace(/\/$/, "");
+const AI_PROXY_SECRET = process.env.AI_PROXY_SECRET || "";
+const AI_PROXY_TIMEOUT_MS = Number(process.env.AI_PROXY_TIMEOUT_MS || 120000);
 const AUTHENTICATED_AI_REQUEST_LIMIT = 25;
 const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -544,15 +548,131 @@ const sleep = (delayMs) =>
     setTimeout(resolve, delayMs);
   });
 
+const getGeminiClient = () => {
+  if (!genAI) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is required for direct Gemini provider");
+    }
+
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+
+  return genAI;
+};
+
+const createAiProviderError = ({ code, message, status, cause }) => {
+  const error = new Error(message);
+  error.code = code;
+  error.status = status;
+  error.cause = cause;
+  return error;
+};
+
+const getProxyErrorStatus = (code, fallbackStatus = 503) => {
+  if (code === "UNAUTHORIZED_PROXY_REQUEST") return 502;
+  if (code === "GEMINI_QUOTA_EXCEEDED") return 503;
+  if (
+    code === "GEMINI_OVERLOADED" ||
+    code === "GEMINI_UNSUPPORTED_LOCATION" ||
+    code === "AI_PROXY_TIMEOUT" ||
+    code === "AI_PROXY_UNAVAILABLE"
+  ) {
+    return 503;
+  }
+
+  return fallbackStatus;
+};
+
+const normalizeProxyError = (payload, responseStatus) => {
+  const code = payload?.error?.code || "AI_PROXY_REQUEST_FAILED";
+  const message = payload?.error?.message || "AI proxy request failed.";
+
+  return createAiProviderError({
+    code,
+    message,
+    status: getProxyErrorStatus(code, responseStatus),
+  });
+};
+
+const callAiProxy = async (body) => {
+  if (!AI_PROXY_URL || !AI_PROXY_SECRET) {
+    throw createAiProviderError({
+      code: "AI_PROXY_CONFIG_MISSING",
+      message: "AI proxy is not configured.",
+      status: 500,
+    });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, AI_PROXY_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${AI_PROXY_URL}/v1/gemini`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AI_PROXY_SECRET}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload?.ok) {
+      throw normalizeProxyError(payload, response.status);
+    }
+
+    const text = typeof payload.text === "string" ? payload.text : "";
+
+    if (!text.trim()) {
+      throw createAiProviderError({
+        code: "GEMINI_EMPTY_RESPONSE",
+        message: "AI proxy returned an empty response.",
+        status: 502,
+      });
+    }
+
+    return {
+      text,
+      modelUsed: payload.modelUsed || null,
+    };
+  } catch (error) {
+    if (error?.code) {
+      throw error;
+    }
+
+    if (error?.name === "AbortError") {
+      throw createAiProviderError({
+        code: "AI_PROXY_TIMEOUT",
+        message: "AI proxy request timed out.",
+        status: 503,
+        cause: error,
+      });
+    }
+
+    throw createAiProviderError({
+      code: "AI_PROXY_UNAVAILABLE",
+      message: "AI proxy is unavailable.",
+      status: 503,
+      cause: error,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
 const isGeminiOverloadedError = (error) => {
   const status = error?.status || error?.response?.status;
   const text = `${error?.message || ""} ${error?.statusText || ""}`.toLowerCase();
 
   return (
-    status === 503 &&
-    (text.includes("high demand") ||
-      text.includes("service unavailable") ||
-      text.includes("try again later"))
+    error?.code === "GEMINI_OVERLOADED" ||
+    (status === 503 &&
+      (text.includes("high demand") ||
+        text.includes("service unavailable") ||
+        text.includes("try again later")))
   );
 };
 
@@ -566,7 +686,8 @@ const runGeminiWithRetry = async (requestFactory, contextLabel) => {
       attemptIndex += 1
     ) {
       try {
-        return await requestFactory(modelName);
+        const result = await requestFactory(modelName);
+        return { result, modelUsed: modelName };
       } catch (error) {
         lastError = error;
 
@@ -590,6 +711,63 @@ const runGeminiWithRetry = async (requestFactory, contextLabel) => {
   throw lastError;
 };
 
+const generateContentWithAiProvider = async (prompt, contextLabel) => {
+  if (AI_PROVIDER === "proxy") {
+    return callAiProxy({
+      operation: "generateContent",
+      prompt,
+      contextLabel,
+    });
+  }
+
+  const { result, modelUsed } = await runGeminiWithRetry(async (modelName) => {
+    const model = getGeminiClient().getGenerativeModel({ model: modelName });
+    return model.generateContent(prompt);
+  }, contextLabel);
+
+  return {
+    text: result.response.text(),
+    modelUsed,
+  };
+};
+
+const chatWithAiProvider = async ({
+  message,
+  history,
+  systemInstruction,
+  generationConfig,
+  contextLabel,
+}) => {
+  if (AI_PROVIDER === "proxy") {
+    return callAiProxy({
+      operation: "chat",
+      message,
+      history,
+      systemInstruction,
+      generationConfig,
+      contextLabel,
+    });
+  }
+
+  const { result, modelUsed } = await runGeminiWithRetry(async (modelName) => {
+    const model = getGeminiClient().getGenerativeModel({
+      model: modelName,
+      generationConfig,
+      systemInstruction,
+    });
+    const chat = model.startChat({
+      history,
+    });
+
+    return chat.sendMessage(message);
+  }, contextLabel);
+
+  return {
+    text: result.response.text(),
+    modelUsed,
+  };
+};
+
 const parseMindHubTasks = async (message, today) => {
   const courseworkPlan = parseCourseworkPlan(message, today);
 
@@ -597,14 +775,10 @@ const parseMindHubTasks = async (message, today) => {
     return courseworkPlan;
   }
 
-  const result = await runGeminiWithRetry(
-    async (modelName) => {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      return model.generateContent(buildMindHubParsePrompt(message, today));
-    },
+  const { text: responseText } = await generateContentWithAiProvider(
+    buildMindHubParsePrompt(message, today),
     "Mind Hub parse"
   );
-  const responseText = result.response.text();
   const parsedPayload = parseJsonLoose(responseText);
 
   return normalizeMindHubPayload(parsedPayload, today, message);
@@ -686,24 +860,17 @@ const normalizeChatMessages = (messages, currentMessage) => {
 };
 
 const getCoachReply = async (message, messages) => {
-  const result = await runGeminiWithRetry(
-    async (modelName) => {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          temperature: 0.9,
-          topP: 0.95,
-        },
-        systemInstruction: COACH_SYSTEM_INSTRUCTION,
-      });
-      const chat = model.startChat({
-        history: normalizeChatMessages(messages, message),
-      });
-      return chat.sendMessage(message);
+  const { text } = await chatWithAiProvider({
+    message,
+    history: normalizeChatMessages(messages, message),
+    systemInstruction: COACH_SYSTEM_INSTRUCTION,
+    generationConfig: {
+      temperature: 0.9,
+      topP: 0.95,
     },
-    "Mind Hub chat"
-  );
-  const reply = result.response.text().trim();
+    contextLabel: "Mind Hub chat",
+  });
+  const reply = text.trim();
 
   if (!reply) {
     throw new Error("Gemini returned empty coach reply");
@@ -724,6 +891,40 @@ const getMindHubErrorResponse = (error) => {
       body: {
         error: "ИИ сейчас перегружен, попробуй через минуту.",
       },
+    };
+  }
+
+  if (error?.code === "GEMINI_QUOTA_EXCEEDED") {
+    return {
+      status: 503,
+      body: {
+        error: "ИИ временно недоступен из-за лимита провайдера. Попробуй позже.",
+      },
+    };
+  }
+
+  if (
+    [
+      "GEMINI_UNSUPPORTED_LOCATION",
+      "GEMINI_EMPTY_RESPONSE",
+      "AI_PROXY_TIMEOUT",
+      "AI_PROXY_UNAVAILABLE",
+    ].includes(error?.code)
+  ) {
+    return {
+      status: 503,
+      body: getMindHubAiErrorResponse(),
+    };
+  }
+
+  if (
+    ["UNAUTHORIZED_PROXY_REQUEST", "AI_PROXY_CONFIG_MISSING"].includes(
+      error?.code
+    )
+  ) {
+    return {
+      status: 502,
+      body: getMindHubAiErrorResponse(),
     };
   }
 
@@ -845,21 +1046,19 @@ router.post("/analyze", async (req, res) => {
     });
     const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
-    const result = await runGeminiWithRetry(
-      async (modelName) => {
-        const model = genAI.getGenerativeModel({ model: modelName });
-        return model.generateContent(
-          buildTaskAnalysisPrompt(tasksString, currentEnergy)
-        );
-      },
+    const { text } = await generateContentWithAiProvider(
+      buildTaskAnalysisPrompt(tasksString, currentEnergy),
       "Task analysis"
     );
 
-    res.json({ message: result.response.text() });
+    res.json({ message: text });
   } catch (error) {
     console.error("AI analyze failed:", error);
-    res.status(500).json({
-      error: "Glowy сейчас не смог подготовить совет. Попробуй немного позже.",
+    const { status, body } = getMindHubErrorResponse(error);
+    res.status(status).json({
+      error:
+        body.error ||
+        "Glowy сейчас не смог подготовить совет. Попробуй немного позже.",
     });
   }
 });

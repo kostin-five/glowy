@@ -3,9 +3,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Manrope", "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Unbounded", "Plus Jakarta Sans", "Geist", ui-sans-serif,
-    system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Unbounded", "Manrope", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {

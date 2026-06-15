@@ -11,6 +11,10 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
   },
   build: {
+    modulePreload: {
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((dep) => !dep.includes("/charts-")),
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -41,12 +45,27 @@ export default defineConfig({
     VitePWA({
       strategies: "generateSW",
       registerType: "autoUpdate",
-      includeAssets: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
+      includeAssets: [
+        "Glowy.png",
+        "Glowy-dark.png",
+        "manifest.json",
+        "robots.txt",
+        "sitemap.xml",
+        "icons/apple-icon-180.png",
+        "icons/manifest-icon-192.maskable.png",
+        "icons/manifest-icon-512.maskable.png",
+      ],
       workbox: {
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
-        globPatterns: ["**/*.{html,js,css,png,svg,ico,woff,woff2}"],
+        globPatterns: ["**/*.{html,js,css}"],
+        globIgnores: [
+          "**/apple-splash-*.jpg",
+          "**/charts-*.js",
+          "**/*.woff",
+          "**/*.woff2",
+        ],
       },
       manifest: {
         name: "Glowy — AI Task Tracker",

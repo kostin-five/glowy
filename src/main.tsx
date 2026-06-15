@@ -1,20 +1,19 @@
-import "@fontsource/manrope/400.css";
-import "@fontsource/manrope/500.css";
-import "@fontsource/manrope/600.css";
-import "@fontsource/manrope/700.css";
-import "@fontsource/manrope/800.css";
-import "@fontsource/geist/400.css";
-import "@fontsource/geist/500.css";
-import "@fontsource/geist/600.css";
-import "@fontsource/geist/700.css";
-import "@fontsource/geist/800.css";
-import "@fontsource/unbounded/600.css";
-import "@fontsource/unbounded/700.css";
-import "@fontsource/unbounded/800.css";
-import "@fontsource/plus-jakarta-sans/400.css";
-import "@fontsource/plus-jakarta-sans/600.css";
-import "@fontsource/plus-jakarta-sans/700.css";
-import "@fontsource/plus-jakarta-sans/800.css";
+import "@fontsource/manrope/cyrillic-400.css";
+import "@fontsource/manrope/cyrillic-500.css";
+import "@fontsource/manrope/cyrillic-600.css";
+import "@fontsource/manrope/cyrillic-700.css";
+import "@fontsource/manrope/cyrillic-800.css";
+import "@fontsource/manrope/latin-400.css";
+import "@fontsource/manrope/latin-500.css";
+import "@fontsource/manrope/latin-600.css";
+import "@fontsource/manrope/latin-700.css";
+import "@fontsource/manrope/latin-800.css";
+import "@fontsource/unbounded/cyrillic-600.css";
+import "@fontsource/unbounded/cyrillic-700.css";
+import "@fontsource/unbounded/cyrillic-800.css";
+import "@fontsource/unbounded/latin-600.css";
+import "@fontsource/unbounded/latin-700.css";
+import "@fontsource/unbounded/latin-800.css";
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

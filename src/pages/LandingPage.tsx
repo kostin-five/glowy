@@ -131,6 +131,10 @@ const LandingPage = () => {
               <img
                 src="/Glowy.png"
                 alt="Glowy"
+                width={40}
+                height={40}
+                decoding="async"
+                fetchPriority="high"
                 className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
               />
               <span className="whitespace-nowrap pr-1 font-display text-xl font-black italic leading-none text-indigo-400 sm:text-2xl">
@@ -197,7 +201,15 @@ const LandingPage = () => {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src="/Glowy.png" alt="Glowy" className="h-10 w-10" />
+                  <img
+                    src="/Glowy.png"
+                    alt="Glowy"
+                    width={40}
+                    height={40}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-10 w-10"
+                  />
                   <span className="whitespace-nowrap pr-1 font-display text-2xl font-black italic leading-none text-indigo-400">
                     GLOWY<span className="text-slate-100">.AI</span>
                   </span>
@@ -298,7 +310,15 @@ const LandingPage = () => {
               <div className="w-full max-w-full rounded-3xl border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur sm:rounded-4xl sm:p-5">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/15">
-                    <img src="/Glowy.png" alt="" className="h-8 w-8" />
+                    <img
+                      src="/Glowy.png"
+                      alt=""
+                      width={32}
+                      height={32}
+                      loading="eager"
+                      decoding="async"
+                      className="h-8 w-8"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-display text-lg font-bold sm:text-xl">

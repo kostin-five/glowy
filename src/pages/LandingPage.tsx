@@ -475,6 +475,12 @@ const LandingPage = () => {
               <Link to="/terms" className="transition-colors hover:text-slate-200">
                 Условия использования
               </Link>
+              <Link
+                to="/personal-data-consent"
+                className="transition-colors hover:text-slate-200"
+              >
+                Согласие на обработку данных
+              </Link>
             </div>
           </footer>
         </div>

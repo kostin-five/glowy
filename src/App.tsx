@@ -40,6 +40,9 @@ const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
+const PersonalDataConsentPage = lazy(
+  () => import("./pages/PersonalDataConsentPage")
+);
 
 const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
@@ -185,6 +188,14 @@ function App() {
           element={
             <PublicLazyRoute>
               <TermsOfServicePage />
+            </PublicLazyRoute>
+          }
+        />
+        <Route
+          path="/personal-data-consent"
+          element={
+            <PublicLazyRoute>
+              <PersonalDataConsentPage />
             </PublicLazyRoute>
           }
         />

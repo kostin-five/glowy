@@ -13,6 +13,7 @@ const RegisterPage = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -164,28 +165,49 @@ const RegisterPage = () => {
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center min-h-11"
+            disabled={isLoading || !hasAcceptedLegal}
+            className="w-full mt-2 bg-linear-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center min-h-11"
           >
             {isLoading ? <AuthLoader /> : "Зарегистрироваться"}
           </button>
 
-          <p className="text-xs text-slate-500 mt-4 text-center dark:text-slate-400">
-            Нажимая кнопку «Зарегистрироваться», вы соглашаетесь с{" "}
-            <Link
-              to="/privacy"
-              className="hover:text-indigo-400 transition-colors"
-            >
-              Политикой конфиденциальности
-            </Link>{" "}
-            и{" "}
-            <Link
-              to="/terms"
-              className="hover:text-indigo-400 transition-colors"
-            >
-              Условиями использования
-            </Link>
-            .
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-950/35 p-3 text-xs leading-5 text-slate-400">
+            <input
+              id="legal-consent"
+              type="checkbox"
+              checked={hasAcceptedLegal}
+              onChange={(e) => setHasAcceptedLegal(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-600 bg-slate-950 text-indigo-500 focus:ring-indigo-500"
+            />
+            <label htmlFor="legal-consent" className="cursor-pointer">
+              Я соглашаюсь с{" "}
+              <Link
+                to="/terms"
+                className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
+              >
+                Условиями использования
+              </Link>
+              ,{" "}
+              <Link
+                to="/privacy"
+                className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
+              >
+                Политикой конфиденциальности
+              </Link>{" "}
+              и{" "}
+              <Link
+                to="/personal-data-consent"
+                className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
+              >
+                Согласием на обработку персональных данных
+              </Link>
+              .
+            </label>
+          </div>
+
+          <p className="text-xs text-slate-500 text-center dark:text-slate-400">
+            Регистрация создаёт аккаунт Glowy и позволяет сохранять задачи,
+            прогресс и настройки.
           </p>
 
           <div className="mt-4 text-center text-sm text-slate-400">

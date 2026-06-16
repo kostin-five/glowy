@@ -24,8 +24,7 @@ const getMetrikaId = () => {
     : DEFAULT_YANDEX_METRIKA_ID;
 };
 
-const hasCookieConsent = () =>
-  localStorage.getItem(COOKIE_CONSENT_KEY) === "accepted";
+const getCookieConsent = () => localStorage.getItem(COOKIE_CONSENT_KEY);
 
 const initYandexMetrika = () => {
   if (window.__YANDEX_METRIKA_INITIALIZED__) return;
@@ -59,7 +58,9 @@ const initYandexMetrika = () => {
 };
 
 const CookieConsent = () => {
-  const [isAccepted, setIsAccepted] = useState(() => hasCookieConsent());
+  const [consent, setConsent] = useState(() => getCookieConsent());
+  const isAccepted = consent === "accepted";
+  const isRejected = consent === "rejected";
 
   useEffect(() => {
     if (isAccepted) {
@@ -69,10 +70,15 @@ const CookieConsent = () => {
 
   const acceptCookies = () => {
     localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
-    setIsAccepted(true);
+    setConsent("accepted");
   };
 
-  if (isAccepted) return null;
+  const rejectCookies = () => {
+    localStorage.setItem(COOKIE_CONSENT_KEY, "rejected");
+    setConsent("rejected");
+  };
+
+  if (isAccepted || isRejected) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-5 sm:pb-5">
@@ -80,8 +86,10 @@ const CookieConsent = () => {
         <div className="space-y-1">
           <p className="text-sm font-semibold">Мы используем cookie</p>
           <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 sm:text-sm">
-            Glowy использует Яндекс.Метрику только после вашего согласия, чтобы
-            понимать, какие разделы продукта нужно улучшать.
+            Glowy использует Яндекс.Метрику только после согласия, чтобы
+            понимать, какие разделы продукта нужно улучшать. Отказ не влияет
+            на технические cookies авторизации. Выбор можно изменить, очистив
+            данные сайта в браузере.
             <a
               href="/privacy"
               className="ml-1 font-medium text-indigo-500 transition-colors hover:text-indigo-400"
@@ -91,13 +99,22 @@ const CookieConsent = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={acceptCookies}
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95"
-        >
-          Принять
-        </button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={rejectCookies}
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 transition-all hover:border-slate-400 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
+          >
+            Отказаться
+          </button>
+          <button
+            type="button"
+            onClick={acceptCookies}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-500 px-5 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 active:scale-95"
+          >
+            Принять
+          </button>
+        </div>
       </div>
     </div>
   );

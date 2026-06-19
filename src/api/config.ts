@@ -1,4 +1,11 @@
-const rawApiUrl =
-  import.meta.env.VITE_API_URL || "https://glowy-backend.onrender.com/api";
+const getApiUrl = () => {
+  const url = import.meta.env.VITE_API_URL;
 
-export const API_BASE_URL = rawApiUrl.replace(/\/$/, "");
+  if (import.meta.env.PROD && !url) {
+    throw new Error("VITE_API_URL is required in production");
+  }
+
+  return (url || "http://localhost:3001/api").replace(/\/$/, "");
+};
+
+export const API_BASE_URL = getApiUrl();

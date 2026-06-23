@@ -5,6 +5,29 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
+import { rateLimit } from "express-rate-limit";
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Слишком много попыток входа. Пожалуйста, попробуйте позже." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const email = req.body ? getAuthEmail(req.body) : "unknown";
+    return `${ip}_${email}`;
+  },
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
+});
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -54,6 +77,7 @@ const setAuthCookie = (res, token) => {
 
 router.post(
   "/register",
+  registerLimiter,
   [
     check("name", "Имя пользователя не может быть пустым").notEmpty(),
     check("email", "Укажите корректную почту").custom((_, { req }) => {
@@ -71,16 +95,15 @@ router.post(
       if (!errors.isEmpty()) {
         return res
           .status(400)
-          .json({ message: "Ошибка при регистрации", errors: errors.array() });
+          .json({ error: "Некорректные данные" });
       }
       const { name, password } = req.body;
       const email = getAuthEmail(req.body);
       const candidate = await prisma.user.findUnique({ where: { email } });
       if (candidate) {
-        res
+        return res
           .status(400)
-          .json({ error: "Пользователь с такой почтой уже существует" });
-        return;
+          .json({ error: "Пользователь с таким email уже существует" });
       }
       const hashPassword = bcrypt.hashSync(password, 7);
       const newUser = await prisma.user.create({
@@ -95,13 +118,13 @@ router.post(
         level: newUser.level,
       });
     } catch (e) {
-      console.error("КРИТИЧЕСКАЯ ОШИБКА БАЗЫ:", e);
-      res.status(400).json({ error: "Ошибка при регистрации: " + e.message });
+      console.error("ОШИБКА РЕГИСТРАЦИИ:", e);
+      res.status(400).json({ error: "Не удалось создать аккаунт" });
     }
   }
 );
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const { password } = req.body;
     const email = getAuthEmail(req.body);
@@ -113,12 +136,12 @@ router.post("/login", async (req, res) => {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
-      return res.status(400).json({ error: `Пользователь не найден` });
+      return res.status(400).json({ error: "Неверный email или пароль" });
     }
 
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) {
-      return res.status(400).json({ error: `Неверный пароль` });
+      return res.status(400).json({ error: "Неверный email или пароль" });
     }
 
     const token = generateAccessToken(user.id);

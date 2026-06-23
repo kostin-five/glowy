@@ -3,6 +3,7 @@ import pg from "pg";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { body, validationResult } from "express-validator";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -17,6 +18,11 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
+
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
 
 router.use(authMiddleware);
 
@@ -82,9 +88,53 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
-  try {
-    const { title, energyLevel, priority, date, category, subtasks } = req.body;
+router.post(
+  "/",
+  [
+    body("title").trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("priority").optional().isString().isLength({ max: 50 }),
+    body("category").optional().isString().isLength({ max: 100 }),
+    body("date").optional().custom((value) => {
+      if (!value) return true;
+      
+      let date;
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+
+      if (isoRegex.test(value)) {
+        date = new Date(value);
+      } else if (ruRegex.test(value)) {
+        const [day, month, year] = value.split(".");
+        date = new Date(`${year}-${month}-${day}`);
+      } else {
+        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+      }
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Указана несуществующая дата");
+      }
+
+      // Дополнительная проверка на реальность даты (например, 31 февраля)
+      const [y, m, d] = date.toISOString().split("T")[0].split("-");
+      if (isoRegex.test(value)) {
+        const [vy, vm, vd] = value.split("-");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      } else {
+        const [vd, vm, vy] = value.split(".");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      }
+
+      return true;
+    }),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const { title, energyLevel, priority, date, category, subtasks } = req.body;
     const subtasksToCreate = Array.isArray(subtasks)
       ? subtasks
           .map((sub, index) => ({
@@ -121,12 +171,59 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, energyLevel, priority, date, category, completed, subtasks } =
+router.put(
+  "/:id",
+  [
+    body("title").optional().trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
+    body("priority").optional().isString().isLength({ max: 50 }),
+    body("category").optional().isString().isLength({ max: 100 }),
+    body("date").optional().custom((value) => {
+      if (!value) return true;
+
+      let date;
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+
+      if (isoRegex.test(value)) {
+        date = new Date(value);
+      } else if (ruRegex.test(value)) {
+        const [day, month, year] = value.split(".");
+        date = new Date(`${year}-${month}-${day}`);
+      } else {
+        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+      }
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Указана несуществующая дата");
+      }
+
+      const [y, m, d] = date.toISOString().split("T")[0].split("-");
+      if (isoRegex.test(value)) {
+        const [vy, vm, vd] = value.split("-");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      } else {
+        const [vd, vm, vy] = value.split(".");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      }
+
+      return true;
+    }),
+  ],
+  async (req, res) => {
+    try {
+      const taskId = parseId(req.params.id);
+      if (!taskId) {
+        return res.status(400).json({ error: "Некорректный ID задачи" });
+      }
+
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const { title, energyLevel, priority, date, category, completed, subtasks } =
       req.body;
-    const taskId = Number(id);
     const uniqueTask = await prisma.task.findUnique({
       where: { id: taskId },
     });
@@ -219,15 +316,19 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const taskId = parseId(req.params.id);
+    if (!taskId) {
+      return res.status(400).json({ error: "Некорректный ID задачи" });
+    }
+
     const uniqueTask = await prisma.task.findUnique({
-      where: { id: Number(id) },
+      where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
       return res.status(403).json({ error: "Нет доступа к этой задаче" });
     }
     await prisma.task.delete({
-      where: { id: Number(id) },
+      where: { id: taskId },
     });
     res.json({ message: "Удалено" });
   } catch (e) {

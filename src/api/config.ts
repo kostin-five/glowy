@@ -5,7 +5,7 @@ const getApiUrl = () => {
     throw new Error("VITE_API_URL is required in production");
   }
 
-  return (url || "http://localhost:3001/api").replace(/\/$/, "");
+  return (url || (import.meta.env.PROD ? "" : "http://localhost:3001/api")).replace(/\/$/, "");
 };
 
 export const API_BASE_URL = getApiUrl();

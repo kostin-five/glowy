@@ -147,7 +147,12 @@ function App() {
       return;
     }
 
-    restoreAuthSession();
+    const initAuth = async () => {
+      await useAuthStore.getState().checkAuth();
+      restoreAuthSession();
+    };
+
+    initAuth();
   }, [isHydrated, restoreAuthSession]);
 
   useEffect(() => {

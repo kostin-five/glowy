@@ -3,6 +3,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_BASE_URL } from "../api/config";
 
+import { AuthApi } from "../api/AuthApi";
+
 export const GUEST_REQUEST_LIMIT = 7;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -27,6 +29,7 @@ interface AuthStore {
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
+  checkAuth: () => Promise<void>;
   consumeGuestRequest: () => boolean;
   resetGuestRequests: () => void;
   resetGuestRequestsIfNeeded: () => void;
@@ -86,6 +89,25 @@ export const useAuthStore = create<AuthStore>()(
           email: null,
           token: null,
         })),
+      checkAuth: async () => {
+        try {
+          const user = await AuthApi.meRequest();
+          set({
+            isAuthenticated: true,
+            isGuest: false,
+            name: user.name,
+            email: user.email,
+          });
+        } catch (e) {
+          set({
+            isAuthenticated: false,
+            isGuest: false,
+            name: "",
+            email: null,
+            token: null,
+          });
+        }
+      },
       consumeGuestRequest: () => {
         const { guestRequestsCount, guestRequestsResetDate } = get();
 

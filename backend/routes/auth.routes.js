@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -14,8 +14,9 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
+    const ipKey = ipKeyGenerator(req, null);
     const email = req.body ? getAuthEmail(req.body) : "unknown";
-    return `${req.ip}:${email}`;
+    return `${ipKey}:${email}`;
   },
 });
 
@@ -25,7 +26,7 @@ const registerLimiter = rateLimit({
   message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req) => ipKeyGenerator(req, null),
 });
 
 import { authMiddleware } from "../middleware/auth.middleware.js";
@@ -87,7 +88,7 @@ router.post(
     }),
     check(
       "password",
-      "Пароль должен быть больше 8 и меньше 20 символов"
+      "Пароль должен быть не короче 8 символов"
     ).isLength({ min: 8, max: 20 }),
   ],
   async (req, res) => {
@@ -106,7 +107,7 @@ router.post(
           .status(400)
           .json({ error: "Пользователь с таким email уже существует" });
       }
-      const hashPassword = bcrypt.hashSync(password, 7);
+      const hashPassword = bcrypt.hashSync(password, 10);
       const newUser = await prisma.user.create({
         data: { name, email, password: hashPassword },
       });
@@ -173,7 +174,6 @@ router.get("/me", authMiddleware, async (req, res) => {
         email: true,
         xp: true,
         level: true,
-        createdAt: true,
       },
     });
 

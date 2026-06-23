@@ -14,7 +14,7 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const email = getAuthEmail(req.body);
+    const email = req.body ? getAuthEmail(req.body) : "unknown";
     return `${req.ip}_${email}`;
   },
 });
@@ -25,6 +25,7 @@ const registerLimiter = rateLimit({
   message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => req.ip,
 });
 
 const { PrismaClient } = pkg;
@@ -93,7 +94,7 @@ router.post(
       if (!errors.isEmpty()) {
         return res
           .status(400)
-          .json({ message: "Ошибка при регистрации", errors: errors.array() });
+          .json({ error: "Некорректные данные" });
       }
       const { name, password } = req.body;
       const email = getAuthEmail(req.body);

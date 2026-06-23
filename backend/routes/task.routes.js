@@ -92,10 +92,18 @@ router.post(
   "/",
   [
     body("title").trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
-    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("energyLevel").optional().isIn("low", "med", "high").withMessage("Недопустимый уровень энергии"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
-    body("date").optional().isISO8601().withMessage("Некорректная дата"),
+    body("date").optional().custom((value) => {
+      if (!value) return true;
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+      if (isoRegex.test(value) || ruRegex.test(value)) {
+        return true;
+      }
+      throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+    }),
   ],
   async (req, res) => {
     try {
@@ -144,11 +152,19 @@ router.put(
   "/:id",
   [
     body("title").optional().trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
-    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("energyLevel").optional().isIn("low", "med", "high").withMessage("Недопустимый уровень энергии"),
     body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
-    body("date").optional().isISO8601().withMessage("Некорректная дата"),
+    body("date").optional().custom((value) => {
+      if (!value) return true;
+      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+      if (isoRegex.test(value) || ruRegex.test(value)) {
+        return true;
+      }
+      throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+    }),
   ],
   async (req, res) => {
     try {

@@ -1,7 +1,6 @@
 import express from "express";
 import "dotenv/config";
 import cors from "cors";
-// import helmet from "helmet"; // Helmet is not installed, skipping to avoid breaking build
 import taskRoutes from "./routes/task.routes.js";
 import userRoutes from "./routes/auth.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
@@ -13,9 +12,14 @@ const PORT = process.env.PORT || 3001;
 
 const app = express();
 
-const fallbackAllowedOrigins = [
+const isProd = process.env.NODE_ENV === "production";
+
+const prodOrigins = [
   "https://glowy-ai.ru",
   "https://www.glowy-ai.ru",
+];
+
+const devOrigins = [
   "http://localhost:5173",
   "http://localhost:4173",
 ];
@@ -24,23 +28,29 @@ const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",")
       .map((origin) => origin.trim())
       .filter(Boolean)
-  : fallbackAllowedOrigins;
+  : (isProd ? prodOrigins : [...prodOrigins, ...devOrigins]);
 
 const csrfProtection = (req, res, next) => {
   const unsafeMethods = ["POST", "PUT", "PATCH", "DELETE"];
   if (unsafeMethods.includes(req.method)) {
-    const origin = req.headers.origin || req.headers.referer;
-    if (!origin) {
-      return res.status(403).json({ error: "Origin or Referer header is required" });
+    const headerValue = req.headers.origin || req.headers.referer;
+    if (!headerValue) {
+      return res.status(403).json({ error: "Доступ запрещен" });
     }
 
-    const isAllowed = allowedOrigins.some((allowed) => origin.startsWith(allowed));
-    if (!isAllowed) {
-      return res.status(403).json({ error: "Forbidden: Invalid origin" });
+    try {
+      const origin = new URL(headerValue).origin;
+      const isAllowed = allowedOrigins.includes(origin);
+      if (!isAllowed) {
+        return res.status(403).json({ error: "Доступ запрещен" });
+      }
+    } catch (e) {
+      return res.status(403).json({ error: "Доступ запрещен" });
     }
   }
   next();
 };
+
 
 app.set("trust proxy", 1);
 app.use(express.json());
@@ -51,11 +61,20 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"));
+      return callback(null, false);
     },
     credentials: true,
   })
 );
+
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") return next();
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ error: "Доступ запрещен" });
+  }
+  next();
+});
 
 app.use(csrfProtection);
 

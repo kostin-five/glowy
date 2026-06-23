@@ -58,19 +58,14 @@ export const useAuthStore = create<AuthStore>()(
         })),
       restoreAuthSession: () =>
         set((state) => {
-          if (state.token) {
+          if (state.token && state.token.startsWith("demo-token-")) {
             return {
               isAuthenticated: true,
-              isGuest: state.token.startsWith("demo-token-"),
+              isGuest: true,
             };
           }
 
-          if (!state.name || !state.email) return state;
-
-          return {
-            isAuthenticated: true,
-            isGuest: false,
-          };
+          return state;
         }),
       toDemoLogin: () =>
         set(() => ({

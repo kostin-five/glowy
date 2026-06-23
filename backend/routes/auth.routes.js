@@ -14,7 +14,7 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const ipKey = ipKeyGenerator(req, null);
+    const ipKey = ipKeyGenerator(req.ip);
     const email = req.body ? getAuthEmail(req.body) : "unknown";
     return `${ipKey}:${email}`;
   },
@@ -26,7 +26,7 @@ const registerLimiter = rateLimit({
   message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => ipKeyGenerator(req, null),
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
 });
 
 import { authMiddleware } from "../middleware/auth.middleware.js";

@@ -81,7 +81,8 @@ export const attachUnauthorizedInterceptor = (api: AxiosInstance) => {
     (response) => response,
     (error) => {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
-        handleUnauthorizedSession();
+        // Use dynamic import or window event to avoid circular dependency
+        window.dispatchEvent(new CustomEvent("glowy:unauthorized"));
       }
 
       return Promise.reject(error);
@@ -94,7 +95,7 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      handleUnauthorizedSession();
+      window.dispatchEvent(new CustomEvent("glowy:unauthorized"));
     }
 
     return Promise.reject(error);

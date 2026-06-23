@@ -3,8 +3,6 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_BASE_URL } from "../api/config";
 
-import { AuthApi } from "../api/AuthApi";
-
 export const GUEST_REQUEST_LIMIT = 7;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -86,6 +84,8 @@ export const useAuthStore = create<AuthStore>()(
         })),
       checkAuth: async () => {
         try {
+          // Dynamic import to avoid circular dependency
+          const { AuthApi } = await import("../api/AuthApi");
           const user = await AuthApi.meRequest();
           set({
             isAuthenticated: true,

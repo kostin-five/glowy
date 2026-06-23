@@ -94,6 +94,8 @@ const ProtectedLayoutRoute = ({
   </ProtectedRoute>
 );
 
+import { handleUnauthorizedSession } from "./api/authSession";
+
 function App() {
   const [isHydrated, setIsHydrated] = useState(() =>
     useAuthStore.persist.hasHydrated()
@@ -107,6 +109,15 @@ function App() {
   const startRoute = useStartRoute();
   const restoreAuthSession = useRestoreAuthSession();
   const hasLegacyToken = isHydrated && hasLegacyAuthToken();
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      handleUnauthorizedSession();
+    };
+
+    window.addEventListener("glowy:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("glowy:unauthorized", handleUnauthorized);
+  }, []);
 
   useLayoutEffect(() => {
     const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");

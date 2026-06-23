@@ -148,8 +148,10 @@ function App() {
     }
 
     const initAuth = async () => {
-      await useAuthStore.getState().checkAuth();
       restoreAuthSession();
+      if (!useAuthStore.getState().isGuest) {
+        await useAuthStore.getState().checkAuth();
+      }
     };
 
     initAuth();

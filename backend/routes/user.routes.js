@@ -3,6 +3,7 @@ import pg from "pg";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { body, validationResult } from "express-validator";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -40,9 +41,19 @@ router.get("/progress", async (req, res) => {
   }
 });
 
-router.put("/energy", async (req, res) => {
-  try {
-    const rawEnergy = req.body.currentEnergy ?? req.body.energyLimit;
+router.put(
+  "/energy",
+  [
+    body("currentEnergy").optional().isNumeric().withMessage("Должно быть числом"),
+    body("energyLimit").optional().isNumeric().withMessage("Должно быть числом"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const rawEnergy = req.body.currentEnergy ?? req.body.energyLimit;
     const currentEnergy = Math.min(100, Math.max(0, Number(rawEnergy)));
 
     if (Number.isNaN(currentEnergy)) {

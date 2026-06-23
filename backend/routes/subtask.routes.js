@@ -3,6 +3,7 @@ import pg from "pg";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { body, validationResult } from "express-validator";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -58,6 +59,10 @@ const getSubTasks = async (req, res) => {
 
 const createSubTask = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     const taskId = parseId(req.body.taskId);
     const title = req.body.title?.trim();
 
@@ -92,6 +97,10 @@ const createSubTask = async (req, res) => {
 
 const updateSubTask = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     const { id } = req.params;
     const { title, completed, position } = req.body;
     const uniqueSubTask = await prisma.subTask.findUnique({
@@ -146,9 +155,24 @@ const deleteSubTask = async (req, res) => {
 
 router.get("/:taskId", getSubTasks);
 
-router.post("/", createSubTask);
+router.post(
+  "/",
+  [
+    body("taskId").isInt({ min: 1 }).withMessage("Некорректный ID задачи"),
+    body("title").trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+  ],
+  createSubTask
+);
 
-router.put("/:id", updateSubTask);
+router.put(
+  "/:id",
+  [
+    body("title").optional().trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+    body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
+    body("position").optional().isInt().withMessage("Должно быть целым числом"),
+  ],
+  updateSubTask
+);
 
 router.delete("/:id", deleteSubTask);
 

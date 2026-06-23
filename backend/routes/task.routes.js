@@ -3,6 +3,7 @@ import pg from "pg";
 import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { body, validationResult } from "express-validator";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -82,9 +83,22 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
-  try {
-    const { title, energyLevel, priority, date, category, subtasks } = req.body;
+router.post(
+  "/",
+  [
+    body("title").trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("priority").optional().isString().isLength({ max: 50 }),
+    body("category").optional().isString().isLength({ max: 100 }),
+    body("date").optional().isISO8601().withMessage("Некорректная дата"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const { title, energyLevel, priority, date, category, subtasks } = req.body;
     const subtasksToCreate = Array.isArray(subtasks)
       ? subtasks
           .map((sub, index) => ({
@@ -121,9 +135,23 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.put(
+  "/:id",
+  [
+    body("title").optional().trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
+    body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
+    body("priority").optional().isString().isLength({ max: 50 }),
+    body("category").optional().isString().isLength({ max: 100 }),
+    body("date").optional().isISO8601().withMessage("Некорректная дата"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+      const { id } = req.params;
     const { title, energyLevel, priority, date, category, completed, subtasks } =
       req.body;
     const taskId = Number(id);

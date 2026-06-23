@@ -4,6 +4,8 @@ import pkg from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { rateLimit } from "express-rate-limit";
 
+import { authMiddleware } from "../middleware/auth.middleware.js";
+
 const { PrismaClient } = pkg;
 const { Pool } = pg;
 
@@ -17,6 +19,8 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
+
+router.use(authMiddleware);
 
 const limitter = rateLimit({
   windowMs: 60 * 60 * 1000,

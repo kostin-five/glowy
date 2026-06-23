@@ -19,7 +19,13 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (
-            /node_modules\/(react|react-dom|react-router-dom|zustand)\//.test(id)
+            /src\/api\/(config|unauthorizedInterceptor)\.ts$/.test(id)
+          ) {
+            return "api-core";
+          }
+
+          if (
+            /node_modules\/(axios|react|react-dom|react-router-dom|zustand)\//.test(id)
           ) {
             return "vendor";
           }

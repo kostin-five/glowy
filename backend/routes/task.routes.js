@@ -19,6 +19,11 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 
+const parseId = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 router.use(authMiddleware);
 
 const taskInclude = {
@@ -147,14 +152,17 @@ router.put(
   ],
   async (req, res) => {
     try {
+      const taskId = parseId(req.params.id);
+      if (!taskId) {
+        return res.status(400).json({ error: "Некорректный ID задачи" });
+      }
+
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      const { id } = req.params;
-    const { title, energyLevel, priority, date, category, completed, subtasks } =
+      const { title, energyLevel, priority, date, category, completed, subtasks } =
       req.body;
-    const taskId = Number(id);
     const uniqueTask = await prisma.task.findUnique({
       where: { id: taskId },
     });
@@ -247,15 +255,19 @@ router.put(
 
 router.delete("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
+    const taskId = parseId(req.params.id);
+    if (!taskId) {
+      return res.status(400).json({ error: "Некорректный ID задачи" });
+    }
+
     const uniqueTask = await prisma.task.findUnique({
-      where: { id: Number(id) },
+      where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
       return res.status(403).json({ error: "Нет доступа к этой задаче" });
     }
     await prisma.task.delete({
-      where: { id: Number(id) },
+      where: { id: taskId },
     });
     res.json({ message: "Удалено" });
   } catch (e) {

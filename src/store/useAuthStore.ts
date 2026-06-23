@@ -93,7 +93,7 @@ export const useAuthStore = create<AuthStore>()(
             name: user.name,
             email: user.email,
           });
-        } catch (e) {
+        } catch {
           set({
             isAuthenticated: false,
             isGuest: false,

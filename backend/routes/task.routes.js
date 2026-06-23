@@ -92,17 +92,40 @@ router.post(
   "/",
   [
     body("title").trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
-    body("energyLevel").optional().isIn("low", "med", "high").withMessage("Недопустимый уровень энергии"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
     body("date").optional().custom((value) => {
       if (!value) return true;
+      
+      let date;
       const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
       const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
-      if (isoRegex.test(value) || ruRegex.test(value)) {
-        return true;
+
+      if (isoRegex.test(value)) {
+        date = new Date(value);
+      } else if (ruRegex.test(value)) {
+        const [day, month, year] = value.split(".");
+        date = new Date(`${year}-${month}-${day}`);
+      } else {
+        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
       }
-      throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Указана несуществующая дата");
+      }
+
+      // Дополнительная проверка на реальность даты (например, 31 февраля)
+      const [y, m, d] = date.toISOString().split("T")[0].split("-");
+      if (isoRegex.test(value)) {
+        const [vy, vm, vd] = value.split("-");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      } else {
+        const [vd, vm, vy] = value.split(".");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      }
+
+      return true;
     }),
   ],
   async (req, res) => {
@@ -152,18 +175,40 @@ router.put(
   "/:id",
   [
     body("title").optional().trim().notEmpty().withMessage("Заголовок не может быть пустым").isLength({ max: 255 }).withMessage("Заголовок слишком длинный"),
-    body("energyLevel").optional().isIn("low", "med", "high").withMessage("Недопустимый уровень энергии"),
+    body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
     body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
     body("date").optional().custom((value) => {
       if (!value) return true;
+
+      let date;
       const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
       const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
-      if (isoRegex.test(value) || ruRegex.test(value)) {
-        return true;
+
+      if (isoRegex.test(value)) {
+        date = new Date(value);
+      } else if (ruRegex.test(value)) {
+        const [day, month, year] = value.split(".");
+        date = new Date(`${year}-${month}-${day}`);
+      } else {
+        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
       }
-      throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Указана несуществующая дата");
+      }
+
+      const [y, m, d] = date.toISOString().split("T")[0].split("-");
+      if (isoRegex.test(value)) {
+        const [vy, vm, vd] = value.split("-");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      } else {
+        const [vd, vm, vy] = value.split(".");
+        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
+      }
+
+      return true;
     }),
   ],
   async (req, res) => {

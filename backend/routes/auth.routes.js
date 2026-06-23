@@ -14,9 +14,8 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
     const email = req.body ? getAuthEmail(req.body) : "unknown";
-    return `${ip}_${email}`;
+    return `${req.ip}:${email}`;
   },
 });
 
@@ -26,8 +25,10 @@ const registerLimiter = rateLimit({
   message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
+  keyGenerator: (req) => req.ip,
 });
+
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -86,8 +87,8 @@ router.post(
     }),
     check(
       "password",
-      "Пароль должен быть больше 4 и меньше 20 символов"
-    ).isLength({ min: 4, max: 20 }),
+      "Пароль должен быть больше 8 и меньше 20 символов"
+    ).isLength({ min: 8, max: 20 }),
   ],
   async (req, res) => {
     try {
@@ -160,6 +161,30 @@ router.post("/login", loginLimiter, async (req, res) => {
 router.post("/logout", (_req, res) => {
   res.clearCookie(AUTH_COOKIE_NAME, AUTH_COOKIE_CLEAR_OPTIONS);
   res.status(200).json({ message: "Выход выполнен" });
+});
+
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        xp: true,
+        level: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: "Ошибка при получении профиля" });
+  }
 });
 
 export default router;

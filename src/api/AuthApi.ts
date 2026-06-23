@@ -8,6 +8,11 @@ const authInstance = axios.create({
   withCredentials: true,
 });
 
+const silentAuthInstance = axios.create({
+  baseURL: `${API_BASE_URL}/auth`,
+  withCredentials: true,
+});
+
 attachUnauthorizedInterceptor(authInstance);
 
 export const AuthApi = {
@@ -29,6 +34,11 @@ export const AuthApi = {
 
   async logoutRequest() {
     const response = await authInstance.post("/logout");
+    return response.data;
+  },
+
+  async meRequest() {
+    const response = await silentAuthInstance.get("/me");
     return response.data;
   },
 };

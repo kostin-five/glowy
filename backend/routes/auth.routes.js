@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -14,9 +14,9 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const ipKey = ipKeyGenerator(req.ip);
     const email = req.body ? getAuthEmail(req.body) : "unknown";
-    return `${ip}_${email}`;
+    return `${ipKey}:${email}`;
   },
 });
 
@@ -26,8 +26,10 @@ const registerLimiter = rateLimit({
   message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
+  keyGenerator: (req) => ipKeyGenerator(req.ip),
 });
+
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const { PrismaClient } = pkg;
 const { Pool } = pg;
@@ -86,8 +88,8 @@ router.post(
     }),
     check(
       "password",
-      "Пароль должен быть больше 4 и меньше 20 символов"
-    ).isLength({ min: 4, max: 20 }),
+      "Пароль должен быть не короче 8 символов"
+    ).isLength({ min: 8, max: 20 }),
   ],
   async (req, res) => {
     try {
@@ -105,7 +107,7 @@ router.post(
           .status(400)
           .json({ error: "Пользователь с таким email уже существует" });
       }
-      const hashPassword = bcrypt.hashSync(password, 7);
+      const hashPassword = bcrypt.hashSync(password, 10);
       const newUser = await prisma.user.create({
         data: { name, email, password: hashPassword },
       });
@@ -160,6 +162,29 @@ router.post("/login", loginLimiter, async (req, res) => {
 router.post("/logout", (_req, res) => {
   res.clearCookie(AUTH_COOKIE_NAME, AUTH_COOKIE_CLEAR_OPTIONS);
   res.status(200).json({ message: "Выход выполнен" });
+});
+
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        xp: true,
+        level: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "Пользователь не найден" });
+    }
+
+    res.json(user);
+  } catch (e) {
+    res.status(500).json({ error: "Ошибка при получении профиля" });
+  }
 });
 
 export default router;

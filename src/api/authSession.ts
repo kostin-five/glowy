@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from "axios";
+import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
 import { useTaskStore } from "../store/useTaskStore";
 
@@ -76,28 +76,4 @@ export const handleUnauthorizedSession = () => {
   redirectToLogin();
 };
 
-export const attachUnauthorizedInterceptor = (api: AxiosInstance) => {
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        // Use dynamic import or window event to avoid circular dependency
-        window.dispatchEvent(new CustomEvent("glowy:unauthorized"));
-      }
-
-      return Promise.reject(error);
-    }
-  );
-};
-
 axios.defaults.withCredentials = true;
-axios.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      window.dispatchEvent(new CustomEvent("glowy:unauthorized"));
-    }
-
-    return Promise.reject(error);
-  }
-);

@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Task } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
-import { attachUnauthorizedInterceptor } from "./authSession";
+import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
 
 export type MindHubMode = "chat" | "parse";

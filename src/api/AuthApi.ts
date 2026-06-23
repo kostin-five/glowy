@@ -1,6 +1,6 @@
 import axios from "axios";
 import type { Auth, LoginData } from "../types";
-import { attachUnauthorizedInterceptor } from "./authSession";
+import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
 
 const authInstance = axios.create({

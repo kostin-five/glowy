@@ -1020,7 +1020,11 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
     try {
       parsedResult = await parseMindHubTasks(message, today);
     } catch (error) {
-      console.error("Public Mind Hub parsing failed, using fallback:", error);
+      console.error("Public Mind Hub parsing failed, using fallback:", {
+        code: error?.code,
+        status: error?.status,
+        hubMode: "parse",
+      });
       parsedResult = {
         tasks: parseMindHubFallback(message, today),
         reply: null,
@@ -1152,7 +1156,11 @@ router.post("/mind-hub", async (req, res) => {
       reply = parsedResult.reply;
       parsedSuccessfully = true;
     } catch (error) {
-      console.error("Mind Hub parsing failed, using fallback:", error);
+      console.error("Mind Hub parsing failed, using fallback:", {
+        code: error?.code,
+        status: error?.status,
+        hubMode: "parse",
+      });
       parsedTasks = parseMindHubFallback(message, today);
     }
 

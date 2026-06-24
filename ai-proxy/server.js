@@ -88,12 +88,22 @@ const normalizeGeminiErrorCode = (error) => {
 const isRetryableGeminiError = (error) => {
   const code = normalizeGeminiErrorCode(error);
   const status = getErrorStatus(error);
-  
+  const errCode = error?.code || "";
+  const errName = error?.name || "";
+  const errMsg = (error?.message || "").toLowerCase();
+
   // Retry only on temporary errors: overloaded, network issues, timeouts, or 5xx
+  const isTransientNetworkError =
+    ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"].includes(errCode) ||
+    errName === "AbortError" ||
+    errMsg.includes("timeout") ||
+    errMsg.includes("network") ||
+    errMsg.includes("fetch failed") ||
+    errMsg.includes("socket hang up");
+
   return (
     code === "GEMINI_OVERLOADED" ||
-    code === "AI_PROXY_TIMEOUT" ||
-    code === "AI_PROXY_UNAVAILABLE" ||
+    isTransientNetworkError ||
     (status >= 500 && status <= 599)
   );
 };

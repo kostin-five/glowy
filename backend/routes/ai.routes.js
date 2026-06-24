@@ -43,8 +43,7 @@ const demoMindHubLimiter = rateLimit({
 // ---------------------------------------------------------------------------
 
 const PRIMARY_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const FALLBACK_GEMINI_MODEL =
-  process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash";
+const FALLBACK_GEMINI_MODEL = process.env.GEMINI_FALLBACK_MODEL || "";
 const GEMINI_MODELS = [
   ...new Set([PRIMARY_GEMINI_MODEL, FALLBACK_GEMINI_MODEL].filter(Boolean)),
 ];
@@ -1036,11 +1035,17 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
           ? null
           : "Не удалось выделить конкретные задачи."),
     });
-  } catch (error) {
-    console.error("Public Mind Hub request failed:", error);
-    const { status, body } = getMindHubErrorResponse(error);
-    return res.status(status).json(body);
-  }
+    } catch (error) {
+      const code = error?.code || "UNKNOWN_ERROR";
+      const status = error?.status || 500;
+      console.error("Public Mind Hub request failed", {
+        code,
+        status,
+        hubMode,
+      });
+      const { status: errStatus, body } = getMindHubErrorResponse(error);
+      return res.status(errStatus).json(body);
+    }
 });
 
 router.use(authMiddleware);
@@ -1074,9 +1079,14 @@ router.post("/analyze", async (req, res) => {
 
     res.json({ message: text });
   } catch (error) {
-    console.error("AI analyze failed:", error);
-    const { status, body } = getMindHubErrorResponse(error);
-    res.status(status).json({
+    const code = error?.code || "UNKNOWN_ERROR";
+    const status = error?.status || 500;
+    console.error("AI analyze failed", {
+      code,
+      status,
+    });
+    const { status: errStatus, body } = getMindHubErrorResponse(error);
+    res.status(errStatus).json({
       error:
         body.error ||
         "Glowy сейчас не смог подготовить совет. Попробуй немного позже.",
@@ -1120,9 +1130,14 @@ router.post("/mind-hub", async (req, res) => {
 
         return res.json({ tasks: [], reply, limit: aiLimit.limit });
       } catch (error) {
-        console.error("Mind Hub chat failed:", error);
-        const { status, body } = getMindHubErrorResponse(error);
-        return res.status(status).json(body);
+        const code = error?.code || "UNKNOWN_ERROR";
+        const status = error?.status || 500;
+        console.error("Mind Hub chat failed", {
+          code,
+          status,
+        });
+        const { status: errStatus, body } = getMindHubErrorResponse(error);
+        return res.status(errStatus).json(body);
       }
     }
 
@@ -1180,7 +1195,13 @@ router.post("/mind-hub", async (req, res) => {
       limit: aiLimit.limit,
     });
   } catch (error) {
-    console.error("Mind Hub request failed:", error);
+    const code = error?.code || "UNKNOWN_ERROR";
+    const status = error?.status || 500;
+    console.error("Mind Hub request failed", {
+      code,
+      status,
+      hubMode,
+    });
     res.status(500).json({
       error: "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",
     });

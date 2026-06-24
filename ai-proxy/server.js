@@ -87,7 +87,15 @@ const normalizeGeminiErrorCode = (error) => {
 
 const isRetryableGeminiError = (error) => {
   const code = normalizeGeminiErrorCode(error);
-  return code === "GEMINI_OVERLOADED" || code === "GEMINI_REQUEST_FAILED";
+  const status = getErrorStatus(error);
+  
+  // Retry only on temporary errors: overloaded, network issues, timeouts, or 5xx
+  return (
+    code === "GEMINI_OVERLOADED" ||
+    code === "AI_PROXY_TIMEOUT" ||
+    code === "AI_PROXY_UNAVAILABLE" ||
+    (status >= 500 && status <= 599)
+  );
 };
 
 const getStatusForErrorCode = (code) => {

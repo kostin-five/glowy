@@ -85,8 +85,10 @@ const normalizeGeminiErrorCode = (error) => {
   return "GEMINI_REQUEST_FAILED";
 };
 
-const isRetryableGeminiError = (error) =>
-  normalizeGeminiErrorCode(error) === "GEMINI_OVERLOADED";
+const isRetryableGeminiError = (error) => {
+  const code = normalizeGeminiErrorCode(error);
+  return code === "GEMINI_OVERLOADED" || code === "GEMINI_REQUEST_FAILED";
+};
 
 const getStatusForErrorCode = (code) => {
   if (code === "GEMINI_QUOTA_EXCEEDED") return 429;
@@ -121,18 +123,16 @@ const runGeminiWithRetry = async (requestFactory, contextLabel) => {
         const code = normalizeGeminiErrorCode(error);
         const isLastAttemptForModel = attemptIndex === RETRY_DELAYS_MS.length;
 
-        console.warn("AI proxy Gemini request failed", {
-          contextLabel,
-          modelUsed: modelName,
-          attempt: attemptIndex + 1,
-          code,
-        });
-
         if (!isRetryableGeminiError(error)) {
           throw createGeminiError(code, "AI request failed.", error);
         }
 
         if (isLastAttemptForModel) {
+          console.warn("AI proxy Gemini request failed after retries", {
+            contextLabel,
+            modelUsed: modelName,
+            code,
+          });
           break;
         }
 

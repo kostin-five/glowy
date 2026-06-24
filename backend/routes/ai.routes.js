@@ -890,6 +890,7 @@ const getMindHubErrorResponse = (error) => {
       status: 503,
       body: {
         error: "ИИ сейчас перегружен, попробуй через минуту.",
+        retryable: true,
       },
     };
   }
@@ -899,13 +900,23 @@ const getMindHubErrorResponse = (error) => {
       status: 503,
       body: {
         error: "ИИ временно недоступен из-за лимита провайдера. Попробуй позже.",
+        retryable: false,
+      },
+    };
+  }
+
+  if (error?.code === "GEMINI_UNSUPPORTED_LOCATION") {
+    return {
+      status: 503,
+      body: {
+        error: "ИИ временно недоступен в твоем регионе. Попробуй еще раз чуть позже.",
+        retryable: false,
       },
     };
   }
 
   if (
     [
-      "GEMINI_UNSUPPORTED_LOCATION",
       "GEMINI_EMPTY_RESPONSE",
       "AI_PROXY_TIMEOUT",
       "AI_PROXY_UNAVAILABLE",
@@ -913,7 +924,10 @@ const getMindHubErrorResponse = (error) => {
   ) {
     return {
       status: 503,
-      body: getMindHubAiErrorResponse(),
+      body: {
+        ...getMindHubAiErrorResponse(),
+        retryable: true,
+      },
     };
   }
 
@@ -924,15 +938,22 @@ const getMindHubErrorResponse = (error) => {
   ) {
     return {
       status: 502,
-      body: getMindHubAiErrorResponse(),
+      body: {
+        ...getMindHubAiErrorResponse(),
+        retryable: false,
+      },
     };
   }
 
   return {
     status: 503,
-    body: getMindHubAiErrorResponse(),
+    body: {
+      ...getMindHubAiErrorResponse(),
+      retryable: true,
+    },
   };
 };
+
 
 // ---------------------------------------------------------------------------
 // Эндпоинт аналитики: короткий совет по активным задачам и энергопотенциалу

@@ -24,7 +24,7 @@ const PersonalDataConsentPage = () => {
               Согласие на обработку персональных данных
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Последнее обновление: 16 июня 2026
+              Дата редакции: {'{{EFFECTIVE_DATE}}'}
             </p>
           </div>
         </div>
@@ -103,8 +103,9 @@ const PersonalDataConsentPage = () => {
             <p className="mt-2">
               Основная production-инфраструктура и база данных Glowy размещены
               на Timeweb в РФ. AI-запросы могут передаваться через AI-proxy
-              Glowy в Amsterdam и далее в Google Gemini для генерации ответа.
-              Это может включать трансграничную передачу AI-запросов.
+              Glowy в Amsterdam и далее внешнему AI-провайдеру для генерации
+              ответа. Текущий основной AI-провайдер: DeepSeek. Это может
+              включать трансграничную передачу данных.
             </p>
           </section>
 

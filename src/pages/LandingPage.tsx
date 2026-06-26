@@ -457,7 +457,7 @@ const LandingPage = () => {
 
           <footer className="relative z-10 flex flex-col gap-5 border-t border-slate-800 py-6 text-sm text-slate-500 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex flex-col gap-1">
-              <span>Версия: v1.4.0</span>
+              <span>Версия: v1.5.5</span>
               <span>Поддержка: contact@example.test</span>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
@@ -469,17 +469,26 @@ const LandingPage = () => {
               >
                 Новости проекта в Telegram
               </a>
-              <Link to="/privacy" className="transition-colors hover:text-slate-200">
-                Политика конфиденциальности
-              </Link>
               <Link to="/terms" className="transition-colors hover:text-slate-200">
                 Условия использования
+              </Link>
+              <Link to="/privacy" className="transition-colors hover:text-slate-200">
+                Политика конфиденциальности
               </Link>
               <Link
                 to="/personal-data-consent"
                 className="transition-colors hover:text-slate-200"
               >
                 Согласие на обработку данных
+              </Link>
+              <Link to="/offer" className="transition-colors hover:text-slate-200">
+                Публичная оферта
+              </Link>
+              <Link to="/refund-policy" className="transition-colors hover:text-slate-200">
+                Условия возврата
+              </Link>
+              <Link to="/contacts" className="transition-colors hover:text-slate-200">
+                Контакты
               </Link>
             </div>
           </footer>

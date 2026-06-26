@@ -23,7 +23,7 @@ const TermsOfServicePage = () => {
               Условия использования
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Последнее обновление: 16 июня 2026
+              Дата редакции: {'{{EFFECTIVE_DATE}}'}
             </p>
           </div>
         </div>

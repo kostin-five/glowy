@@ -23,7 +23,7 @@ const PrivacyPolicyPage = () => {
               Политика конфиденциальности
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Последнее обновление: 16 июня 2026
+              Дата редакции: {'{{EFFECTIVE_DATE}}'}
             </p>
           </div>
         </div>
@@ -97,9 +97,10 @@ const PrivacyPolicyPage = () => {
             <p className="mt-2">
               Когда ты используешь AI Hub или AI-анализ, текст запроса может
               проходить по маршруту: backend Glowy в РФ → AI-proxy Glowy в
-              Amsterdam → Google Gemini. Это может включать трансграничную
-              передачу AI-запросов. Основная база данных и production-backend
-              расположены на инфраструктуре Timeweb в РФ.
+              Amsterdam → внешний AI-провайдер. Текущий основной AI-провайдер:
+              DeepSeek. Это может включать трансграничную передачу данных.
+              Основная база данных и production-backend расположены на
+              инфраструктуре Timeweb в РФ.
             </p>
             <p className="mt-3">
               Не отправляй в AI Hub пароли, платежные данные, медицинские

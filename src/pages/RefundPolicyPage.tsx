@@ -23,7 +23,7 @@ const RefundPolicyPage = () => {
               Условия возврата
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Дата редакции: {'{{EFFECTIVE_DATE}}'}
+              Дата редакции: 26 июня 2026 г.
             </p>
           </div>
         </div>
@@ -32,8 +32,15 @@ const RefundPolicyPage = () => {
           <section>
             <h2 className="font-display text-xl font-bold text-slate-100">1. Как запросить возврат</h2>
             <p className="mt-2">
-              Для оформления возврата необходимо отправить запрос на {'{{BILLING_EMAIL}}'} с указанием email аккаунта и причины возврата.
+              Исторические персональные сведения удалены
             </p>
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              <li>Email аккаунта;</li>
+              <li>Дата оплаты;</li>
+              <li>Сумма платежа;</li>
+              <li>Идентификатор платежа (при наличии);</li>
+              <li>Причина возврата.</li>
+            </ul>
           </section>
 
           <section>
@@ -51,30 +58,37 @@ const RefundPolicyPage = () => {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-bold text-slate-100">4. Техническая проблема</h2>
+            <h2 className="font-display text-xl font-bold text-slate-100">4. Технический сбой</h2>
             <p className="mt-2">
               Если доступ к Сервису не был предоставлен по техническим причинам на стороне Исполнителя, Пользователь имеет право на полный возврат за неоказанный период.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-bold text-slate-100">5. Возврат за уже использованный период</h2>
+            <h2 className="font-display text-xl font-bold text-slate-100">5. Неиспользованный период</h2>
+            <p className="mt-2">
+              При отмене подписки возврат за неиспользованный остаток оплаченного периода не производится, доступ сохраняется до конца срока.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-bold text-slate-100">6. Уже использованный период</h2>
             <p className="mt-2">
               Возврат за уже использованный период подписки не производится, так как услуга считается оказанной в момент предоставления доступа.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-bold text-slate-100">6. Способ возврата</h2>
+            <h2 className="font-display text-xl font-bold text-slate-100">7. Способ возврата</h2>
             <p className="mt-2">
               Возврат денежных средств осуществляется тем же способом, которым была произведена оплата.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-bold text-slate-100">7. Контакты для возврата</h2>
+            <h2 className="font-display text-xl font-bold text-slate-100">8. Контакты для возврата</h2>
             <p className="mt-2">
-              Email: {'{{BILLING_EMAIL}}'}
+              Исторические персональные сведения удалены
             </p>
           </section>
         </div>

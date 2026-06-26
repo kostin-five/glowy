@@ -36,18 +36,17 @@ const ContactsPage = () => {
           <section>
             <h2 className="font-display text-xl font-bold text-slate-100">Реквизиты</h2>
             <p className="mt-2">
-              {'{{LEGAL_NAME}}'}<br />
-              {'{{TAX_STATUS}}'}<br />
-              ИНН: {'{{INN}}'}
+              Исторические персональные сведения удалены<br />
+              Статус: самозанятый<br />
+              Исторические персональные сведения удалены
             </p>
           </section>
 
           <section>
             <h2 className="font-display text-xl font-bold text-slate-100">Электронная почта</h2>
             <div className="mt-2 space-y-2">
-              <p><strong>Поддержка:</strong> {'{{SUPPORT_EMAIL}}'}</p>
-              <p><strong>Юридические вопросы:</strong> {'{{LEGAL_EMAIL}}'}</p>
-              <p><strong>Финансовые вопросы:</strong> {'{{BILLING_EMAIL}}'}</p>
+              <p><strong>Поддержка и юридические вопросы:</strong> contact@example.test</p>
+              <p><strong>Вопросы оплаты и возвратов:</strong> contact@example.test</p>
             </div>
           </section>
 

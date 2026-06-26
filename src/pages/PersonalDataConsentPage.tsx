@@ -24,7 +24,7 @@ const PersonalDataConsentPage = () => {
               Согласие на обработку персональных данных
             </h1>
             <p className="mt-1 text-sm text-slate-400">
-              Дата редакции: {'{{EFFECTIVE_DATE}}'}
+              Дата редакции: 26 июня 2026 г.
             </p>
           </div>
         </div>

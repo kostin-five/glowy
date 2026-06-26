@@ -80,7 +80,7 @@ const LandingPage = () => {
   const navLinks = [
     { href: "#about", label: "О проекте" },
     { href: "#faq", label: "FAQ" },
-    { href: "#pricing", label: "Цены" },
+    { href: "/pricing", label: "Цены" },
   ];
   const faqItems = [
     {
@@ -469,6 +469,9 @@ const LandingPage = () => {
               >
                 Новости проекта в Telegram
               </a>
+              <Link to="/pricing" className="transition-colors hover:text-slate-200">
+                Цены
+              </Link>
               <Link to="/terms" className="transition-colors hover:text-slate-200">
                 Условия использования
               </Link>

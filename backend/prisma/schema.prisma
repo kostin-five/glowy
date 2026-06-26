@@ -25,18 +25,40 @@ model Task {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  name              String
-  email             String    @unique
-  password          String
-  currentEnergy     Int       @default(100) @map("current_energy")
-  aiRequestsCount   Int       @default(0) @map("ai_requests_count")
-  aiRequestsResetAt DateTime? @map("ai_requests_reset_at")
-  xp                Int       @default(0)
-  level             Int       @default(1)
-  tasks             Task[]
+  id                 Int       @id @default(autoincrement())
+  name               String
+  email              String    @unique
+  password           String
+  currentEnergy      Int       @default(100) @map("current_energy")
+  aiRequestsCount    Int       @default(0) @map("ai_requests_count")
+  aiRequestsResetAt  DateTime? @map("ai_requests_reset_at")
+  xp                 Int       @default(0)
+  level              Int       @default(1)
+  plan               String    @default("start")
+  subscriptionStatus String    @default("inactive") @map("subscription_status")
+  planExpiresAt      DateTime? @map("plan_expires_at")
+  tasks              Task[]
+  payments           Payment[]
 
   @@map("users")
+}
+
+model Payment {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String   @default("yookassa")
+  providerPaymentId String   @unique @map("provider_payment_id")
+  status            String
+  plan              String
+  amountKopeks      Int      @map("amount_kopeks")
+  currency          String   @default("RUB")
+  confirmationUrl   String?  @map("confirmation_url")
+  paid              Boolean  @default(false)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("payments")
 }
 
 model SubTask {

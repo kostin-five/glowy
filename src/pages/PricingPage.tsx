@@ -1,8 +1,35 @@
 import { useNavigate } from "react-router-dom";
 import { Tag, Check, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
+import { PaymentApi } from "../api/PaymentApi";
 
 const PricingPage = () => {
   const navigate = useNavigate();
+  const isAuthenticated = useIsAuthenticated();
+  const isGuest = useIsGuest();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleFocusClick = async () => {
+    if (!isAuthenticated || isGuest) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { confirmationUrl } = await PaymentApi.createFocusPayment();
+      if (confirmationUrl) {
+        window.location.href = confirmationUrl;
+      } else {
+        alert("Не удалось получить ссылку на оплату. Попробуйте позже.");
+      }
+    } catch {
+      alert("Не удалось создать платеж. Попробуйте позже.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const plans = [
     {
@@ -27,9 +54,9 @@ const PricingPage = () => {
         "Приоритетная поддержка",
         "Все функции Start",
       ],
-      cta: "Скоро появится",
+      cta: "Оформить Focus",
       highlight: true,
-      disabled: true,
+      disabled: false,
     },
     {
       name: "Forever",
@@ -100,14 +127,15 @@ const PricingPage = () => {
                 ))}
               </ul>
               <button
-                disabled={plan.disabled}
+                disabled={plan.disabled || (plan.name === "Focus" && isLoading)}
+                onClick={plan.name === "Focus" ? handleFocusClick : undefined}
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${
                   plan.highlight
                     ? "bg-indigo-600 text-white hover:bg-indigo-500"
                     : "bg-slate-800 text-slate-300"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                {plan.cta}
+                {plan.name === "Focus" && isLoading ? "Загрузка..." : plan.cta}
               </button>
             </div>
           ))}

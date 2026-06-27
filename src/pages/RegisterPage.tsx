@@ -25,6 +25,10 @@ const RegisterPage = () => {
     e.preventDefault();
     setError("");
 
+    if (password.length < 8) {
+      return setError("Пароль должен быть не менее 8 символов");
+    }
+
     if (password !== confirmPassword) {
       return setError("Пароли не совпадают!");
     }
@@ -113,7 +117,7 @@ const RegisterPage = () => {
 
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
-              Пароль
+              Пароль (минимум 8 символов)
             </label>
             <div className="relative">
               <input
@@ -121,6 +125,7 @@ const RegisterPage = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
                 className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
                 required
               />
@@ -144,6 +149,7 @@ const RegisterPage = () => {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
                 className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600"
                 required
               />

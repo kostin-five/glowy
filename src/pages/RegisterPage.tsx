@@ -47,7 +47,6 @@ const RegisterPage = () => {
           "Сервер недоступен (проверь терминал бэкенда)";
 
         setError(serverError);
-        console.error("Детали ошибки:", e.response?.data);
       } else {
         setError("Что-то пошло не так");
       }

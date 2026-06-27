@@ -19,6 +19,75 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 
+router.post("/yookassa/webhook", async (req, res) => {
+  try {
+    const { YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY } = process.env;
+    if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
+      return res.status(500).json({ error: "Ошибка конфигурации" });
+    }
+
+    const event = req.body;
+    if (!event || !event.object || !event.object.id) {
+      return res.status(200).json({ ok: true });
+    }
+
+    const paymentId = event.object.id;
+
+    if (event.event !== "payment.succeeded" && event.event !== "payment.canceled") {
+      return res.status(200).json({ ok: true });
+    }
+
+    const authString = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
+    const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
+      headers: { Authorization: `Basic ${authString}` },
+    });
+
+    if (!response.ok) {
+      return res.status(500).json({ error: "Ошибка проверки платежа" });
+    }
+
+    const yookassaPayment = await response.json();
+    const localPayment = await prisma.payment.findFirst({
+      where: { providerPaymentId: paymentId },
+    });
+
+    if (!localPayment) {
+      return res.status(200).json({ ok: true });
+    }
+
+    if (event.event === "payment.succeeded" && yookassaPayment.status === "succeeded") {
+      if (localPayment.paid) return res.status(200).json({ ok: true });
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await prisma.$transaction([
+        prisma.payment.update({
+          where: { id: localPayment.id },
+          data: { status: "succeeded", paid: true },
+        }),
+        prisma.user.update({
+          where: { id: localPayment.userId },
+          data: {
+            plan: "focus",
+            subscriptionStatus: "active",
+            planExpiresAt: expiresAt,
+          },
+        }),
+      ]);
+    } else if (event.event === "payment.canceled" && yookassaPayment.status === "canceled") {
+      await prisma.payment.update({
+        where: { id: localPayment.id },
+        data: { status: "canceled", paid: false },
+      });
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: "Ошибка обработки webhook" });
+  }
+});
+
 router.use(authMiddleware);
 
 router.get("/current-plan", async (req, res) => {

@@ -77,7 +77,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(csrfProtection);
+app.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/api/payments/yookassa/webhook") {
+    return next();
+  }
+  csrfProtection(req, res, next);
+});
 
 app.use((req, res, next) => {
   const host = req.get("host");

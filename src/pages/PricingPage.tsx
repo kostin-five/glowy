@@ -25,9 +25,10 @@ const PricingPage = () => {
       features: [
         "100 AI-запросов в день",
         "Приоритетная поддержка",
+        "Ранний доступ к новым функциям и обновлениям",
         "Все функции Start",
       ],
-      cta: "Скоро появится",
+      cta: "Оплата подключается",
       highlight: true,
       disabled: true,
     },
@@ -115,10 +116,12 @@ const PricingPage = () => {
 
         <div className="mt-16 rounded-3xl border border-slate-800 bg-slate-900/30 p-8 text-center">
           <Sparkles className="mx-auto mb-4 text-indigo-400" size={32} />
-          <h2 className="mb-4 text-xl font-bold">Оформление подписки скоро появится</h2>
+          <h2 className="mb-4 text-xl font-bold">Онлайн-оплата подключается</h2>
           <p className="mx-auto max-w-2xl text-slate-400">
-            Мы готовим интеграцию с платежной системой. Сейчас все зарегистрированные пользователи 
-            могут пользоваться функциями тарифа Start бесплатно. 
+            Тариф Focus готовится к запуску: после подключения платёжного
+            провайдера его можно будет оформить онлайн. Сейчас все
+            зарегистрированные пользователи могут пользоваться функциями
+            тарифа Start бесплатно.
             Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
           </p>
         </div>

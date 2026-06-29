@@ -1,18 +1,40 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tag, Check, Sparkles } from "lucide-react";
-import { useState } from "react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
+
+type CurrentPlan = {
+  plan?: string;
+  subscriptionStatus?: string;
+  planExpiresAt?: string | null;
+};
 
 const PricingPage = () => {
   const navigate = useNavigate();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
   const paymentsEnabled = import.meta.env.VITE_PAYMENTS_ENABLED === "true";
 
+
+  useEffect(() => {
+    if (isAuthenticated && !isGuest) {
+      PaymentApi.getCurrentPlan()
+        .then((data) => setCurrentPlan(data))
+        .catch(() => {});
+    }
+  }, [isAuthenticated, isGuest]);
+
+  const isFocusActive = currentPlan &&
+    currentPlan.plan === "focus" &&
+    currentPlan.subscriptionStatus === "active" &&
+    currentPlan.planExpiresAt &&
+    new Date(currentPlan.planExpiresAt) > new Date();
+
   const handleFocusClick = async () => {
-    if (!paymentsEnabled) return;
+    if (!paymentsEnabled || isFocusActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login");
@@ -58,9 +80,11 @@ const PricingPage = () => {
         "Все функции Start",
         "Ранний доступ к новым функциям и обновлениям",
       ],
-      cta: paymentsEnabled ? "Оформить Focus" : "Оплата подключается",
+      cta: isFocusActive ? "Текущий тариф" : (paymentsEnabled ? "Оформить Focus" : "Оплата подключается"),
       highlight: true,
-      disabled: !paymentsEnabled,
+      disabled: !paymentsEnabled || isFocusActive,
+      active: isFocusActive,
+      expiresAt: currentPlan?.planExpiresAt,
     },
     {
       name: "Forever",
@@ -121,6 +145,11 @@ const PricingPage = () => {
                   <span className="text-4xl font-black">{plan.price}</span>
                   <span className="text-slate-400">/ {plan.period}</span>
                 </div>
+                {plan.active && plan.expiresAt && (
+                  <p className="mt-2 text-sm text-indigo-400">
+                    Активен до {new Date(plan.expiresAt).toLocaleDateString("ru-RU")}
+                  </p>
+                )}
               </div>
               <ul className="mb-8 flex-1 space-y-4">
                 {plan.features.map((feature) => (

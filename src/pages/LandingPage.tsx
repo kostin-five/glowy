@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import {
   ArrowRight,
   Brain,
@@ -444,55 +444,66 @@ const LandingPage = () => {
                 </div>
 
                 <div className="rounded-2xl border border-slate-700/70 bg-slate-950/25 p-4">
-                  <p className="font-bold text-white">Подписки появятся позже</p>
+                  <p className="font-bold text-white">Онлайн-оплата подключается</p>
                   <p className="mt-3 text-sm leading-6 text-slate-300">
-                    Pro-тарифы откроют больше ИИ-запросов, расширенную аналитику,
-                    премиальные модели и дополнительные инструменты для
-                    бережного планирования.
+                    Тариф Focus за 99 ₽/месяц готовится к запуску: он даст
+                    больше ИИ-запросов, приоритетную поддержку и дополнительные
+                    возможности для бережного планирования.
                   </p>
                 </div>
               </div>
             </section>
           </div>
 
-          <footer className="relative z-10 flex flex-col gap-5 border-t border-slate-800 py-6 text-sm text-slate-500 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-1">
-              <span>Версия: v1.5.5</span>
-              <span>Поддержка: contact@example.test</span>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-              <a
-                href="https://t.me/glowy_ai"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-indigo-300 transition-colors hover:text-indigo-200"
-              >
-                Новости проекта в Telegram
-              </a>
-              <Link to="/pricing" className="transition-colors hover:text-slate-200">
-                Цены
-              </Link>
-              <Link to="/terms" className="transition-colors hover:text-slate-200">
-                Условия использования
-              </Link>
-              <Link to="/privacy" className="transition-colors hover:text-slate-200">
-                Политика конфиденциальности
-              </Link>
-              <Link
-                to="/personal-data-consent"
-                className="transition-colors hover:text-slate-200"
-              >
-                Согласие на обработку данных
-              </Link>
-              <Link to="/offer" className="transition-colors hover:text-slate-200">
-                Публичная оферта
-              </Link>
-              <Link to="/refund-policy" className="transition-colors hover:text-slate-200">
-                Условия возврата
-              </Link>
-              <Link to="/contacts" className="transition-colors hover:text-slate-200">
-                Контакты
-              </Link>
+          <footer className="relative z-10 border-t border-slate-800 py-6 text-sm text-slate-500">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1.2fr] lg:gap-10">
+              <FooterGroup title="Проект">
+                <a
+                  href="https://t.me/glowy_ai"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition-colors hover:text-slate-200"
+                >
+                  Новости проекта в Telegram
+                </a>
+                <Link to="/pricing" className="transition-colors hover:text-slate-200">
+                  Цены
+                </Link>
+                <span className="pt-2 text-slate-600">Версия: v1.5.5</span>
+                <span className="break-all text-slate-600">
+                  Поддержка: contact@example.test
+                </span>
+              </FooterGroup>
+
+              <FooterGroup title="Документы">
+                <Link to="/terms" className="transition-colors hover:text-slate-200">
+                  Условия использования
+                </Link>
+                <Link to="/offer" className="transition-colors hover:text-slate-200">
+                  Публичная оферта
+                </Link>
+                <Link to="/refund-policy" className="transition-colors hover:text-slate-200">
+                  Условия возврата
+                </Link>
+              </FooterGroup>
+
+              <FooterGroup title="Данные и реквизиты">
+                <Link to="/privacy" className="transition-colors hover:text-slate-200">
+                  Политика конфиденциальности
+                </Link>
+                <Link
+                  to="/personal-data-consent"
+                  className="transition-colors hover:text-slate-200"
+                >
+                  Согласие на обработку данных
+                </Link>
+                <Link to="/contacts" className="transition-colors hover:text-slate-200">
+                  Контакты
+                </Link>
+                <Link to="/requisites" className="transition-colors hover:text-slate-200">
+                  Реквизиты
+                </Link>
+              </FooterGroup>
             </div>
           </footer>
         </div>
@@ -514,6 +525,21 @@ const Feature = ({
     <Icon size={20} className="mb-3 text-indigo-300" />
     <p className="font-semibold text-slate-100">{title}</p>
     <p className="mt-1 text-sm leading-5 text-slate-400">{text}</p>
+  </div>
+);
+
+const FooterGroup = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) => (
+  <div className="flex flex-col gap-2">
+    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
+      {title}
+    </p>
+    {children}
   </div>
 );
 

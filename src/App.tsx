@@ -47,6 +47,7 @@ const OfferPage = lazy(() => import("./pages/OfferPage"));
 const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
+const RequisitesPage = lazy(() => import("./pages/RequisitesPage"));
 
 const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
@@ -250,6 +251,14 @@ function App() {
           element={
             <PublicLazyRoute>
               <PricingPage />
+            </PublicLazyRoute>
+          }
+        />
+        <Route
+          path="/requisites"
+          element={
+            <PublicLazyRoute>
+              <RequisitesPage />
             </PublicLazyRoute>
           }
         />

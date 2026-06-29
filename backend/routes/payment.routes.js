@@ -56,6 +56,19 @@ router.post("/yookassa/webhook", async (req, res) => {
     }
 
     if (event.event === "payment.succeeded" && yookassaPayment.status === "succeeded") {
+      if (
+        yookassaPayment.id !== paymentId ||
+        yookassaPayment.amount?.value !== "99.00" ||
+        yookassaPayment.amount?.currency !== "RUB" ||
+        String(yookassaPayment.metadata?.userId) !== String(localPayment.userId) ||
+        yookassaPayment.metadata?.plan !== "focus" ||
+        localPayment.plan !== "focus" ||
+        localPayment.amountKopeks !== 9900 ||
+        localPayment.currency !== "RUB"
+      ) {
+        return res.status(200).json({ ok: true });
+      }
+
       if (localPayment.paid) return res.status(200).json({ ok: true });
 
       const expiresAt = new Date();
@@ -76,14 +89,16 @@ router.post("/yookassa/webhook", async (req, res) => {
         }),
       ]);
     } else if (event.event === "payment.canceled" && yookassaPayment.status === "canceled") {
-      await prisma.payment.update({
-        where: { id: localPayment.id },
-        data: { status: "canceled", paid: false },
-      });
+      if (!localPayment.paid) {
+        await prisma.payment.update({
+          where: { id: localPayment.id },
+          data: { status: "canceled", paid: false },
+        });
+      }
     }
 
     res.status(200).json({ ok: true });
-  } catch (e) {
+  } catch { 
     res.status(500).json({ error: "Ошибка обработки webhook" });
   }
 });
@@ -106,13 +121,27 @@ router.get("/current-plan", async (req, res) => {
     }
 
     res.json(user);
-  } catch (e) {
+  } catch { 
     res.status(500).json({ error: "Ошибка при загрузке данных плана" });
   }
 });
 
 router.post("/focus/create", async (req, res) => {
   try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (
+      user?.plan === "focus" &&
+      user?.subscriptionStatus === "active" &&
+      user?.planExpiresAt &&
+      new Date(user.planExpiresAt) > new Date()
+    ) {
+      return res.status(409).json({
+        code: "FOCUS_ALREADY_ACTIVE",
+        error: "Тариф Focus уже активен",
+        planExpiresAt: user.planExpiresAt,
+      });
+    }
+
     const { YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL } = process.env;
 
     if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY || !YOOKASSA_RETURN_URL) {
@@ -163,7 +192,7 @@ router.post("/focus/create", async (req, res) => {
     });
 
     res.json({ paymentId: payment.providerPaymentId, confirmationUrl: payment.confirmationUrl });
-  } catch (e) {
+  } catch { 
     res.status(500).json({ error: "Ошибка при создании платежа" });
   }
 });

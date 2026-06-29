@@ -48,6 +48,8 @@ const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
 const ContactsPage = lazy(() => import("./pages/ContactsPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
 const RequisitesPage = lazy(() => import("./pages/RequisitesPage"));
+const PaymentSuccessPage = lazy(() => import("./pages/PaymentSuccessPage"));
+const PaymentCancelPage = lazy(() => import("./pages/PaymentCancelPage"));
 
 const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
@@ -259,6 +261,22 @@ function App() {
           element={
             <PublicLazyRoute>
               <RequisitesPage />
+            </PublicLazyRoute>
+          }
+        />
+        <Route
+          path="/payment/success"
+          element={
+            <PublicLazyRoute>
+              <PaymentSuccessPage />
+            </PublicLazyRoute>
+          }
+        />
+        <Route
+          path="/payment/cancel"
+          element={
+            <PublicLazyRoute>
+              <PaymentCancelPage />
             </PublicLazyRoute>
           }
         />

@@ -10,4 +10,10 @@ export const PaymentApi = {
     );
     return data;
   },
+  getCurrentPlan: async () => {
+    const { data } = await axios.get(`${API_BASE_URL}/payments/current-plan`, {
+      withCredentials: true,
+    });
+    return data;
+  },
 };

@@ -12,7 +12,7 @@ const TaskPage = () => {
         Твои задачи
       </h1>
       <TaskControls onCreateClick={() => setIsCreateOpen(true)} />
-      <TaskList onEmptyClick={() => setIsCreateOpen(true)} />
+      <TaskList onEmptyClick={() => setIsCreateOpen(true)} groupByDate />
 
       {isCreateOpen && (
         <CreateTaskForm

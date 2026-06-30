@@ -69,3 +69,11 @@ export type Auth = z.infer<typeof schemaAuthData>;
 export type SubTask = z.infer<typeof schemaSubTask>;
 export type SubTaskDraft = z.infer<typeof schemaSubTaskDraft>;
 export type UserProgress = z.infer<typeof schemaUserProgress>;
+
+export type TaskDateGroup<T> = {
+  key: string;
+  label: string;
+  date: Date | null;
+  tasks: T[];
+  isUndated: boolean;
+};

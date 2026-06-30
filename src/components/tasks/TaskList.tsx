@@ -8,6 +8,7 @@ import {
   useToggleTask,
 } from "../../store/useTaskStore";
 import type { SubTask, Task } from "../../types";
+import { groupTasksByDate } from "../../utils/taskDateGroups";
 import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
@@ -42,6 +43,7 @@ interface TaskListProps {
   maxItems?: number;
   viewMode?: TaskViewMode;
   onEmptyClick?: () => void;
+  groupByDate?: boolean;
 }
 
 type PendingTaskDeletion = {
@@ -188,6 +190,7 @@ const TaskList = ({
   maxItems,
   viewMode,
   onEmptyClick,
+  groupByDate = false,
 }: TaskListProps) => {
   const toggle = useToggleTask();
   const tasks = useTasks();
@@ -225,6 +228,9 @@ const TaskList = ({
       ? baseDisplayedTasks.slice(0, maxItems)
       : baseDisplayedTasks;
   const effectiveTaskViewMode = viewMode ?? taskViewMode;
+  const isGrouped = groupByDate && effectiveTaskViewMode === "list";
+  const groupedTasks = isGrouped ? groupTasksByDate(displayedTasks) : null;
+
   const listContainerClass =
     effectiveTaskViewMode === "grid"
       ? "flex flex-col gap-3 sm:grid sm:auto-rows-fr sm:grid-cols-2 sm:gap-4 lg:grid-cols-3"
@@ -371,14 +377,34 @@ const TaskList = ({
           <ul className={`${listContainerClass} list-none`}>
             <AnimatePresence>
               {displayedTasks.length ? (
-                displayedTasks.map((task: Task) => (
-                  <TaskItem
-                    key={task.id}
-                    toggle={toggle}
-                    task={task}
-                    onRequestDelete={handleRequestDelete}
-                  />
-                ))
+                  isGrouped ? (
+                  groupedTasks?.map((group) => (
+                    <div key={group.key} className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                        <span>{group.label}</span>
+                        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                      </div>
+                      {group.tasks.map((task) => (
+                        <TaskItem
+                          key={task.id}
+                          toggle={toggle}
+                          task={task}
+                          onRequestDelete={handleRequestDelete}
+                        />
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  displayedTasks.map((task: Task) => (
+                    <TaskItem
+                      key={task.id}
+                      toggle={toggle}
+                      task={task}
+                      onRequestDelete={handleRequestDelete}
+                    />
+                  ))
+                )
               ) : (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}

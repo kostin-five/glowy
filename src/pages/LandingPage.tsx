@@ -469,7 +469,7 @@ const LandingPage = () => {
                 <Link to="/pricing" className="transition-colors hover:text-slate-200">
                   Цены
                 </Link>
-                <span className="pt-2 text-slate-600">Версия: v1.5.5</span>
+                <span className="pt-2 text-slate-600">Версия: v1.6.0</span>
                 <span className="break-all text-slate-600">
                   Поддержка: contact@example.test
                 </span>

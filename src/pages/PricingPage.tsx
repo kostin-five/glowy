@@ -49,8 +49,27 @@ const PricingPage = () => {
       } else {
         alert("Не удалось получить ссылку на оплату. Попробуйте позже.");
       }
-    } catch {
-      alert("Не удалось создать платеж. Попробуйте позже.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error &&
+        "response" in error &&
+        typeof error.response === "object" &&
+        error.response !== null &&
+        "data" in error.response &&
+        typeof error.response.data === "object" &&
+        error.response.data !== null &&
+        "code" in error.response.data &&
+        error.response.data.code === "FOCUS_ALREADY_ACTIVE"
+          ? "У вас уже активен тариф Focus. Обновляем статус тарифа."
+          : "Не удалось создать платеж. Попробуйте позже.";
+
+      alert(message);
+
+      if (message.includes("уже активен")) {
+        PaymentApi.getCurrentPlan()
+          .then((data) => setCurrentPlan(data))
+          .catch(() => {});
+      }
     } finally {
       setIsLoading(false);
     }
@@ -176,14 +195,31 @@ const PricingPage = () => {
 
         <div className="mt-16 rounded-3xl border border-slate-800 bg-slate-900/30 p-8 text-center">
           <Sparkles className="mx-auto mb-4 text-indigo-400" size={32} />
-          <h2 className="mb-4 text-xl font-bold">Онлайн-оплата подключается</h2>
-          <p className="mx-auto max-w-2xl text-slate-400">
-            Тариф Focus готовится к запуску: после подключения платёжного
-            провайдера его можно будет оформить онлайн. Сейчас все
-            зарегистрированные пользователи могут пользоваться функциями
-            тарифа Start бесплатно.
-            Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
-          </p>
+          {paymentsEnabled ? (
+            <>
+              <h2 className="mb-4 text-xl font-bold">
+                {isFocusActive ? "Тариф Focus уже активен" : "Тариф Focus можно оформить онлайн"}
+              </h2>
+              <p className="mx-auto max-w-2xl text-slate-400">
+                {isFocusActive
+                  ? "Спасибо, что пользуетесь расширенными возможностями Glowy."
+                  : "Оформите подписку, чтобы получить 100 AI-запросов в день, приоритетную поддержку и ранний доступ к новым функциям."}
+                <br />
+                Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-4 text-xl font-bold">Онлайн-оплата подключается</h2>
+              <p className="mx-auto max-w-2xl text-slate-400">
+                Тариф Focus готовится к запуску: после подключения платёжного
+                провайдера его можно будет оформить онлайн. Сейчас все
+                зарегистрированные пользователи могут пользоваться функциями
+                тарифа Start бесплатно.
+                Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
+              </p>
+            </>
+          )}
         </div>
       </article>
     </main>

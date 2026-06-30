@@ -37,7 +37,7 @@ const PricingPage = () => {
     if (!paymentsEnabled || isFocusActive) return;
 
     if (!isAuthenticated || isGuest) {
-      navigate("/login");
+      navigate("/login?redirect=/pricing");
       return;
     }
 

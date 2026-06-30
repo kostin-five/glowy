@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthApi } from "../api/AuthApi";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useToLogin } from "../store/useAuthStore";
 import axios from "axios";
@@ -14,6 +14,11 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = useMemo(() => {
+    const r = searchParams.get("redirect");
+    return r && r.startsWith("/") && !r.startsWith("//") ? r : null;
+  }, [searchParams]);
   const toLogin = useToLogin();
   const [showPassword, setShowPassword] = useState(false);
   const [showWakeupToast, setShowWakeupToast] = useState(false);
@@ -32,7 +37,7 @@ const LoginPage = () => {
     try {
       const data = await AuthApi.loginRequest({ email, password });
       toLogin(data.name, data.email || email);
-      navigate(startRoute);
+      navigate(redirect || startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
         setError(e.response?.data?.error || "Неверная почта или пароль");
@@ -131,7 +136,7 @@ const LoginPage = () => {
           <div className="mt-4 text-center text-sm text-slate-400">
             Нет аккаунта?{" "}
             <Link
-              to="/register"
+              to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}
               className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
               Зарегистрироваться

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useMemo } from "react";
 import { AuthApi } from "../api/AuthApi";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
@@ -17,6 +17,11 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = useMemo(() => {
+    const r = searchParams.get("redirect");
+    return r && r.startsWith("/") && !r.startsWith("//") ? r : null;
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const toLogin = useToLogin();
   const startRoute = useStartRoute();
@@ -38,7 +43,7 @@ const RegisterPage = () => {
     try {
       const data = await AuthApi.registerRequest({ name, email, password });
       toLogin(data.name || name, data.email || email);
-      navigate(startRoute);
+      navigate(redirect || startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
         const serverError =
@@ -218,7 +223,7 @@ const RegisterPage = () => {
           <div className="mt-4 text-center text-sm text-slate-400">
             Уже есть аккаунт?{" "}
             <Link
-              to="/login"
+              to={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"}
               className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
               Войти

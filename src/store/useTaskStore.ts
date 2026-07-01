@@ -58,6 +58,9 @@ interface TaskStore {
     data: Partial<Pick<SubTask, "title" | "completed" | "position">>
   ) => Promise<SubTask | undefined>;
   deleteSubTask: (taskId: number, subTaskId: number) => Promise<void>;
+  completeTasks: (ids: number[]) => Promise<void>;
+  deleteTasks: (ids: number[]) => Promise<void>;
+  updateTasksDate: (ids: number[], date: string) => Promise<void>;
 }
 
 const initialTasks: Task[] = [];
@@ -629,6 +632,18 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     } catch (e) {
       console.error("Ошибка при удалении подзадачи:", e);
     }
+  },
+
+  completeTasks: async (ids: number[]) => {
+    await Promise.all(ids.map((id) => get().toggleTask(id)));
+  },
+
+  deleteTasks: async (ids: number[]) => {
+    await Promise.all(ids.map((id) => get().deleteTask(id)));
+  },
+
+  updateTasksDate: async (ids: number[], date: string) => {
+    await Promise.all(ids.map((id) => get().updateTask(id, { date })));
   },
 });
 

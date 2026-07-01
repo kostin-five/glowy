@@ -12,8 +12,8 @@ interface SortOption {
 }
 
 const sortOptions: SortOption[] = [
-  { label: "Сначала новые", field: "date", direction: "desc" },
-  { label: "Сначала старые", field: "date", direction: "asc" },
+  { label: "Сначала поздние даты", field: "date", direction: "desc" },
+  { label: "Сначала ранние даты", field: "date", direction: "asc" },
   { label: "По названию А-Я", field: "title", direction: "asc" },
   { label: "По названию Я-А", field: "title", direction: "desc" },
   {

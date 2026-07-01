@@ -6,9 +6,11 @@ import {
   useSetTasks,
   useTasks,
   useToggleTask,
+  useSortField,
+  useSortDirection,
 } from "../../store/useTaskStore";
 import type { SubTask, Task } from "../../types";
-import { groupTasksByDate, formatTaskDateForUI } from "../../utils/taskDateGroups";
+import { groupTasks, formatTaskDateForUI } from "../../utils/taskDateGroups";
 import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
@@ -42,8 +44,8 @@ interface TaskListProps {
   onlyActive?: boolean;
   maxItems?: number;
   viewMode?: TaskViewMode;
-  onEmptyClick?: () => void;
   groupByDate?: boolean;
+  onEmptyClick?: () => void;
 }
 
 type PendingTaskDeletion = {
@@ -189,8 +191,8 @@ const TaskList = ({
   onlyActive = false,
   maxItems,
   viewMode,
-  onEmptyClick,
   groupByDate = false,
+  onEmptyClick,
 }: TaskListProps) => {
   const toggle = useToggleTask();
   const tasks = useTasks();
@@ -228,8 +230,20 @@ const TaskList = ({
       ? baseDisplayedTasks.slice(0, maxItems)
       : baseDisplayedTasks;
   const effectiveTaskViewMode = viewMode ?? taskViewMode;
-  const isGrouped = groupByDate && effectiveTaskViewMode === "list";
-  const groupedTasks = isGrouped ? groupTasksByDate(displayedTasks) : null;
+  const sortField = useSortField();
+  const sortDirection = useSortDirection();
+  
+  const groupedTasks = groupByDate && effectiveTaskViewMode === "list" 
+    ? groupTasks(displayedTasks, sortField, sortDirection ?? "asc") 
+    : null;
+
+  const GroupHeader = ({ label }: { label: string }) => (
+    <div className="flex items-center gap-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+      <span>{label}</span>
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+    </div>
+  );
 
   const listContainerClass =
     effectiveTaskViewMode === "grid"
@@ -377,14 +391,10 @@ const TaskList = ({
           <ul className={`${listContainerClass} list-none`}>
             <AnimatePresence>
               {displayedTasks.length ? (
-                  isGrouped ? (
-                  groupedTasks?.map((group) => (
+                groupedTasks ? (
+                  groupedTasks.map((group) => (
                     <div key={group.key} className="flex flex-col gap-3">
-                      <div className="flex items-center gap-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                        <span>{group.label}</span>
-                        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                      </div>
+                      <GroupHeader label={group.label} />
                       {group.tasks.map((task) => (
                         <TaskItem
                           key={task.id}

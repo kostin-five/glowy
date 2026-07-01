@@ -37,7 +37,7 @@ const SortMenu = () => {
   const selectedValue = sortField ? `${sortField}:${sortDirection}` : "";
 
   return (
-    <label className="relative flex h-full min-w-52 items-center">
+    <label className="relative flex h-10 w-full md:min-w-52 items-center">
       <span className="sr-only">Сортировка задач</span>
       <select
         value={selectedValue}

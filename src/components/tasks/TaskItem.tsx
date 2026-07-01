@@ -16,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
+import { formatTaskDateForUI } from "../../utils/taskDateGroups";
 import { CSS } from "@dnd-kit/utilities";
 
 const getPriorityLabel = (priority: string) => {
@@ -203,7 +204,7 @@ const TaskItem = ({
                 {task.title}
               </span>
               <span className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                {task.date}
+                {formatTaskDateForUI(task.date)}
               </span>
               {totalSubs > 0 && (
                 <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">

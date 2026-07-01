@@ -16,6 +16,7 @@ import { SubTaskApi } from "../api/SubTaskApi";
 import { UserApi } from "../api/UserApi";
 import { useAuthStore } from "./useAuthStore";
 import { getLevelByXp, getXpReward } from "../utils/xp";
+import { normalizeTaskDate } from "../utils/taskDateGroups";
 import axios from "axios";
 
 interface TaskStore {
@@ -81,6 +82,7 @@ const applySubTaskPositions = (subtasks: SubTask[] = []) =>
 
 const normalizeTask = (task: Task): Task => ({
   ...task,
+  date: normalizeTaskDate(task.date),
   category: task.category || "",
   xpAwarded: task.xpAwarded ?? false,
   subtasks: sortSubTasks(task.subtasks ?? []),
@@ -122,7 +124,7 @@ const buildLocalTask = (draft: TaskDraft): Task => {
   return normalizeTask({
     id: taskId,
     title: draft.title,
-    date: draft.date,
+    date: normalizeTaskDate(draft.date),
     priority: draft.priority,
     category: draft.category || "",
     completed: draft.completed ?? false,

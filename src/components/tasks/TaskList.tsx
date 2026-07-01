@@ -8,7 +8,7 @@ import {
   useToggleTask,
 } from "../../store/useTaskStore";
 import type { SubTask, Task } from "../../types";
-import { groupTasksByDate } from "../../utils/taskDateGroups";
+import { groupTasksByDate, formatTaskDateForUI } from "../../utils/taskDateGroups";
 import TaskItem from "./TaskItem";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
@@ -134,7 +134,7 @@ const TaskDragOverlay = ({
               {task.title}
             </span>
             <span className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-              {task.date}
+              {formatTaskDateForUI(task.date)}
             </span>
             {totalSubs > 0 && (
               <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">

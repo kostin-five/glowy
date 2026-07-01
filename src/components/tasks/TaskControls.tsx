@@ -30,13 +30,13 @@ const TaskControls = ({ onCreateClick }: TaskControlsProps) => {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="w-full">
+    <div className="flex w-full min-w-0 flex-col gap-4">
+      <div className="w-full min-w-0">
         <TaskFilter />
       </div>
 
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-        <div className="relative flex-1">
+      <div className="grid w-full min-w-0 gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center">
+        <div className="relative min-w-0">
           <span className="sr-only">Поиск задач</span>
           <Search
             size={16}
@@ -51,13 +51,17 @@ const TaskControls = ({ onCreateClick }: TaskControlsProps) => {
           />
         </div>
 
-        <div className="w-full md:w-auto shrink-0">
+        <div className="min-w-0 md:w-52">
           <SortMenu />
         </div>
 
-        <div className="hidden md:flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none shrink-0">
+        <div
+          className="hidden shrink-0 items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-none md:flex"
+          aria-label="Режим отображения задач"
+        >
           {viewOptions.map(({ mode, label, icon: Icon }) => {
             const isActive = taskViewMode === mode;
+
             return (
               <button
                 key={mode}
@@ -81,7 +85,7 @@ const TaskControls = ({ onCreateClick }: TaskControlsProps) => {
 
       <button
         type="button"
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-full bg-indigo-500 text-white transition-all hover:bg-indigo-600 active:scale-95 md:bottom-8 md:right-8"
+        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-500 text-white transition-all hover:bg-indigo-600 active:scale-95 md:right-8 md:h-16 md:w-16 lg:bottom-8"
         onClick={onCreateClick}
         aria-label="Добавить задачу"
       >

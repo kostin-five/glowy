@@ -6,45 +6,58 @@ export type TaskDateGroup<T> = {
   isUndated: boolean;
 };
 
-export const parseTaskDateToLocalDay = (date?: string): Date | null => {
-  if (!date) return null;
+export const normalizeTaskDate = (input?: string | null): string => {
+  if (!input) return "";
 
-  // Try YYYY-MM-DD
-  const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    const [, y, m, d] = isoMatch;
-    const year = parseInt(y, 10);
-    const month = parseInt(m, 10);
-    const day = parseInt(d, 10);
-    const dateObj = new Date(year, month - 1, day);
-    if (
-      dateObj.getFullYear() === year &&
-      dateObj.getMonth() === month - 1 &&
-      dateObj.getDate() === day
-    ) {
-      return dateObj;
-    }
-  }
+  // YYYY-MM-DD
+  const isoMatch = input.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) return input;
 
-  // Try DD.MM.YYYY
-  const dotMatch = date.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  // DD.MM.YYYY
+  const dotMatch = input.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (dotMatch) {
     const [, d, m, y] = dotMatch;
-    const year = parseInt(y, 10);
-    const month = parseInt(m, 10);
-    const day = parseInt(d, 10);
-    const dateObj = new Date(year, month - 1, day);
-    if (
-      dateObj.getFullYear() === year &&
-      dateObj.getMonth() === month - 1 &&
-      dateObj.getDate() === day
-    ) {
-      return dateObj;
-    }
+    return `${y}-${m}-${d}`;
+  }
+
+  return "";
+};
+
+export const getTodayTaskDate = (): string => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+export const parseTaskDateToLocalDay = (date?: string): Date | null => {
+  const normalizedDate = normalizeTaskDate(date);
+  if (!normalizedDate) return null;
+
+  const [year, month, day] = normalizedDate.split("-").map(Number);
+  const dateObj = new Date(year, month - 1, day);
+
+  if (
+    dateObj.getFullYear() === year &&
+    dateObj.getMonth() === month - 1 &&
+    dateObj.getDate() === day
+  ) {
+    return dateObj;
   }
 
   return null;
 };
+
+export const formatTaskDateForUI = (dateStr?: string): string => {
+  if (!dateStr) return "Без даты";
+
+  const date = parseTaskDateToLocalDay(dateStr);
+  if (!date) return "Без даты";
+
+  return formatTaskDateGroupLabel(date);
+};
+
 
 export const formatTaskDateGroupLabel = (date: Date): string => {
   const today = new Date();

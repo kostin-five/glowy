@@ -209,6 +209,7 @@ const SortableSubTask = ({
 const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   const [values, setValues] = useState<Task>({
     ...task,
+    date: task.date || "",
     category: task.category || "",
     subtasks: task.subtasks ?? [],
   });
@@ -372,29 +373,25 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           value={values.title}
           onChange={(e) => setValues({ ...values, title: e.target.value })}
         />
-        <div className="flex sm:flex-row flex-col gap-4 w-full">
-          <div className="flex-1">
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Дата задачи
             </label>
             <input
-              className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
-                 transition-all appearance-none scheme-dark"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               type="date"
               value={values.date}
               onChange={(e) => setValues({ ...values, date: e.target.value })}
             />
           </div>
-          <div className="flex-1 relative">
-            <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-xs">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Приоритет
             </label>
             <div className="relative">
               <select
-                className="h-11.5 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 
-                 transition-all appearance-none cursor-pointer pr-10"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-10"
                 value={values.priority}
                 onChange={(e) =>
                   setValues({ ...values, priority: e.target.value as Priority })
@@ -404,7 +401,6 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                 <option value="⚡️ P2">⚡️ Средний</option>
                 <option value="💤 P3">💤 Низкий</option>
               </select>
-
               <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400">
                 ▼
               </div>
@@ -412,71 +408,41 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           </div>
         </div>
 
-        <div className="text-slate-900 dark:text-slate-100">
-          <p className="mb-2 text-sm font-medium text-slate-600 dark:text-slate-400">
-            Энергозатратность задачи:
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Энергозатратность:
           </p>
-          <div className="flex gap-4">
-            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-              <input
-                className="accent-indigo-500"
-                type="radio"
-                value={"low"}
-                name="energy"
-                checked={values.energyLevel === "low"}
-                onChange={(e) =>
-                  setValues({
-                    ...values,
-                    energyLevel: e.target.value as EnergyLevel,
-                  })
-                }
-              />
-              Низкая
-            </label>
-
-            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-              <input
-                className="accent-indigo-500"
-                type="radio"
-                value={"med"}
-                name="energy"
-                checked={values.energyLevel === "med"}
-                onChange={(e) =>
-                  setValues({
-                    ...values,
-                    energyLevel: e.target.value as EnergyLevel,
-                  })
-                }
-              />
-              Средняя
-            </label>
-
-            <label className="flex cursor-pointer items-center gap-2 text-slate-700 transition-colors hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
-              <input
-                className="accent-indigo-500"
-                type="radio"
-                value={"high"}
-                name="energy"
-                checked={values.energyLevel === "high"}
-                onChange={(e) =>
-                  setValues({
-                    ...values,
-                    energyLevel: e.target.value as EnergyLevel,
-                  })
-                }
-              />
-              Высокая
-            </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { value: "low", label: "Низкая", color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300" },
+              { value: "med", label: "Средняя", color: "border-yellow-500/30 bg-yellow-500/5 text-yellow-700 dark:text-yellow-300" },
+              { value: "high", label: "Высокая", color: "border-rose-500/30 bg-rose-500/5 text-rose-700 dark:text-rose-300" }
+            ].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setValues({ ...values, energyLevel: option.value as EnergyLevel })}
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
+                  values.energyLevel === option.value
+                    ? `border-2 ${option.color.split(' ')[0]} bg-opacity-20`
+                    : "border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
-        <input
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-          value={values.category || ""}
-          onChange={(e) => setValues({ ...values, category: e.target.value })}
-          type="text"
-          placeholder="Напишите категорию задачи"
-          list="categories-list"
-        />
+        <div className="relative">
+          <input
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            value={values.category || ""}
+            onChange={(e) => setValues({ ...values, category: e.target.value })}
+            type="text"
+            placeholder="Напишите категорию задачи"
+            list="categories-list"
+          />
+        </div>
         <datalist id="categories-list">
           {categories.map((cat) => (
             <option key={cat} value={cat} />

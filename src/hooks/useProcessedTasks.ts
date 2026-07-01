@@ -6,7 +6,9 @@ import {
   useSortField,
   useTasks,
 } from "../store/useTaskStore";
-import type { Task } from "../types";
+import type { SortDirection, Task } from "../types";
+import { parseTaskDateToLocalDay } from "../utils/taskDateGroups";
+
 const energyWeights = { low: 1, med: 2, high: 3 };
 
 const getPriorityWeight = (priority: string) => {
@@ -17,17 +19,24 @@ const getPriorityWeight = (priority: string) => {
   return 0;
 };
 
-const parseTaskDate = (date: string) => {
-  const normalizedDate = date.trim();
-  const ddMmYyyyMatch = normalizedDate.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+const getTaskDateTime = (date: string) => {
+  return parseTaskDateToLocalDay(date)?.getTime() ?? null;
+};
 
-  if (ddMmYyyyMatch) {
-    const [, day, month, year] = ddMmYyyyMatch;
-    return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
-  }
+const compareTaskDates = (
+  firstDate: string,
+  secondDate: string,
+  direction: SortDirection
+) => {
+  const firstTime = getTaskDateTime(firstDate);
+  const secondTime = getTaskDateTime(secondDate);
 
-  const parsedDate = new Date(normalizedDate).getTime();
-  return Number.isNaN(parsedDate) ? 0 : parsedDate;
+  if (firstTime === null && secondTime === null) return 0;
+  if (firstTime === null) return 1;
+  if (secondTime === null) return -1;
+
+  const comparison = firstTime - secondTime;
+  return direction === "desc" ? -comparison : comparison;
 };
 
 export const useFilteredTasks = () => {
@@ -78,8 +87,7 @@ export const useProcessedTasks = () => {
           comparison = a.title.localeCompare(b.title);
           break;
         case "date":
-          comparison = parseTaskDate(a.date) - parseTaskDate(b.date);
-          break;
+          return compareTaskDates(a.date, b.date, sortDirection);
         case "category":
           comparison = (a.category || "").localeCompare(b.category || "");
           break;

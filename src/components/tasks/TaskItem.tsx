@@ -50,10 +50,16 @@ const TaskItem = ({
   task: initialTask,
   toggle,
   onRequestDelete,
+  isSelectionMode,
+  isSelected,
+  onToggleSelected,
 }: {
   task: Task;
   toggle: (id: number) => void;
   onRequestDelete: (task: Task) => void;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelected?: (taskId: number) => void;
 }) => {
   const storeTask = useTaskStore((state) =>
     state.tasks.find((t) => t.id === initialTask.id)
@@ -85,8 +91,15 @@ const TaskItem = ({
   const taskSurfaceStyles =
     "bg-white/55 backdrop-blur-sm hover:bg-white/75 dark:bg-slate-900/25 dark:hover:bg-slate-900/40";
 
-  const handleToggleTask = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const isPrimaryCheckboxChecked = isSelectionMode ? isSelected : task.completed;
+
+  const handlePrimaryCheckboxClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    if (isSelectionMode) {
+      onToggleSelected?.(task.id);
+      return;
+    }
+
     toggle(task.id);
   };
 
@@ -167,23 +180,24 @@ const TaskItem = ({
           <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-50">
             <button
               type="button"
-              onClick={handleToggleTask}
+              onClick={handlePrimaryCheckboxClick}
               onPointerDown={(e) => e.stopPropagation()}
-              aria-pressed={task.completed}
+              aria-pressed={isPrimaryCheckboxChecked}
               aria-label={
-                task.completed
+                isSelectionMode
+                  ? isSelected
+                    ? "Убрать задачу из выбранных"
+                    : "Выбрать задачу для массового действия"
+                  : task.completed
                   ? "Вернуть задачу в активные"
                   : "Отметить задачу выполненной"
               }
-              className={`w-5 h-5 shrink-0 border-2 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                task.completed
-                  ? "bg-indigo-500 border-indigo-500"
-                  : "border-slate-500"
-              }`}
+              className={`w-5 h-5 shrink-0 border-2 rounded-md flex items-center justify-center transition-colors cursor-pointer ${isPrimaryCheckboxChecked ? "bg-indigo-500 border-indigo-500" : "border-slate-500"}`}
             >
+
               <svg
                 className={`w-3.5 h-3.5 text-white transition-opacity ${
-                  task.completed ? "opacity-100" : "opacity-0"
+                  isPrimaryCheckboxChecked ? "opacity-100" : "opacity-0"
                 }`}
                 fill="none"
                 viewBox="0 0 24 24"

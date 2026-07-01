@@ -44,9 +44,12 @@ interface TaskListProps {
   onlyActive?: boolean;
   maxItems?: number;
   viewMode?: TaskViewMode;
-  groupByDate?: boolean;
   onEmptyClick?: () => void;
+  groupByDate?: boolean;
+  isBulkSelectMode?: boolean;
+  setIsBulkSelectMode?: (value: boolean) => void;
 }
+
 
 type PendingTaskDeletion = {
   task: Task;
@@ -68,7 +71,7 @@ const TaskTrashDropZone = () => {
       animate={{ opacity: 1, y: 0, scale: isOver ? 1.05 : 1 }}
       exit={{ opacity: 0, y: 32, scale: 0.96 }}
       transition={{ type: "spring", stiffness: 360, damping: 26 }}
-      className={`fixed inset-x-0 bottom-24 z-50 mx-auto flex w-[90%] max-w-sm items-center justify-center gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-[0_0_30px_rgba(239,68,68,0.35)] backdrop-blur-xl md:bottom-8 ${
+      className={`fixed inset-x-0 bottom-24 z-50 mx-auto flex w-[90%] max-w-sm items-center justify-center gap-3 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-[0_0_30px_rgba(239,68,68,0.35)] backdrop-blur-xl lg:bottom-8 ${
         isOver
           ? "border-red-200 bg-linear-to-r from-red-600 to-rose-600 text-white shadow-[0_0_44px_rgba(244,63,94,0.65)]"
           : "border-red-300 bg-white/90 text-red-700 shadow-[0_0_30px_rgba(239,68,68,0.2)] dark:border-red-400/30 dark:bg-slate-950/80 dark:text-red-100"
@@ -191,8 +194,10 @@ const TaskList = ({
   onlyActive = false,
   maxItems,
   viewMode,
-  groupByDate = false,
   onEmptyClick,
+  groupByDate = false,
+  isBulkSelectMode = false,
+  setIsBulkSelectMode,
 }: TaskListProps) => {
   const toggle = useToggleTask();
   const tasks = useTasks();
@@ -207,6 +212,48 @@ const TaskList = ({
   const [isOverTrash, setIsOverTrash] = useState(false);
   const [pendingDeletion, setPendingDeletion] =
     useState<PendingTaskDeletion | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setIsBulkSelectMode?.(false);
+  };
+
+  const handleBulkComplete = async () => {
+    const tasksToToggle = displayedTasks.filter((t) => selectedIds.has(t.id) && !t.completed);
+    for (const task of tasksToToggle) {
+      await toggle(task.id);
+    }
+    clearSelection();
+  };
+
+  const handleBulkUncomplete = async () => {
+    const tasksToToggle = displayedTasks.filter((t) => selectedIds.has(t.id) && t.completed);
+    for (const task of tasksToToggle) {
+      await toggle(task.id);
+    }
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const tasksToDelete = displayedTasks.filter((t) => selectedIds.has(t.id));
+    for (const task of tasksToDelete) {
+      const removed = removeTaskLocally(task.id);
+      if (removed) await confirmTaskDeletion(removed.task.id);
+    }
+    clearSelection();
+  };
+
+
   const pendingDeletionRef = useRef<PendingTaskDeletion | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -229,6 +276,10 @@ const TaskList = ({
     typeof maxItems === "number"
       ? baseDisplayedTasks.slice(0, maxItems)
       : baseDisplayedTasks;
+  const displayedTaskIds = new Set(displayedTasks.map((task) => task.id));
+  const visibleSelectedIds = new Set(
+    Array.from(selectedIds).filter((taskId) => displayedTaskIds.has(taskId))
+  );
   const effectiveTaskViewMode = viewMode ?? taskViewMode;
   const sortField = useSortField();
   const sortDirection = useSortDirection();
@@ -395,14 +446,18 @@ const TaskList = ({
                   groupedTasks.map((group) => (
                     <div key={group.key} className="flex flex-col gap-3">
                       <GroupHeader label={group.label} />
-                      {group.tasks.map((task) => (
+                  {group.tasks.map((task) => (
                         <TaskItem
                           key={task.id}
                           toggle={toggle}
                           task={task}
                           onRequestDelete={handleRequestDelete}
+                          isSelectionMode={isBulkSelectMode}
+                          isSelected={selectedIds.has(task.id)}
+                          onToggleSelected={() => toggleSelection(task.id)}
                         />
                       ))}
+
                     </div>
                   ))
                 ) : (
@@ -412,8 +467,12 @@ const TaskList = ({
                       toggle={toggle}
                       task={task}
                       onRequestDelete={handleRequestDelete}
+                      isSelectionMode={isBulkSelectMode}
+                      isSelected={selectedIds.has(task.id)}
+                      onToggleSelected={() => toggleSelection(task.id)}
                     />
                   ))
+
                 )
               ) : (
                 <motion.div
@@ -468,13 +527,33 @@ const TaskList = ({
         </AnimatePresence>
       </DndContext>
 
-      <AnimatePresence>
-        {pendingDeletion && (
+        <AnimatePresence>
+          {isBulkSelectMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed inset-x-2 bottom-20 z-50 mx-auto flex max-w-3xl flex-col items-stretch gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 text-sm text-slate-900 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-100 sm:inset-x-4 sm:flex-row sm:items-center sm:justify-between lg:bottom-6"
+            >
+              <span className="font-semibold">Выбрано: {visibleSelectedIds.size}</span>
+              <div className="grid grid-cols-2 gap-1 sm:flex sm:items-center">
+                <button onClick={handleBulkComplete} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Выполнить</button>
+                <button onClick={handleBulkUncomplete} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Снять</button>
+                <button onClick={handleBulkDelete} className="rounded-lg px-2 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 sm:px-3 sm:text-sm">Удалить</button>
+                <button onClick={clearSelection} className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Отмена</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+
+        <AnimatePresence>
+          {pendingDeletion && (
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.96 }}
-            className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-sm text-slate-900 shadow-2xl shadow-slate-900/15 backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-100 dark:shadow-black/30 md:bottom-6"
+            className="fixed inset-x-4 bottom-24 z-50 mx-auto flex max-w-sm items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-sm text-slate-900 shadow-2xl shadow-slate-900/15 backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-100 dark:shadow-black/30 lg:bottom-6"
             role="status"
           >
             <span className="font-medium">Задача удалена</span>

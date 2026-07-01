@@ -11,7 +11,7 @@ import {
   type TaskDraft,
 } from "../../types";
 import Modal from "../ui/Modal";
-import { Check, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, GripVertical, Pencil, Plus, Trash2, X, Sparkles } from "lucide-react";
 import {
   closestCenter,
   DndContext,
@@ -187,6 +187,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [localSubTasks, setLocalSubTasks] = useState<LocalSubTask[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAiSoon, setShowAiSoon] = useState(false);
   const subTaskInputRef = useRef<HTMLInputElement>(null);
   const categories = useAllCategories();
   const setFilter = useSetFilter();
@@ -218,6 +219,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     setLocalSubTasks([]);
     setSubTitle("");
     setError("");
+    setShowAiSoon(false);
   };
 
   const create = useCreateTask();
@@ -428,9 +430,25 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         </datalist>
 
         <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800">
-          <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
-            Подзадачи
-          </label>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
+              Подзадачи
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowAiSoon(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-[11px] font-medium text-indigo-500 transition-colors hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-indigo-300 sm:text-xs"
+            >
+              <Sparkles size={14} />
+              AI шаги
+            </button>
+          </div>
+
+          {showAiSoon && (
+            <p className="mb-3 text-[11px] text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md dark:bg-indigo-900/20 dark:text-indigo-300">
+              Функция AI-разбиения задачи на шаги скоро появится
+            </p>
+          )}
 
           <div className="flex gap-2">
             <input

@@ -82,19 +82,21 @@ const SuccessStairs = ({
   );
   const activeIndex = steps.findIndex((step) => step === safeLevel);
   const isCompact = safeVisibleSteps <= 3;
-  const thickness = isCompact ? 7 : 8;
+  const thickness = isCompact ? 7 : safeVisibleSteps >= 7 ? 10 : 8;
   const stepSize = 100 / safeVisibleSteps;
   const runnerIndex = activeIndex === -1 ? centerOffset : activeIndex;
   const previousLevelRef = useRef(safeLevel);
   const [isStepping, setIsStepping] = useState(false);
   const runnerSize =
-    safeVisibleSteps >= 7 ? 42 : safeVisibleSteps >= 5 ? 52 : 38;
+    safeVisibleSteps >= 7 ? 58 : safeVisibleSteps >= 5 ? 52 : 38;
   const runnerLeftOffset =
-    safeVisibleSteps >= 7 ? 4 : safeVisibleSteps >= 5 ? 6 : 2;
+    safeVisibleSteps >= 7 ? 8 : safeVisibleSteps >= 5 ? 6 : 2;
   const baselineOffset = isCompact ? 30 : 32;
   const canvasSizeClass =
     isCompact
       ? "max-w-[190px] 2xl:max-w-[210px]"
+      : safeVisibleSteps >= 7
+      ? "max-w-[390px] sm:max-w-[440px] xl:max-w-[520px] 2xl:max-w-[580px]"
       : "max-w-[340px] 2xl:max-w-112.5";
   const runnerPosition = {
     bottom: `calc(${runnerIndex * stepSize}% + ${thickness + 2}px)`,
@@ -179,7 +181,9 @@ const SuccessStairs = ({
                   bottom: `calc(${index * stepSize}% + ${baselineOffset - 26}px)`,
                 }}
               >
-                {step.toString().padStart(2, "0")}
+                <span className={safeVisibleSteps >= 7 ? "text-base xl:text-lg" : ""}>
+                  {step.toString().padStart(2, "0")}
+                </span>
               </span>
 
               {index !== steps.length - 1 && (

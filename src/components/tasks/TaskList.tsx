@@ -64,6 +64,9 @@ const TaskTrashDropZone = () => {
     id: TASK_TRASH_ID,
   });
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
+  if (!isMobile) return null;
+
   return (
     <motion.div
       ref={setNodeRef}
@@ -210,8 +213,16 @@ const TaskList = ({
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
+  const [isTrashDropEnabled, setIsTrashDropEnabled] = useState(false);
   const [pendingDeletion, setPendingDeletion] =
     useState<PendingTaskDeletion | null>(null);
+
+  useEffect(() => {
+    const checkMobile = () => setIsTrashDropEnabled(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const toggleSelection = (id: number) => {
@@ -360,6 +371,10 @@ const TaskList = ({
   };
 
   const handleDragOver = ({ over }: DragOverEvent) => {
+    if (!isTrashDropEnabled) {
+      setIsOverTrash(false);
+      return;
+    }
     setIsOverTrash(over?.id === TASK_TRASH_ID);
   };
 
@@ -371,6 +386,8 @@ const TaskList = ({
     if (!over) return;
 
     if (over.id === TASK_TRASH_ID) {
+      if (!isTrashDropEnabled) return;
+
       const taskToDelete = displayedTasks.find(
         (task) => task.id === Number(active.id)
       );
@@ -523,7 +540,7 @@ const TaskList = ({
         </DragOverlay>
 
         <AnimatePresence>
-          {activeTaskId !== null && <TaskTrashDropZone />}
+          {activeTaskId !== null && isTrashDropEnabled && <TaskTrashDropZone />}
         </AnimatePresence>
       </DndContext>
 

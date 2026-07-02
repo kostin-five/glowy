@@ -59,6 +59,12 @@ const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = useIsAuthenticated();
+  const isChecking = useAuthStore((state) => state.isChecking);
+
+  if (isChecking) {
+    return <RouteLoader className="fixed inset-0 min-h-dvh" />;
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -122,8 +128,18 @@ function App() {
       handleUnauthorizedSession();
     };
 
+    const handlePageshow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        useAuthStore.getState().checkAuth();
+      }
+    };
+
     window.addEventListener("glowy:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("glowy:unauthorized", handleUnauthorized);
+    window.addEventListener("pageshow", handlePageshow);
+    return () => {
+      window.removeEventListener("glowy:unauthorized", handleUnauthorized);
+      window.removeEventListener("pageshow", handlePageshow);
+    };
   }, []);
 
   useLayoutEffect(() => {

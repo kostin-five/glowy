@@ -27,6 +27,7 @@ interface AuthStore {
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
+  isChecking: boolean;
   checkAuth: () => Promise<void>;
   consumeGuestRequest: () => boolean;
   resetGuestRequests: () => void;
@@ -41,6 +42,7 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       isAuthenticated: false,
       isGuest: false,
+      isChecking: true,
       name: "",
       email: null,
       token: null,
@@ -50,6 +52,7 @@ export const useAuthStore = create<AuthStore>()(
         set(() => ({
           isAuthenticated: true,
           isGuest: false,
+          isChecking: false,
           name: name,
           email: email,
           token: token,
@@ -60,6 +63,7 @@ export const useAuthStore = create<AuthStore>()(
             return {
               isAuthenticated: true,
               isGuest: true,
+              isChecking: false,
             };
           }
 
@@ -69,6 +73,7 @@ export const useAuthStore = create<AuthStore>()(
         set(() => ({
           isAuthenticated: true,
           isGuest: true,
+          isChecking: false,
           name: "Демо",
           email: "demo",
           token: `demo-token-${Date.now()}`,
@@ -78,11 +83,13 @@ export const useAuthStore = create<AuthStore>()(
         set(() => ({
           isAuthenticated: false,
           isGuest: false,
+          isChecking: false,
           name: "",
           email: null,
           token: null,
         })),
       checkAuth: async () => {
+        set({ isChecking: true });
         try {
           // Dynamic import to avoid circular dependency
           const { AuthApi } = await import("../api/AuthApi");
@@ -92,6 +99,7 @@ export const useAuthStore = create<AuthStore>()(
             isGuest: false,
             name: user.name,
             email: user.email,
+            isChecking: false,
           });
         } catch {
           set({
@@ -100,6 +108,7 @@ export const useAuthStore = create<AuthStore>()(
             name: "",
             email: null,
             token: null,
+            isChecking: false,
           });
         }
       },
@@ -206,6 +215,7 @@ export const useGuestRequestsCount = () =>
 export const useGuestRequestsResetDate = () =>
   useAuthStore((state) => state.guestRequestsResetDate);
 
+export const useIsChecking = () => useAuthStore((state) => state.isChecking);
 export const useCurrentEnergy = () =>
   useAuthStore((state) => state.currentEnergy);
 export const useUpdateCurrentEnergy = () =>

@@ -37,12 +37,33 @@ const demoMindHubLimiter = rateLimit({
   },
 });
 
+const EMOTIONAL_KEYWORDS = [
+  "устал", "устала", "нет сил", "тяжело", "сложно", "тревожно", "тревога", 
+  "плохо", "всё навалилось", "не понимаю", "не могу", "хаос", "выгорел", "выгорела"
+];
+
+const ensureMixedInputReply = (message, tasks, reply) => {
+  if (reply) return reply;
+  if (tasks.length === 0) return null;
+
+  const text = message.toLowerCase();
+  const hasEmotion = EMOTIONAL_KEYWORDS.some(keyword => text.includes(keyword));
+
+  if (hasEmotion) {
+    return "Понимаю, сил может быть мало. Я вынес конкретный шаг отдельно, чтобы начать было проще.";
+  }
+
+  return null;
+};
+
 const getMindHubRequestPayload = (body) => {
   const message = typeof body?.message === "string" ? body.message.trim() : "";
   const hubMode =
-    body?.hubMode === "chat" || body?.hubMode === "parse"
+    body?.hubMode === "chat" ||
+    body?.hubMode === "parse" ||
+    body?.hubMode === "auto"
       ? body.hubMode
-      : null;
+      : "auto";
   const messages = Array.isArray(body?.messages) ? body.messages : [];
 
   return { message, hubMode, messages };
@@ -98,10 +119,16 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
       };
     }
 
+    const reply = ensureMixedInputReply(
+      message,
+      parsedResult.tasks,
+      parsedResult.reply
+    );
+
     return res.json({
       tasks: parsedResult.tasks,
       reply:
-        parsedResult.reply ||
+        reply ||
         (parsedResult.tasks.length
           ? null
           : "Не удалось выделить конкретные задачи."),
@@ -303,7 +330,7 @@ router.post("/mind-hub", async (req, res) => {
 
     res.status(201).json({
       tasks: createdTasks,
-      reply: null,
+      reply: ensureMixedInputReply(message, createdTasks, reply),
       limit: aiLimit.limit,
     });
   } catch (error) {

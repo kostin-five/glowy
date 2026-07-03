@@ -4,7 +4,7 @@ import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
 
-export type MindHubMode = "chat" | "parse";
+export type MindHubMode = "chat" | "parse" | "auto";
 export type MindHubMessage = {
   role: "user" | "assistant";
   text: string;
@@ -115,7 +115,7 @@ export default class AiApi {
 
   static async parseMindHub(
     message: string,
-    hubMode: MindHubMode = "parse",
+    hubMode: MindHubMode = "auto",
     messages: MindHubMessage[] = []
   ): Promise<MindHubResponse> {
     const authStore = useAuthStore.getState();

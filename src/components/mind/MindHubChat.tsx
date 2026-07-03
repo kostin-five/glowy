@@ -14,6 +14,8 @@ import AiApi, {
   type MindHubMessage,
   type MindHubMode,
 } from "../../api/AiApi";
+import type { Task } from "../../types";
+import { formatTaskDateForUI } from "../../utils/taskDateGroups";
 import { useTaskStore } from "../../store/useTaskStore";
 import useTypewriter from "../../hooks/useTypewriter";
 import useNetworkStatus from "../../hooks/useNetworkStatus";
@@ -30,12 +32,7 @@ type ChatMessage = {
   text: string;
 };
 
-const WELCOME_MESSAGE_BY_MODE: Record<MindHubMode, string> = {
-  parse:
-    "Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли, разобью их на задачи и сам добавлю в список.",
-  chat:
-    "Привет! Я здесь, чтобы просто выслушать, поддержать или помочь распутать мысли. В этом режиме я не создаю задачи, а работаю как твой спокойный коуч.",
-};
+const WELCOME_MESSAGE = "Выгрузи сюда мысли, дела или тревожные хвосты. Я сам пойму, где просто поддержать, а где превратить хаос в задачи.";
 
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
@@ -124,7 +121,7 @@ const ChatMessageBubble = ({
 };
 
 const MindHubChat = ({ inputRef }: MindHubChatProps) => {
-  const [hubMode, setHubMode] = useState<MindHubMode>("parse");
+  const hubMode: MindHubMode = "auto";
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -255,17 +252,14 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       );
       setRegisteredAiLimit(result.limit ?? null);
 
-      if (result.tasks.length) {
+      if (result.tasks.length > 0) {
         const store = useTaskStore.getState();
         store.setTasks([...store.tasks, ...result.tasks]);
+
+        const summary = getTaskSummary(result.tasks);
         appendMessage({
           role: "assistant",
-          text:
-            hubMode === "parse"
-              ? `Я вытащил ${result.tasks.length} ${getTaskWord(
-                  result.tasks.length
-                )} и добавил в список.`
-              : result.reply || "Я рядом и слышу тебя.",
+          text: result.reply ? `${result.reply} ${summary}` : summary,
         });
       } else {
         appendMessage({
@@ -286,9 +280,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
         role: "assistant",
         text:
           serverError ||
-          (hubMode === "chat"
-            ? "Не получилось ответить в диалоге. Попробуй отправить сообщение ещё раз."
-            : "Не получилось разобрать мысли. Попробуй отправить ещё раз, можно короче или отдельными фразами."),
+          "Не получилось обработать сообщение. Попробуй отправить ещё раз.",
       });
     } finally {
       setIsSending(false);
@@ -305,9 +297,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
           </h2>
         </div>
         <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
-          {hubMode === "parse"
-            ? "Выгрузи сюда весь хаос из головы текстом. Я проанализирую твои мысли, разобью их на задачи и сам добавлю в список."
-            : "Можно просто написать, что происходит. Я отвечу как спокойный коуч и помогу бережно разложить мысли."}
+          {WELCOME_MESSAGE}
         </p>
       </div>
 
@@ -322,7 +312,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
               message={{
                 id: 0,
                 role: "assistant",
-                text: WELCOME_MESSAGE_BY_MODE[hubMode],
+                text: WELCOME_MESSAGE,
               }}
               shouldType={false}
               onTypeComplete={handleTypeComplete}
@@ -371,41 +361,22 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             Нет подключения к интернету. Хаб мыслей временно недоступен.
           </div>
         )}
-        <div className="relative mb-3 grid grid-cols-2 gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60">
-          {[
-            { value: "chat" as const, label: "💬 Диалог" },
-            { value: "parse" as const, label: "⚡️ В задачи" },
-          ].map((mode) => (
-            <button
-              key={mode.value}
-              type="button"
-              onClick={() => setHubMode(mode.value)}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
-                mode.value === "parse" ? "pr-10" : ""
-              } ${
-                hubMode === mode.value
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                  : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-              }`}
-              aria-pressed={hubMode === mode.value}
-            >
-              {mode.label}
-            </button>
-          ))}
-          {hubMode === "parse" && (
-            <button
-              type="button"
-              title="Как писать запросы?"
-              onClick={() => setIsPromptHelpOpen((current) => !current)}
-              className="absolute right-2 top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
-              aria-expanded={isPromptHelpOpen}
-              aria-label="Как писать запросы?"
-            >
-              <Info size={15} />
-            </button>
-          )}
+        <div className="relative mb-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/60">
+          <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
+            Пиши свободно — я сам отделю мысли от задач.
+          </p>
+          <button
+            type="button"
+            title="Как писать запросы?"
+            onClick={() => setIsPromptHelpOpen((current) => !current)}
+            className="ml-3 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 transition-colors hover:bg-slate-300 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+            aria-expanded={isPromptHelpOpen}
+            aria-label="Как писать запросы?"
+          >
+            <Info size={15} />
+          </button>
 
-          {isPromptHelpOpen && hubMode === "parse" && (
+          {isPromptHelpOpen && (
             <div className="absolute bottom-full right-0 z-20 mb-3 w-[min(20rem,calc(100vw-4rem))] rounded-2xl border border-slate-700/70 bg-slate-950 p-3 text-xs leading-5 text-slate-200 shadow-2xl shadow-slate-950/40">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <p className="font-semibold text-slate-100">Подсказка для ИИ</p>
@@ -418,6 +389,9 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
                   <X size={14} />
                 </button>
               </div>
+              <p className="mb-2 text-slate-300">
+                Можно написать: «я устал и не понимаю, с чего начать», «надо купить продукты и ответить преподу», «срочно сделать курсач: сначала источники, потом введение».
+              </p>
               <p className="mb-2 text-slate-300">
                 Напиши детали прямо в фразе:
               </p>
@@ -492,9 +466,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             placeholder={
               !isOnline
                 ? "Ввод заблокирован до восстановления подключения..."
-                : hubMode === "parse"
-                ? "Например: надо ответить преподу, купить продукты, подготовиться к тесту..."
-                : "Например: я устал, всё навалилось и не понимаю, с чего начать..."
+                : "Например: я устал, надо ответить преподу и купить продукты..."
             }
             className={`custom-scrollbar max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 outline-none ${
               isOnline
@@ -553,6 +525,40 @@ const getTaskWord = (count: number) => {
   }
 
   return "задач";
+};
+
+const getPriorityLabel = (priority?: string) => {
+  if (!priority) return null;
+  if (priority.includes("P1")) return "с высоким приоритетом";
+  if (priority.includes("P3")) return "с низким приоритетом";
+  return "со средним приоритетом";
+};
+
+const getEnergyLabel = (energyLevel?: string) => {
+  if (!energyLevel) return null;
+  if (energyLevel === "high") return "с высокой энергией";
+  if (energyLevel === "low") return "с низкой энергией";
+  return "со средней энергией";
+};
+
+const getTaskSummary = (tasks: Task[]) => {
+  if (tasks.length === 1) {
+    const task = tasks[0];
+    const parts = [`Я выделил задачу: «${task.title}»`];
+    const priorityLabel = getPriorityLabel(task.priority);
+    const energyLabel = getEnergyLabel(task.energyLevel);
+
+    if (priorityLabel) parts.push(`, ${priorityLabel}`);
+    if (energyLabel) parts.push(`, ${energyLabel}`);
+    if (task.date) parts.push(`, на ${formatTaskDateForUI(task.date).toLowerCase()}`);
+    if (task.category) parts.push(`, категория «${task.category}»`);
+
+    return parts.join("") + ".";
+  }
+
+  const titles = tasks.slice(0, 3).map((t) => `«${t.title}»`).join(", ");
+  const remaining = tasks.length > 3 ? ` и ещё ${tasks.length - 3}` : "";
+  return `Я выделил ${tasks.length} ${getTaskWord(tasks.length)}: ${titles}${remaining}.`;
 };
 
 export default MindHubChat;

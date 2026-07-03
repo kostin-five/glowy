@@ -252,7 +252,23 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       );
       setRegisteredAiLimit(result.limit ?? null);
 
-      if (result.tasks.length > 0) {
+      if (result.actions?.updatedTasks?.length) {
+        const store = useTaskStore.getState();
+        const updatedById = new Map(
+          result.actions.updatedTasks.map((updatedTask) => [
+            updatedTask.id,
+            updatedTask,
+          ])
+        );
+
+        store.setTasks(
+          store.tasks.map((task) => updatedById.get(task.id) ?? task)
+        );
+        appendMessage({
+          role: "assistant",
+          text: result.reply || "Задача обновлена.",
+        });
+      } else if (result.tasks.length > 0) {
         const store = useTaskStore.getState();
         store.setTasks([...store.tasks, ...result.tasks]);
 
@@ -304,7 +320,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       <div
         ref={messagesContainerRef}
         onScroll={handleMessagesScroll}
-        className="custom-scrollbar flex-1 overflow-y-auto px-5 py-5"
+        className="mind-hub-scrollbar flex-1 overflow-y-auto px-5 py-5"
       >
         <div className="flex flex-col gap-3">
           {!messages.length && (

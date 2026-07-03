@@ -7,6 +7,7 @@ import {
   buildTaskAnalysisPrompt,
   createMindHubTasks,
   getCoachReply,
+  isDuplicateTask,
   parseMindHubTasks,
   stringifyActiveTasks,
 } from "../services/ai/mind-hub.service.js";
@@ -26,14 +27,14 @@ const router = express.Router();
 
 const demoMindHubLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
-  max: 7,
+  max: 3,
   statusCode: 429,
   standardHeaders: true,
   legacyHeaders: false,
   skipFailedRequests: true,
   message: {
     error:
-      "Превышен лимит демо-запросов (7/7). Пожалуйста, зарегистрируйтесь для безлимитного доступа.",
+      "Превышен лимит демо-запросов (3/3). Пожалуйста, зарегистрируйтесь, чтобы получить больше запросов.",
   },
 });
 
@@ -223,11 +224,14 @@ router.post("/mind-hub", async (req, res) => {
     const activeTasks = await prisma.task.findMany({
       where: { userId: req.user.id, completed: false },
       select: {
+        id: true,
         title: true,
         date: true,
         priority: true,
         energyLevel: true,
         category: true,
+        userId: true,
+        completed: true,
       },
       take: 10,
     });
@@ -276,12 +280,14 @@ router.post("/mind-hub", async (req, res) => {
 
     const today = formatDateDDMMYYYY(new Date());
     let parsedTasks = [];
+    let parsedActions = { updateTaskDate: [] };
     let reply = null;
     let parsedSuccessfully = false;
 
     try {
       const parsedResult = await parseMindHubTasks(message, today, activeTasks);
       parsedTasks = parsedResult.tasks;
+      parsedActions = parsedResult.actions || { updateTaskDate: [] };
       reply = parsedResult.reply;
       parsedSuccessfully = true;
     } catch (error) {
@@ -306,6 +312,66 @@ router.post("/mind-hub", async (req, res) => {
       parsedTasks = parseMindHubFallback(message, today);
     }
 
+    const isExplicitNewRequest =
+      /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(
+        message
+      );
+    const looksLikeCreateRequest =
+      !/перенеси|перенести|покажи|выпиши|с чего начать|что делать/i.test(
+        message
+      ) &&
+      /надо|нужно|сделать|купить|ответить|подготовить|записаться|позвонить|сдать|убраться|добавь|создай|запиши/i.test(
+        message
+      );
+
+    const updateTaskDateActions = parsedActions.updateTaskDate || [];
+    const updatedTasks = [];
+
+    for (const action of updateTaskDateActions) {
+      const taskId = Number(action.taskId);
+      const task = activeTasks.find((activeTask) => activeTask.id === taskId);
+
+      if (!Number.isInteger(taskId) || !task) {
+        continue;
+      }
+
+      const updated = await prisma.task.update({
+        where: { id: taskId },
+        data: { date: action.date },
+        include: {
+          subtasks: {
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+          },
+        },
+      });
+      updatedTasks.push(updated);
+    }
+
+    if (updatedTasks.length > 0) {
+      const aiLimit = parsedSuccessfully
+        ? await consumeAuthenticatedAiRequest(req.user.id)
+        : aiLimitPreview;
+
+      if (!aiLimit.allowed) {
+        return res.status(429).json({
+          error: "Лимит запросов исчерпан.",
+          limit: aiLimit.limit,
+        });
+      }
+
+      return res.json({
+        tasks: [],
+        reply: reply || "Готово, обновил дату задачи.",
+        actions: { updatedTasks },
+        limit: aiLimit.limit,
+      });
+    }
+
+    if (!parsedTasks.length && looksLikeCreateRequest) {
+      parsedTasks = parseMindHubFallback(message, today);
+      reply = null;
+    }
+
     if (!parsedTasks.length) {
       const aiLimit = parsedSuccessfully
         ? await consumeAuthenticatedAiRequest(req.user.id)
@@ -327,7 +393,21 @@ router.post("/mind-hub", async (req, res) => {
       });
     }
 
-    const createdTasks = await createMindHubTasks(parsedTasks, req.user.id);
+    const tasksToCreate = isExplicitNewRequest
+      ? parsedTasks
+      : parsedTasks.filter((task) => !isDuplicateTask(task, activeTasks));
+
+    const duplicates = parsedTasks.filter((task) => isDuplicateTask(task, activeTasks));
+
+    if (tasksToCreate.length === 0 && duplicates.length > 0) {
+      return res.json({
+        tasks: [],
+        reply: `Такая задача уже есть: «${duplicates[0].title}».`,
+        limit: aiLimitPreview.limit,
+      });
+    }
+
+    const createdTasks = await createMindHubTasks(tasksToCreate, req.user.id);
     const aiLimit = parsedSuccessfully
       ? await consumeAuthenticatedAiRequest(req.user.id)
       : aiLimitPreview;

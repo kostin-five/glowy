@@ -75,27 +75,34 @@ export const buildMindHubParsePrompt = (
 Сегодня: ${today}. Используй эту дату ТОЛЬКО как точку отсчёта для относительных формулировок.
 
 Верни JSON строгого формата:
-{"tasks": [...], "reply": "..."}
+{"tasks": [...], "reply": "...", "actions": {"updateTaskDate": []}}
 
-ПРАВИЛА ОТВЕТА:
-1. Если пользователь просто делится состоянием, тревогой, вопросом или просит поддержки (без конкретных дел) — tasks: [], reply: "короткий и теплый ответ".
-2. Если пользователь перечисляет дела, планы, обязательства — tasks: [...], reply: null (или короткое подтверждение, если есть эмоции).
-3. Если в тексте есть и эмоции, и дела — tasks: [...], reply: "короткая поддержка". Это обязательно для смешанных фраз вроде "я устал, но надо убраться".
+ПРАВИЛА МЫШЛЕНИЯ:
+Сначала определи намерение пользователя, затем выбери действие. Не привязывайся к отдельным ключевым словам механически.
 
-НЕ заставляй модель писать reply при каждой задаче. Если задач много и они понятны, reply может быть null.
+1. Поддержка и разговор.
+Если пользователь делится состоянием, тревогой, растерянностью или просит помощи без конкретного нового дела, верни tasks: [] и короткий теплый reply. Используй активные задачи как контекст, если это помогает выбрать следующий шаг.
 
-КЛАССИФИКАЦИЯ:
-- Создавай задачи, если пользователь пишет конкретные действия: "надо", "нужно", "сделать", "купить", "ответить", "подготовить", "записаться", "позвонить", "сдать", "убраться".
-- НЕ создавай задачи из чистых эмоций и разговорных сообщений: "мне плохо", "я устал", "как дела?", "не знаю что делать", "всё навалилось", если там нет конкретного действия.
-- Если пользователь просит совета или поддержки, верни теплый reply и пустой tasks.
-- Если пользователь смешал эмоции и дела, выдели только реальные дела в tasks, а reply обязательно сделай коротким и поддерживающим.
-- Если пользователь просит "выписать/показать задачи", перечисли все АКТИВНЫЕ ЗАДАЧИ из контекста в reply, tasks: [].
-- Если пользователь просит помощи "с чего начать", проанализируй АКТИВНЫЕ ЗАДАЧИ и предложи 1-2 подходящие из них, tasks: [].
-- Если пользователь просит создать задачу, проверь АКТИВНЫЕ ЗАДАЧИ. Если задача с тем же смыслом уже есть, верни tasks: [] и reply: "Такая задача уже есть: [название]".
-- Если пользователь явно просит новую задачу, меняет дату, категорию или смысл — создай новую задачу.
-- Никогда не изменяй и не перезаписывай существующие задачи.
-- Не придумывай задачи, которых нет в тексте.
-- В поле reply пиши только обычный текст без Markdown и форматирования. Нельзя использовать **жирный текст**, списки, нумерацию, bullet points, таблицы, заголовки, emoji как маркеры списка или спецразметку. Если перечисляешь задачи, пиши их через точку с запятой в одной-двух обычных фразах.
+2. Создание новых задач.
+Создавай tasks только из конкретных новых дел, обязательств, планов или шагов, которые пользователь действительно хочет добавить. Если пользователь смешал эмоции и дела, выдели реальные дела в tasks, а в reply коротко поддержи.
+
+3. Работа с существующими задачами.
+Если пользователь просит показать, перечислить, оценить, выбрать приоритет, найти легкий старт или понять, с чего начать, НЕ создавай задачи. Используй АКТИВНЫЕ ЗАДАЧИ в reply и верни tasks: [].
+
+4. Дубли.
+Не создавай дубль, если новое дело по смыслу совпадает с активной задачей и относится к той же дате/контексту. В этом случае верни tasks: [] и спокойно скажи, какая задача уже есть.
+Если пользователь явно хочет отдельную новую копию, повтор, другую дату, другую категорию или другой смысл, создай новую задачу.
+
+5. Изменение даты существующей задачи.
+Этот flow умеет только переносить дату существующей активной задачи. Если пользователь просит перенести, поставить или изменить дату уже существующей задачи, НЕ создавай новую задачу. Найди однозначную задачу в АКТИВНЫХ ЗАДАЧАХ и верни actions.updateTaskDate: [{"taskId":"id задачи","date":"DD.MM.YYYY"}], tasks: [], reply: короткое подтверждение.
+Если подходящих задач несколько или задача не найдена, не делай action и задай один короткий уточняющий вопрос.
+Любые другие изменения существующих задач (удалить, завершить, переименовать, поменять категорию/приоритет/энергию) пока не поддерживаются. Не обещай, что сделал их.
+
+6. Уточнение.
+Если намерение неясно, не создавай задачу наугад. Верни tasks: [] и задай один короткий уточняющий вопрос.
+
+7. Формат reply.
+В поле reply пиши обычный текст без Markdown-разметки. Нельзя использовать **жирный текст**, __подчёркивание__, Markdown-заголовки, таблицы, цитаты, code blocks или спецразметку. Обычные списки и нумерация разрешены, если они нужны для понятного ответа.
 
 ВАЖНОЕ ПРАВИЛО ПОДЗАДАЧ (SUBTASKS):
 Ты должен строго отличать независимые задачи от шагов, ведущих к одной цели.
@@ -121,8 +128,9 @@ export const buildMindHubParsePrompt = (
 - energyLevel: "high" для сложных и долгих задач вроде "написать курсовую"; "low" для простых вроде "купить хлеб"; "med" для обычных средних задач.
 - priority: по умолчанию "P2"; срочные и важные задачи — "P1"; мелкие необязательные — "P3".
 - subtasks: всегда массив строк. Если подзадач нет, верни пустой массив [].
+- actions.updateTaskDate: используй только для переноса даты существующей активной задачи. taskId обязан быть id из АКТИВНЫХ ЗАДАЧ. date всегда в формате "DD.MM.YYYY".
 - Не придумывай лишние задачи.
-- Не используй Markdown нигде в JSON, включая поле reply. Верни только валидный JSON.
+- Не используй Markdown-разметку нигде в JSON, включая поле reply. Верни только валидный JSON.
 
 Текст пользователя:
 """${message}"""`;
@@ -181,6 +189,17 @@ export const normalizeMindHubPayload = (payload, fallbackDate, sourceMessage = "
     ? payload.tasks
     : [];
 
+  const actions = {
+    updateTaskDate: Array.isArray(payload?.actions?.updateTaskDate)
+      ? payload.actions.updateTaskDate
+          .map((action) => ({
+            taskId: String(action.taskId),
+            date: normalizeDate(action.date, fallbackDate),
+          }))
+          .filter((a) => a.taskId && a.date)
+      : [],
+  };
+
   const tasks = rawTasks
     .map((task) => {
       const rawTitle = typeof task.title === "string" ? task.title.trim() : "";
@@ -232,7 +251,7 @@ export const normalizeMindHubPayload = (payload, fallbackDate, sourceMessage = "
       ? payload.reply.trim()
       : null;
 
-  return { tasks: mergeCourseworkSteps(sourceMessage, tasks), reply };
+  return { tasks: mergeCourseworkSteps(sourceMessage, tasks), reply, actions };
 };
 
 const inferFallbackCategory = (title) => {
@@ -275,8 +294,48 @@ const inferFallbackEnergy = (title) => {
   return "med";
 };
 
+const addDaysToDottedDate = (date, daysToAdd) => {
+  const [day, month, year] = date.split(".").map(Number);
+  const nextDate = new Date(year, month - 1, day);
+  nextDate.setDate(nextDate.getDate() + daysToAdd);
+
+  return [
+    String(nextDate.getDate()).padStart(2, "0"),
+    String(nextDate.getMonth() + 1).padStart(2, "0"),
+    nextDate.getFullYear(),
+  ].join(".");
+};
+
+const inferRelativeDate = (message, fallbackDate) => {
+  const value = message.toLowerCase();
+
+  if (/послезавтра/.test(value)) {
+    return addDaysToDottedDate(fallbackDate, 2);
+  }
+
+  if (/завтра/.test(value)) {
+    return addDaysToDottedDate(fallbackDate, 1);
+  }
+
+  return null;
+};
+
+const cleanFallbackTaskTitle = (title) =>
+  title
+    .replace(/(?:^|\s)(добавь|создай|запиши|поставь|надо|нужно)(?=\s|$)/gi, " ")
+    .replace(/(?:^|\s)(мне|пожалуйста)(?=\s|$)/gi, " ")
+    .replace(/(?:^|\s)(ещ[её]\s+(одну|раз)|новую)(?=\s|$)/gi, " ")
+    .replace(/(?:^|\s)(задачу|дело)(?=\s|$)/gi, " ")
+    .replace(/(?:^|\s)на\s+(сегодня|завтра|послезавтра)(?=\s|$)/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+const capitalizeTitle = (title) =>
+  title ? title.charAt(0).toUpperCase() + title.slice(1) : title;
+
 export const parseMindHubFallback = (message, fallbackDate) => {
   const exactDate = extractExactDateFromText(message);
+  const relativeDate = inferRelativeDate(message, fallbackDate);
 
   return message
     .split(/[\n,;]+|(?:\s+и\s+)/i)
@@ -284,10 +343,11 @@ export const parseMindHubFallback = (message, fallbackDate) => {
     .filter((title) => title.length > 0)
     .map((title) => {
       const titleWithoutDate = stripExactDateFromTitle(title);
+      const cleanedTitle = cleanFallbackTaskTitle(titleWithoutDate || title);
 
       return {
-        title: titleWithoutDate || title,
-        date: exactDate || fallbackDate,
+        title: capitalizeTitle(cleanedTitle || titleWithoutDate || title),
+        date: exactDate || relativeDate || fallbackDate,
         priority: priorityMap.P2,
         energyLevel: inferFallbackEnergy(title),
         category: inferFallbackCategory(title),

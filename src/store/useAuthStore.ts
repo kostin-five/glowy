@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_BASE_URL } from "../api/config";
 
-export const GUEST_REQUEST_LIMIT = 7;
+export const GUEST_REQUEST_LIMIT = 3;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const isGuestRequestWindowExpired = (resetDate: string | null) => {

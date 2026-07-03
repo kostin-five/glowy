@@ -1,11 +1,21 @@
-export const AUTHENTICATED_AI_REQUEST_LIMIT = 25;
+export const DEFAULT_AI_REQUEST_LIMIT = 10;
 export const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 import { prisma } from "../../lib/prisma.js";
 
-export const buildAiLimitPayload = (count, resetAt) => ({
-  limit: AUTHENTICATED_AI_REQUEST_LIMIT,
-  remaining: Math.max(0, AUTHENTICATED_AI_REQUEST_LIMIT - count),
+export const getEffectiveAiLimit = (user) => {
+  const now = new Date();
+  const isExpired = user.planExpiresAt && user.planExpiresAt < now;
+  const plan = isExpired ? "start" : user.plan;
+
+  if (plan === "focus") return 100;
+  if (plan === "forever") return 150;
+  return DEFAULT_AI_REQUEST_LIMIT;
+};
+
+export const buildAiLimitPayload = (count, resetAt, limit) => ({
+  limit,
+  remaining: Math.max(0, limit - count),
   resetAt: resetAt.toISOString(),
 });
 
@@ -16,6 +26,8 @@ export const getAuthenticatedAiRequestLimit = async (userId) => {
     select: {
       aiRequestsCount: true,
       aiRequestsResetAt: true,
+      plan: true,
+      planExpiresAt: true,
     },
   });
 
@@ -31,10 +43,12 @@ export const getAuthenticatedAiRequestLimit = async (userId) => {
     ? new Date(now.getTime() + AI_REQUEST_WINDOW_MS)
     : user.aiRequestsResetAt;
 
-  if (currentCount >= AUTHENTICATED_AI_REQUEST_LIMIT) {
+  const limit = getEffectiveAiLimit(user);
+
+  if (currentCount >= limit) {
     return {
       allowed: false,
-      limit: buildAiLimitPayload(currentCount, resetAt),
+      limit: buildAiLimitPayload(currentCount, resetAt, limit),
     };
   }
 
@@ -42,7 +56,7 @@ export const getAuthenticatedAiRequestLimit = async (userId) => {
     allowed: true,
     count: currentCount,
     resetAt,
-    limit: buildAiLimitPayload(currentCount, resetAt),
+    limit: buildAiLimitPayload(currentCount, resetAt, limit),
   };
 };
 
@@ -65,11 +79,18 @@ export const consumeAuthenticatedAiRequest = async (userId) => {
     },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { plan: true, planExpiresAt: true },
+  });
+  const limit = getEffectiveAiLimit(user);
+
   return {
     allowed: true,
     limit: buildAiLimitPayload(
       updatedUser.aiRequestsCount,
-      updatedUser.aiRequestsResetAt
+      updatedUser.aiRequestsResetAt,
+      limit
     ),
   };
 };

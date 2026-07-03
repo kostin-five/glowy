@@ -18,6 +18,9 @@ export type MindHubLimit = {
 export type MindHubResponse = {
   tasks: Task[];
   reply: string | null;
+  actions?: {
+    updatedTasks?: Task[];
+  };
   limit?: MindHubLimit;
 };
 
@@ -28,7 +31,7 @@ const aiInstance = axios.create({
 
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GUEST_LIMIT_REPLY =
-  "Упс, твои демо-запросы на сегодня всё! 🐣 Зарегистрируйся бесплатно, чтобы сохранить свои задачи и общаться со мной без ограничений.";
+  "Демо-запросы на сегодня закончились. Зарегистрируйся бесплатно, чтобы сохранить задачи и получить больше запросов.";
 
 const getGuestMindHubLimit = (): MindHubLimit => {
   const authStore = useAuthStore.getState();
@@ -153,7 +156,7 @@ export default class AiApi {
         hubMode,
         messages,
       });
-      return response.data;
+      return response.data as MindHubResponse;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         return {

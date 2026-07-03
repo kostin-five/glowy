@@ -20,12 +20,12 @@ export const parseMindHubTasks = async (message, today, activeTasksContext = [])
   const activeTasksString = activeTasksContext.length
     ? `
 
-АКТИВНЫЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ (НЕ ДУБЛИРУЙ ИХ):
-${activeTasksContext
-    .map(
-      (t) =>
-        `- ${t.title} (Дата: ${t.date}, Приоритет: ${t.priority}, Энергия: ${t.energyLevel}, Категория: ${t.category})`
-    )
+АКТИВНЫЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ ДЛЯ КОНТЕКСТА, ФОКУСА И ПРОВЕРКИ ДУБЛЕЙ:
+	${activeTasksContext
+	    .map(
+	      (t) =>
+	        `- id: ${t.id}; title: ${t.title}; date: ${t.date}; priority: ${t.priority}; energy: ${t.energyLevel}; category: ${t.category}`
+	    )
     .join("\n")}`
     : "";
   const courseworkPlan = parseCourseworkPlan(message, today);
@@ -66,8 +66,25 @@ export const createMindHubTasks = (tasks, userId) =>
     )
   );
 
+export const normalizeTaskTitle = (title) =>
+  title
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[.,!?;:]/g, "")
+    .trim();
+
+export const isDuplicateTask = (task, activeTasks) => {
+  const normalizedTitle = normalizeTaskTitle(task.title);
+  return activeTasks.some((active) => {
+    const activeNormalizedTitle = normalizeTaskTitle(active.title);
+    const titleMatch = normalizedTitle === activeNormalizedTitle;
+    const dateMatch = !task.date || !active.date || task.date === active.date;
+    return titleMatch && dateMatch;
+  });
+};
+
 const COACH_SYSTEM_INSTRUCTION =
-  "Ты эмпатичный ИИ-коуч в приложении Glowy. Glowy — мужской персонаж, говори о себе в мужском роде. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Перед каждым ответом ОБЯЗАТЕЛЬНО анализируй всю доступную history: что пользователь уже спрашивал, какие ответы ты уже давал, какие эмоции и потребности проявились в диалоге. Каждый новый ответ должен быть уникальным, контекстным и не повторять предыдущие формулировки. Подстраивайся под состояние пользователя: усталость, тревогу, хаос, прокрастинацию, растерянность или запрос на совет. Отвечай живо, тепло и коротко: 1-2 предложения. Задавай максимум один наводящий вопрос, только если он действительно помогает продолжить диалог. НЕ используй шаблонные фразы и не повторяй fallback-текст. Не используй Markdown и любое форматирование: никаких **жирных слов**, списков, нумерации, заголовков, bullet points, таблиц или спецразметки. Пиши только обычный гладкий текст.";
+  "Ты эмпатичный ИИ-коуч в приложении Glowy. Glowy — мужской персонаж, говори о себе в мужском роде. Твоя цель — поддержать пользователя и помочь ему распутать мысли. Перед каждым ответом ОБЯЗАТЕЛЬНО анализируй всю доступную history: что пользователь уже спрашивал, какие ответы ты уже давал, какие эмоции и потребности проявились в диалоге. Каждый новый ответ должен быть уникальным, контекстным и не повторять предыдущие формулировки. Подстраивайся под состояние пользователя: усталость, тревогу, хаос, прокрастинацию, растерянность или запрос на совет. Отвечай живо, тепло и коротко: 1-2 предложения. Задавай максимум один наводящий вопрос, только если он действительно помогает продолжить диалог. НЕ используй шаблонные фразы и не повторяй fallback-текст. Не используй Markdown-разметку: никаких **жирных слов**, Markdown-заголовков, таблиц, цитат, code blocks или спецразметки. Обычные списки и нумерация разрешены, если они помогают ответить понятнее.";
 
 const normalizeChatMessages = (messages, currentMessage) => {
   const normalizedMessages = messages

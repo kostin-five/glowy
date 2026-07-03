@@ -16,7 +16,18 @@ const taskInclude = {
   },
 };
 
-export const parseMindHubTasks = async (message, today) => {
+export const parseMindHubTasks = async (message, today, activeTasksContext = []) => {
+  const activeTasksString = activeTasksContext.length
+    ? `
+
+АКТИВНЫЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ (НЕ ДУБЛИРУЙ ИХ):
+${activeTasksContext
+    .map(
+      (t) =>
+        `- ${t.title} (Дата: ${t.date}, Приоритет: ${t.priority}, Энергия: ${t.energyLevel}, Категория: ${t.category})`
+    )
+    .join("\n")}`
+    : "";
   const courseworkPlan = parseCourseworkPlan(message, today);
 
   if (courseworkPlan) {
@@ -24,7 +35,7 @@ export const parseMindHubTasks = async (message, today) => {
   }
 
   const { text: responseText } = await generateContentWithAiProvider(
-    buildMindHubParsePrompt(message, today),
+    buildMindHubParsePrompt(message, today, activeTasksString),
     "Mind Hub parse"
   );
   const parsedPayload = parseJsonLoose(responseText);

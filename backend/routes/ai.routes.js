@@ -220,6 +220,17 @@ router.post("/mind-hub", async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
+    const activeTasks = await prisma.task.findMany({
+      where: { userId: req.user.id, completed: false },
+      select: {
+        title: true,
+        date: true,
+        priority: true,
+        energyLevel: true,
+        category: true,
+      },
+      take: 10,
+    });
     const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
 
     if (!aiLimitPreview.allowed) {
@@ -269,7 +280,7 @@ router.post("/mind-hub", async (req, res) => {
     let parsedSuccessfully = false;
 
     try {
-      const parsedResult = await parseMindHubTasks(message, today);
+      const parsedResult = await parseMindHubTasks(message, today, activeTasks);
       parsedTasks = parsedResult.tasks;
       reply = parsedResult.reply;
       parsedSuccessfully = true;

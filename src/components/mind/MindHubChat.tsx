@@ -8,7 +8,7 @@ import {
   type MutableRefObject,
 } from "react";
 import axios from "axios";
-import { Check, Copy, Info, Send, Sparkles, X } from "lucide-react";
+import { Check, Copy, Info, Send, Sparkles, X, Trash2 } from "lucide-react";
 import AiApi, {
   type MindHubLimit,
   type MindHubMessage,
@@ -120,17 +120,72 @@ const ChatMessageBubble = ({
   );
 };
 
+const loadSavedMindHubMessages = (): ChatMessage[] => {
+  try {
+    const saved = localStorage.getItem("glowy-mind-hub-chat");
+    if (!saved) return [];
+
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(
+      (message): message is ChatMessage =>
+        typeof message?.id === "number" &&
+        (message.role === "user" || message.role === "assistant") &&
+        typeof message.text === "string"
+    );
+  } catch (error) {
+    console.error("Failed to load chat history", error);
+    return [];
+  }
+};
+
+const saveAiCreatedTaskIds = (tasks: Task[]) => {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("glowy-ai-created-task-ids") || "[]"
+    );
+    const previousIds = Array.isArray(saved)
+      ? saved.filter((id): id is number => typeof id === "number")
+      : [];
+    const newIds = tasks.map((task) => task.id);
+    const updatedIds = Array.from(new Set([...newIds, ...previousIds])).slice(
+      0,
+      20
+    );
+
+    localStorage.setItem(
+      "glowy-ai-created-task-ids",
+      JSON.stringify(updatedIds)
+    );
+    window.dispatchEvent(new Event("glowy-ai-created-task-ids-updated"));
+  } catch (error) {
+    console.error("Failed to save AI-created task ids", error);
+  }
+};
+
 const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   const hubMode: MindHubMode = "auto";
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(
+    loadSavedMindHubMessages
+  );
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(
-    () => new Set()
-  );
+  const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(() => {
+    const saved = loadSavedMindHubMessages();
+    return new Set(saved.filter(m => m.role === "assistant").map(m => m.id));
+  });
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("glowy-mind-hub-chat", JSON.stringify(messages));
+    } else {
+      localStorage.removeItem("glowy-mind-hub-chat");
+    }
+  }, [messages]);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -271,6 +326,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       } else if (result.tasks.length > 0) {
         const store = useTaskStore.getState();
         store.setTasks([...store.tasks, ...result.tasks]);
+        saveAiCreatedTaskIds(result.tasks);
 
         const summary = getTaskSummary(result.tasks);
         appendMessage({
@@ -306,11 +362,28 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   return (
     <section className="flex min-h-125 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160">
       <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles size={18} className="text-indigo-300" />
-          <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
-            Хаб мыслей
-          </h2>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-indigo-300" />
+            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
+              Хаб мыслей
+            </h2>
+          </div>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setMessages([]);
+                setTypedMessageIds(new Set());
+                localStorage.removeItem("glowy-mind-hub-chat");
+              }}
+              className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+              title="Очистить историю"
+              aria-label="Очистить историю"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
         </div>
         <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
           {WELCOME_MESSAGE}
@@ -320,7 +393,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       <div
         ref={messagesContainerRef}
         onScroll={handleMessagesScroll}
-        className="mind-hub-scrollbar flex-1 overflow-y-auto px-5 py-5"
+        className="mind-hub-scrollbar flex-1 overflow-y-auto bg-slate-100/60 px-5 py-5 dark:bg-slate-950/35"
       >
         <div className="flex flex-col gap-3">
           {!messages.length && (

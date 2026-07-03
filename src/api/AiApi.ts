@@ -133,6 +133,7 @@ export default class AiApi {
           message,
           hubMode,
           messages,
+          currentEnergy: authStore.currentEnergy,
         });
 
         return {
@@ -155,6 +156,7 @@ export default class AiApi {
         message,
         hubMode,
         messages,
+        currentEnergy: authStore.currentEnergy,
       });
       return response.data as MindHubResponse;
     } catch (error) {

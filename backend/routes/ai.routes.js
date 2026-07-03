@@ -66,8 +66,12 @@ const getMindHubRequestPayload = (body) => {
       ? body.hubMode
       : "auto";
   const messages = Array.isArray(body?.messages) ? body.messages : [];
+  const rawCurrentEnergy = Number(body?.currentEnergy);
+  const currentEnergy = Number.isFinite(rawCurrentEnergy)
+    ? Math.min(100, Math.max(0, rawCurrentEnergy))
+    : null;
 
-  return { message, hubMode, messages };
+  return { message, hubMode, messages, currentEnergy };
 };
 
 const buildValidationError = (message, hubMode) => {
@@ -81,7 +85,7 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
   let requestHubMode = "parse";
 
   try {
-    const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
+    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
     requestHubMode = hubMode;
     const validationError = buildValidationError(message, hubMode);
 
@@ -98,7 +102,7 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
     let parsedResult = null;
 
     try {
-      parsedResult = await parseMindHubTasks(message, today);
+      parsedResult = await parseMindHubTasks(message, today, [], currentEnergy);
     } catch (error) {
       if (isExpectedAiUnavailableError(error)) {
         console.error("Public Mind Hub AI unavailable", {
@@ -213,7 +217,7 @@ router.post("/mind-hub", async (req, res) => {
   let requestHubMode = "parse";
 
   try {
-    const { message, hubMode, messages } = getMindHubRequestPayload(req.body);
+    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
     requestHubMode = hubMode;
     const validationError = buildValidationError(message, hubMode);
 
@@ -235,6 +239,14 @@ router.post("/mind-hub", async (req, res) => {
       },
       take: 10,
     });
+    const userEnergy = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { currentEnergy: true },
+    });
+    const effectiveCurrentEnergy =
+      typeof userEnergy?.currentEnergy === "number"
+        ? userEnergy.currentEnergy
+        : currentEnergy;
     const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
 
     if (!aiLimitPreview.allowed) {
@@ -285,7 +297,12 @@ router.post("/mind-hub", async (req, res) => {
     let parsedSuccessfully = false;
 
     try {
-      const parsedResult = await parseMindHubTasks(message, today, activeTasks);
+      const parsedResult = await parseMindHubTasks(
+        message,
+        today,
+        activeTasks,
+        effectiveCurrentEnergy
+      );
       parsedTasks = parsedResult.tasks;
       parsedActions = parsedResult.actions || { updateTaskDate: [] };
       reply = parsedResult.reply;

@@ -36,6 +36,18 @@ const energyAccent: Record<Task["energyLevel"], string> = {
   high: "bg-rose-400",
 };
 
+const getFocusHint = (currentEnergy: number) => {
+  if (currentEnergy <= 30) {
+    return "Заряд низкий, поэтому лучше взять короткий шаг и не давить на себя.";
+  }
+
+  if (currentEnergy <= 70) {
+    return "Средний заряд: начни спокойно, а сложное оставь после первого разгона.";
+  }
+
+  return "Заряда хватает: можно взять задачу посложнее и закрыть заметный кусок дня.";
+};
+
 const TaskMiniRow = ({ task }: { task: Task }) => (
   <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
     <span
@@ -146,11 +158,16 @@ const DashboardPage = () => {
               </p>
 
               {focusTasks.length > 0 ? (
-                <div className="space-y-3">
-                  {focusTasks.map((task) => (
-                    <TaskMiniRow key={task.id} task={task} />
-                  ))}
-                </div>
+                <>
+                  <div className="space-y-3">
+                    {focusTasks.map((task) => (
+                      <TaskMiniRow key={task.id} task={task} />
+                    ))}
+                  </div>
+                  <div className="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm leading-6 text-indigo-100/90 xl:block">
+                    {getFocusHint(currentEnergy)}
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
                   <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">

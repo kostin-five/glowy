@@ -16,7 +16,12 @@ const taskInclude = {
   },
 };
 
-export const parseMindHubTasks = async (message, today, activeTasksContext = []) => {
+export const parseMindHubTasks = async (
+  message,
+  today,
+  activeTasksContext = [],
+  currentEnergy = null
+) => {
   const activeTasksString = activeTasksContext.length
     ? `
 
@@ -25,9 +30,20 @@ export const parseMindHubTasks = async (message, today, activeTasksContext = [])
 	    .map(
 	      (t) =>
 	        `- id: ${t.id}; title: ${t.title}; date: ${t.date}; priority: ${t.priority}; energy: ${t.energyLevel}; category: ${t.category}`
-	    )
+    )
     .join("\n")}`
     : "";
+  const userEnergyString =
+    typeof currentEnergy === "number"
+      ? `
+
+ТЕКУЩИЙ ЭНЕРГОПОТЕНЦИАЛ ПОЛЬЗОВАТЕЛЯ: ${currentEnergy}%.
+Используй его при советах "с чего начать", "как распределить день" и при выборе следующего шага:
+- 0-30%: предлагай самый лёгкий low-energy старт, не дави и не советуй high-energy задачи как первый шаг.
+- 31-70%: предлагай low или med задачи, high оставляй на потом.
+- 71-100%: можно предлагать med/high задачи, если они важные.
+Если отвечаешь советом, явно учитывай энергию пользователя простым языком.`
+      : "";
   const courseworkPlan = parseCourseworkPlan(message, today);
 
   if (courseworkPlan) {
@@ -35,7 +51,7 @@ export const parseMindHubTasks = async (message, today, activeTasksContext = [])
   }
 
   const { text: responseText } = await generateContentWithAiProvider(
-    buildMindHubParsePrompt(message, today, activeTasksString),
+    buildMindHubParsePrompt(message, today, activeTasksString, userEnergyString),
     "Mind Hub parse"
   );
   const parsedPayload = parseJsonLoose(responseText);

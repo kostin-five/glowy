@@ -16,20 +16,39 @@ const taskInclude = {
   },
 };
 
+const formatEnergyForPrompt = (energyLevel) => {
+  if (energyLevel === "high") return "высокая энергия";
+  if (energyLevel === "low") return "низкая энергия";
+  return "средняя энергия";
+};
+
+const formatPriorityForPrompt = (priority = "") => {
+  if (priority.includes("P1")) return "высокий приоритет";
+  if (priority.includes("P3")) return "низкий приоритет";
+  return "средний приоритет";
+};
+
 export const parseMindHubTasks = async (
   message,
   today,
   activeTasksContext = [],
-  currentEnergy = null
+  currentEnergy = null,
+  messages = []
 ) => {
   const activeTasksString = activeTasksContext.length
     ? `
 
 АКТИВНЫЕ ЗАДАЧИ ПОЛЬЗОВАТЕЛЯ ДЛЯ КОНТЕКСТА, ФОКУСА И ПРОВЕРКИ ДУБЛЕЙ:
-	${activeTasksContext
-	    .map(
-	      (t) =>
-	        `- id: ${t.id}; title: ${t.title}; date: ${t.date}; priority: ${t.priority}; energy: ${t.energyLevel}; category: ${t.category}`
+${activeTasksContext
+      .map(
+        (t) =>
+          `- id: ${t.id}; title: ${t.title}; date: ${
+            t.date || "без даты"
+          }; priority: ${formatPriorityForPrompt(
+            t.priority
+          )}; energy: ${formatEnergyForPrompt(t.energyLevel)}; category: ${
+            t.category
+          }`
     )
     .join("\n")}`
     : "";
@@ -39,11 +58,32 @@ export const parseMindHubTasks = async (
 
 ТЕКУЩИЙ ЭНЕРГОПОТЕНЦИАЛ ПОЛЬЗОВАТЕЛЯ: ${currentEnergy}%.
 Используй его при советах "с чего начать", "как распределить день" и при выборе следующего шага:
-- 0-30%: предлагай самый лёгкий low-energy старт, не дави и не советуй high-energy задачи как первый шаг.
-- 31-70%: предлагай low или med задачи, high оставляй на потом.
-- 71-100%: можно предлагать med/high задачи, если они важные.
+- 0-30%: предлагай самый лёгкий старт, не дави и не советуй тяжёлые задачи как первый шаг.
+- 31-70%: предлагай лёгкие или средние задачи, тяжёлые оставляй на потом.
+- 71-100%: можно предлагать средние и тяжёлые задачи, если они важные.
 Если отвечаешь советом, явно учитывай энергию пользователя простым языком.`
       : "";
+  const conversationString = Array.isArray(messages)
+    ? messages
+        .filter(
+          (item) =>
+            (item?.role === "user" || item?.role === "assistant") &&
+            typeof item?.text === "string" &&
+            item.text.trim().length > 0
+        )
+        .slice(-8)
+        .map((item) => {
+          const role = item.role === "user" ? "Пользователь" : "Glowy";
+          return `${role}: ${item.text.trim()}`;
+        })
+        .join("\n")
+    : "";
+  const conversationContext = conversationString
+    ? `
+
+ИСТОРИЯ ДИАЛОГА ДЛЯ КОНТЕКСТА:
+${conversationString}`
+    : "";
   const courseworkPlan = parseCourseworkPlan(message, today);
 
   if (courseworkPlan) {
@@ -51,7 +91,13 @@ export const parseMindHubTasks = async (
   }
 
   const { text: responseText } = await generateContentWithAiProvider(
-    buildMindHubParsePrompt(message, today, activeTasksString, userEnergyString),
+    buildMindHubParsePrompt(
+      message,
+      today,
+      activeTasksString,
+      userEnergyString,
+      conversationContext
+    ),
     "Mind Hub parse"
   );
   const parsedPayload = parseJsonLoose(responseText);
@@ -196,6 +242,10 @@ export const stringifyActiveTasks = (tasks) =>
             .join("; ")
         : "подзадач нет";
 
-      return `- ${task.title} (Энергия: ${task.energyLevel}, Приоритет: ${task.priority}, Подзадачи: ${subtasks})`;
+      return `- ${task.title} (Энергия: ${formatEnergyForPrompt(
+        task.energyLevel
+      )}, Приоритет: ${formatPriorityForPrompt(
+        task.priority
+      )}, Подзадачи: ${subtasks})`;
     })
     .join("\n");

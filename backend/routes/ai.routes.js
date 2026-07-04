@@ -102,7 +102,13 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
     let parsedResult = null;
 
     try {
-      parsedResult = await parseMindHubTasks(message, today, [], currentEnergy);
+      parsedResult = await parseMindHubTasks(
+        message,
+        today,
+        [],
+        currentEnergy,
+        messages
+      );
     } catch (error) {
       if (isExpectedAiUnavailableError(error)) {
         console.error("Public Mind Hub AI unavailable", {
@@ -301,7 +307,8 @@ router.post("/mind-hub", async (req, res) => {
         message,
         today,
         activeTasks,
-        effectiveCurrentEnergy
+        effectiveCurrentEnergy,
+        messages
       );
       parsedTasks = parsedResult.tasks;
       parsedActions = parsedResult.actions || { updateTaskDate: [] };

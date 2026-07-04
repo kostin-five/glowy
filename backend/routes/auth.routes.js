@@ -1,11 +1,9 @@
 import express from "express";
-import pg from "pg";
-import pkg from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { prisma } from "../lib/prisma.js";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -31,18 +29,6 @@ const registerLimiter = rateLimit({
 
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
-const { PrismaClient } = pkg;
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 
 const getAuthEmail = (body) => {

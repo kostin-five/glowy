@@ -15,6 +15,7 @@ import { parseMindHubFallback } from "../services/ai/mind-hub-parser.service.js"
 import {
   consumeAuthenticatedAiRequest,
   getAuthenticatedAiRequestLimit,
+  getAuthenticatedAiUsage,
 } from "../services/ai/ai-limits.service.js";
 import { formatDateDDMMYYYY } from "../utils/ai-date.utils.js";
 import {
@@ -163,6 +164,21 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
 });
 
 router.use(authMiddleware);
+
+router.get("/usage", async (req, res) => {
+  try {
+    const usage = await getAuthenticatedAiUsage(req.user.id);
+    return res.json(usage);
+  } catch (error) {
+    console.error("AI usage fetch failed", {
+      code: error?.code || "UNKNOWN_ERROR",
+      status: error?.status || 500,
+      message: error?.message,
+    });
+
+    return res.status(500).json({ error: "Не удалось загрузить AI usage" });
+  }
+});
 
 router.post("/analyze", async (req, res) => {
   try {

@@ -26,4 +26,9 @@ export const UserApi = {
     const response = await api.get("/progress");
     return response.data;
   },
+
+  async deleteAccount(): Promise<{ ok: true }> {
+    const response = await api.delete("/account");
+    return response.data;
+  },
 };

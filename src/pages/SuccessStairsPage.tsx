@@ -57,7 +57,7 @@ const SuccessStairsPage = () => {
 
       <section className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-12">
         <section className="min-h-110 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none sm:col-span-7 sm:min-h-125 sm:p-6 xl:min-h-150">
-          <SuccessStairs currentLevel={currentLevel} visibleSteps={7} />
+          <SuccessStairs currentLevel={currentLevel} visibleSteps={6} />
         </section>
 
         <div className="flex flex-col gap-4 sm:col-span-5 sm:grid sm:h-full sm:grid-rows-2">

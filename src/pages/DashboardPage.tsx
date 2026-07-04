@@ -1,5 +1,6 @@
 import { useRef, useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { ListChecks } from "lucide-react";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
@@ -68,8 +69,19 @@ const getPriorityRank = (priority: string, order: string[]) => {
   return index === -1 ? order.indexOf("P2") : index;
 };
 
-const TaskMiniRow = ({ task }: { task: Task }) => (
-  <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
+const getSubtaskProgress = (task: Task) => {
+  const total = task.subtasks?.length ?? 0;
+  if (!total) return null;
+
+  const completed = task.subtasks.filter((subtask) => subtask.completed).length;
+  return `${completed}/${total}`;
+};
+
+const TaskMiniRow = ({ task }: { task: Task }) => {
+  const subtaskProgress = getSubtaskProgress(task);
+
+  return (
+    <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
     <span
       className={`h-10 w-1 shrink-0 rounded-full ${energyAccent[task.energyLevel]}`}
     />
@@ -84,10 +96,17 @@ const TaskMiniRow = ({ task }: { task: Task }) => (
             {task.category}
           </span>
         )}
+        {subtaskProgress && (
+          <span className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 font-semibold text-indigo-500 dark:text-indigo-300">
+            <ListChecks size={12} />
+            {subtaskProgress}
+          </span>
+        )}
       </div>
     </div>
   </Link>
-);
+  );
+};
 
 const DashboardPage = () => {
   const currentLevel = useTaskStore((state) => state.userLevel);

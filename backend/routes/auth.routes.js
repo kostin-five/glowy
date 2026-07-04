@@ -40,15 +40,19 @@ const generateAccessToken = (id) => {
     id,
   };
 
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: AUTH_TOKEN_EXPIRES_IN,
+  });
 };
 
 const AUTH_COOKIE_NAME = "glowy_token";
+const AUTH_TOKEN_EXPIRES_IN = "30d";
+const AUTH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "none",
-  maxAge: 24 * 60 * 60 * 1000,
+  maxAge: AUTH_COOKIE_MAX_AGE,
   path: "/",
 };
 

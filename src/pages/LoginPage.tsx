@@ -66,13 +66,13 @@ const LoginPage = () => {
           <img src="/Glowy.png" alt="Glowy Logo" className="w-22 h-20" />
         </div>
 
-        <h1 className="font-display text-3xl md:text-4xl font-black text-white tracking-tight mb-2 text-center">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight sm:leading-tight md:leading-none mb-2 text-center">
           С возвращением в{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-cyan-400">
             Glowy
           </span>
         </h1>
-        <p className="text-slate-400 text-sm mb-8 text-center px-4">
+        <p className="text-slate-400 text-sm sm:text-[15px] leading-6 mb-8 text-center px-3 sm:px-4">
           Твой эмпатичный ИИ-наставник по продуктивности. Введи свои данные для
           продолжения.
         </p>

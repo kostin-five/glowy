@@ -15,6 +15,13 @@ export type MindHubLimit = {
   resetAt: string | null;
 };
 
+export type AiUsage = {
+  plan: "demo" | "start" | "focus" | "forever";
+  used: number;
+  limit: number;
+  remaining: number;
+};
+
 export type MindHubResponse = {
   tasks: Task[];
   reply: string | null;
@@ -106,6 +113,16 @@ aiInstance.interceptors.request.use((config) => {
 attachUnauthorizedInterceptor(aiInstance);
 
 export default class AiApi {
+  static async getAiUsage(): Promise<AiUsage | null> {
+    try {
+      const response = await aiInstance.get("/usage");
+      return response.data as AiUsage;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }
+
   static async getAdvice() {
     try {
       const response = await aiInstance.post("/analyze");

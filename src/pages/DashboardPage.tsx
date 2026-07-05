@@ -1,6 +1,7 @@
 import { useRef, useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useTaskStore, useUserLevel } from "../store/useTaskStore";
+import { ListChecks } from "lucide-react";
+import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
@@ -48,8 +49,39 @@ const getFocusHint = (currentEnergy: number) => {
   return "Заряда хватает: можно взять задачу посложнее и закрыть заметный кусок дня.";
 };
 
-const TaskMiniRow = ({ task }: { task: Task }) => (
-  <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
+const getEnergyOrder = (currentEnergy: number): Task["energyLevel"][] => {
+  if (currentEnergy <= 25) return ["low", "med", "high"];
+  if (currentEnergy <= 60) return ["med", "low", "high"];
+  if (currentEnergy <= 80) return ["med", "high", "low"];
+  return ["high", "med", "low"];
+};
+
+const getPriorityOrder = (currentEnergy: number) => {
+  if (currentEnergy <= 25) return ["P3", "P2", "P1"];
+  if (currentEnergy <= 60) return ["P2", "P3", "P1"];
+  if (currentEnergy <= 80) return ["P2", "P1", "P3"];
+  return ["P1", "P2", "P3"];
+};
+
+const getPriorityRank = (priority: string, order: string[]) => {
+  const normalizedPriority = priority || "P2";
+  const index = order.findIndex((value) => normalizedPriority.includes(value));
+  return index === -1 ? order.indexOf("P2") : index;
+};
+
+const getSubtaskProgress = (task: Task) => {
+  const total = task.subtasks?.length ?? 0;
+  if (!total) return null;
+
+  const completed = task.subtasks.filter((subtask) => subtask.completed).length;
+  return `${completed}/${total}`;
+};
+
+const TaskMiniRow = ({ task }: { task: Task }) => {
+  const subtaskProgress = getSubtaskProgress(task);
+
+  return (
+    <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
     <span
       className={`h-10 w-1 shrink-0 rounded-full ${energyAccent[task.energyLevel]}`}
     />
@@ -64,13 +96,20 @@ const TaskMiniRow = ({ task }: { task: Task }) => (
             {task.category}
           </span>
         )}
+        {subtaskProgress && (
+          <span className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 font-semibold text-indigo-500 dark:text-indigo-300">
+            <ListChecks size={12} />
+            {subtaskProgress}
+          </span>
+        )}
       </div>
     </div>
   </Link>
-);
+  );
+};
 
 const DashboardPage = () => {
-  const currentLevel = useUserLevel();
+  const currentLevel = useTaskStore((state) => state.userLevel);
   const userName = useAuthStore((state) => state.name);
   const currentEnergy = useAuthStore((state) => state.currentEnergy);
   const tasks = useTaskStore((state) => state.tasks);
@@ -91,17 +130,23 @@ const DashboardPage = () => {
     const today = active.filter((t) => t.date === todayStr);
     const focusCandidates = today.length ? today : active;
 
-    const preferredEnergy =
-      currentEnergy <= 30
-        ? ["low", "med", "high"]
-        : currentEnergy <= 70
-        ? ["low", "med", "high"]
-        : ["high", "med", "low"];
+    const preferredEnergy = getEnergyOrder(currentEnergy);
+    const preferredPriority = getPriorityOrder(currentEnergy);
     const recommendedFocusTasks = [...focusCandidates]
       .sort(
-        (a, b) =>
-          preferredEnergy.indexOf(a.energyLevel) -
-          preferredEnergy.indexOf(b.energyLevel)
+        (a, b) => {
+          const energyDiff =
+            preferredEnergy.indexOf(a.energyLevel) -
+            preferredEnergy.indexOf(b.energyLevel);
+          if (energyDiff !== 0) return energyDiff;
+
+          const priorityDiff =
+            getPriorityRank(a.priority, preferredPriority) -
+            getPriorityRank(b.priority, preferredPriority);
+          if (priorityDiff !== 0) return priorityDiff;
+
+          return a.title.localeCompare(b.title, "ru");
+        }
       )
       .slice(0, 2);
 

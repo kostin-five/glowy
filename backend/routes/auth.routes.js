@@ -1,11 +1,9 @@
 import express from "express";
-import pg from "pg";
-import pkg from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { prisma } from "../lib/prisma.js";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -31,18 +29,6 @@ const registerLimiter = rateLimit({
 
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
-const { PrismaClient } = pkg;
-const { Pool } = pg;
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
-
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 const router = express.Router();
 
 const getAuthEmail = (body) => {
@@ -54,15 +40,19 @@ const generateAccessToken = (id) => {
     id,
   };
 
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: AUTH_TOKEN_EXPIRES_IN,
+  });
 };
 
 const AUTH_COOKIE_NAME = "glowy_token";
+const AUTH_TOKEN_EXPIRES_IN = "30d";
+const AUTH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 const AUTH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: "none",
-  maxAge: 24 * 60 * 60 * 1000,
+  maxAge: AUTH_COOKIE_MAX_AGE,
   path: "/",
 };
 

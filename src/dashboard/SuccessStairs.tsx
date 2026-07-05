@@ -74,7 +74,7 @@ const SuccessStairs = ({
 }: ISuccessStairs) => {
   const safeLevel = Math.max(1, currentLevel);
   const safeVisibleSteps = Math.max(3, visibleSteps);
-  const centerOffset = Math.floor(safeVisibleSteps / 2);
+  const centerOffset = Math.floor((safeVisibleSteps - 1) / 2);
   const startLevel = Math.max(1, safeLevel - centerOffset);
   const steps = Array.from(
     { length: safeVisibleSteps },
@@ -88,9 +88,9 @@ const SuccessStairs = ({
   const previousLevelRef = useRef(safeLevel);
   const [isStepping, setIsStepping] = useState(false);
   const runnerSize =
-    safeVisibleSteps >= 7 ? 58 : safeVisibleSteps >= 5 ? 52 : 38;
+    safeVisibleSteps >= 7 ? 54 : safeVisibleSteps >= 5 ? 44 : 34;
   const runnerLeftOffset =
-    safeVisibleSteps >= 7 ? 8 : safeVisibleSteps >= 5 ? 6 : 2;
+    safeVisibleSteps >= 7 ? 4 : safeVisibleSteps >= 5 ? 0 : 0;
   const baselineOffset = isCompact ? 30 : 32;
   const canvasSizeClass =
     isCompact

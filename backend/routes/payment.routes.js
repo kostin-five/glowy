@@ -1,23 +1,172 @@
 import express from "express";
-import pg from "pg";
-import pkg from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import crypto from "crypto";
+import { prisma } from "../lib/prisma.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 
-const { PrismaClient } = pkg;
-const { Pool } = pg;
+const router = express.Router();
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
+const PAYMENT_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const PAYMENT_RATE_LIMIT_MAX = 5;
+
+const PLAN_CONFIG = {
+  focus: {
+    priceRub: "99.00",
+    priceKopeks: 9900,
+    description: "подписка Glowy Focus на 30 дней",
+    alreadyActiveCode: "FOCUS_ALREADY_ACTIVE",
+    alreadyActiveMessage: "Тариф Focus уже активен",
+    getPlanExpiresAt: () => {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+      return expiresAt;
+    },
   },
+  forever: {
+    priceRub: "99.00",
+    priceKopeks: 9900,
+    description: "вечный доступ Glowy Forever",
+    alreadyActiveCode: "FOREVER_ALREADY_ACTIVE",
+    alreadyActiveMessage: "Тариф Forever уже активен",
+    getPlanExpiresAt: () => null,
+  },
+};
+
+const isExpiredFocusUser = (user) =>
+  user?.plan === "focus" &&
+  user?.subscriptionStatus === "active" &&
+  user?.planExpiresAt &&
+  new Date(user.planExpiresAt).getTime() < Date.now();
+
+const normalizePlanState = async (userId, user) => {
+  if (!user || !isExpiredFocusUser(user)) {
+    return user;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan: "start",
+      subscriptionStatus: "expired",
+    },
+    select: {
+      plan: true,
+      subscriptionStatus: true,
+      planExpiresAt: true,
+    },
+  });
+
+  return updatedUser;
+};
+
+const paymentCreateLimiter = rateLimit({
+  windowMs: PAYMENT_RATE_LIMIT_WINDOW_MS,
+  max: PAYMENT_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    req.user?.id ? `user:${req.user.id}` : ipKeyGenerator(req),
+  handler: (req, res) =>
+    res.status(429).json({
+      error: "Слишком много попыток. Подожди немного и попробуй снова.",
+      limit: PAYMENT_RATE_LIMIT_MAX,
+    }),
 });
 
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-const router = express.Router();
+const isActivePlan = (user, plan) => {
+  if (user?.plan !== plan || user?.subscriptionStatus !== "active") return false;
+  if (plan === "focus") {
+    return Boolean(user?.planExpiresAt && new Date(user.planExpiresAt) > new Date());
+  }
+  return plan === "forever";
+};
+
+const createPaymentHandler = (plan) => async (req, res) => {
+  try {
+    const planConfig = PLAN_CONFIG[plan];
+    const rawUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        plan: true,
+        subscriptionStatus: true,
+        planExpiresAt: true,
+      },
+    });
+    const user = await normalizePlanState(req.user.id, rawUser);
+
+    if (isActivePlan(user, plan)) {
+      return res.status(409).json({
+        code: planConfig.alreadyActiveCode,
+        error: planConfig.alreadyActiveMessage,
+        planExpiresAt: user.planExpiresAt,
+      });
+    }
+
+    const { YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL } = process.env;
+
+    if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY || !YOOKASSA_RETURN_URL) {
+      return res.status(500).json({ error: "Ошибка конфигурации платежей" });
+    }
+
+    const idempotenceKey = crypto.randomUUID();
+    const authString = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
+
+    const response = await fetch("https://api.yookassa.ru/v3/payments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotence-Key": idempotenceKey,
+        Authorization: `Basic ${authString}`,
+      },
+      body: JSON.stringify({
+        amount: { value: planConfig.priceRub, currency: "RUB" },
+        capture: true,
+        confirmation: { type: "redirect", return_url: YOOKASSA_RETURN_URL },
+        description: planConfig.description,
+        metadata: { userId: req.user.id, plan },
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Payment create request to YooKassa failed", {
+        status: response.status,
+        userId: req.user.id,
+        plan,
+      });
+      return res.status(500).json({ error: "Ошибка инициализации платежа" });
+    }
+
+    const data = await response.json();
+
+    if (!data.id || !data.status || !data.confirmation?.confirmation_url) {
+      return res.status(500).json({ error: "Ошибка инициализации платежа" });
+    }
+
+    const payment = await prisma.payment.create({
+      data: {
+        userId: req.user.id,
+        provider: "yookassa",
+        providerPaymentId: data.id,
+        status: data.status,
+        plan,
+        amountKopeks: planConfig.priceKopeks,
+        currency: "RUB",
+        confirmationUrl: data.confirmation.confirmation_url,
+        paid: false,
+      },
+    });
+
+    res.json({ paymentId: payment.providerPaymentId, confirmationUrl: payment.confirmationUrl });
+  } catch (error) {
+    console.error(`Payment ${plan}/create failed`, {
+      code: error?.code || "UNKNOWN_ERROR",
+      status: error?.status || 500,
+      message: error?.message,
+      userId: req.user?.id,
+    });
+    res.status(500).json({ error: "Ошибка при создании платежа" });
+  }
+};
 
 router.post("/yookassa/webhook", async (req, res) => {
   try {
@@ -58,12 +207,12 @@ router.post("/yookassa/webhook", async (req, res) => {
     if (event.event === "payment.succeeded" && yookassaPayment.status === "succeeded") {
       if (
         yookassaPayment.id !== paymentId ||
-        yookassaPayment.amount?.value !== "99.00" ||
+        !PLAN_CONFIG[localPayment.plan] ||
+        yookassaPayment.amount?.value !== PLAN_CONFIG[localPayment.plan].priceRub ||
         yookassaPayment.amount?.currency !== "RUB" ||
         String(yookassaPayment.metadata?.userId) !== String(localPayment.userId) ||
-        yookassaPayment.metadata?.plan !== "focus" ||
-        localPayment.plan !== "focus" ||
-        localPayment.amountKopeks !== 9900 ||
+        yookassaPayment.metadata?.plan !== localPayment.plan ||
+        localPayment.amountKopeks !== PLAN_CONFIG[localPayment.plan].priceKopeks ||
         localPayment.currency !== "RUB"
       ) {
         return res.status(200).json({ ok: true });
@@ -71,8 +220,7 @@ router.post("/yookassa/webhook", async (req, res) => {
 
       if (localPayment.paid) return res.status(200).json({ ok: true });
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
+      const planExpiresAt = PLAN_CONFIG[localPayment.plan].getPlanExpiresAt();
 
       await prisma.$transaction([
         prisma.payment.update({
@@ -82,9 +230,9 @@ router.post("/yookassa/webhook", async (req, res) => {
         prisma.user.update({
           where: { id: localPayment.userId },
           data: {
-            plan: "focus",
+            plan: localPayment.plan,
             subscriptionStatus: "active",
-            planExpiresAt: expiresAt,
+            planExpiresAt,
           },
         }),
       ]);
@@ -98,7 +246,12 @@ router.post("/yookassa/webhook", async (req, res) => {
     }
 
     res.status(200).json({ ok: true });
-  } catch { 
+  } catch (error) {
+    console.error("Payment webhook failed", {
+      code: error?.code || "UNKNOWN_ERROR",
+      status: error?.status || 500,
+      message: error?.message,
+    });
     res.status(500).json({ error: "Ошибка обработки webhook" });
   }
 });
@@ -120,82 +273,20 @@ router.get("/current-plan", async (req, res) => {
       return res.status(404).json({ error: "Пользователь не найден" });
     }
 
-    res.json(user);
-  } catch { 
+    const normalizedUser = await normalizePlanState(req.user.id, user);
+
+    res.json(normalizedUser);
+  } catch (error) {
+    console.error("Payment current-plan failed", {
+      code: error?.code || "UNKNOWN_ERROR",
+      status: error?.status || 500,
+      message: error?.message,
+    });
     res.status(500).json({ error: "Ошибка при загрузке данных плана" });
   }
 });
 
-router.post("/focus/create", async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (
-      user?.plan === "focus" &&
-      user?.subscriptionStatus === "active" &&
-      user?.planExpiresAt &&
-      new Date(user.planExpiresAt) > new Date()
-    ) {
-      return res.status(409).json({
-        code: "FOCUS_ALREADY_ACTIVE",
-        error: "Тариф Focus уже активен",
-        planExpiresAt: user.planExpiresAt,
-      });
-    }
-
-    const { YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY, YOOKASSA_RETURN_URL } = process.env;
-
-    if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY || !YOOKASSA_RETURN_URL) {
-      return res.status(500).json({ error: "Ошибка конфигурации платежей" });
-    }
-
-    const idempotenceKey = crypto.randomUUID();
-    const authString = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
-
-    const response = await fetch("https://api.yookassa.ru/v3/payments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Idempotence-Key": idempotenceKey,
-        Authorization: `Basic ${authString}`,
-      },
-      body: JSON.stringify({
-        amount: { value: "99.00", currency: "RUB" },
-        capture: true,
-        confirmation: { type: "redirect", return_url: YOOKASSA_RETURN_URL },
-        description: "подписка Glowy Focus на 30 дней",
-        metadata: { userId: req.user.id, plan: "focus" },
-      }),
-    });
-
-    if (!response.ok) {
-      return res.status(500).json({ error: "Ошибка инициализации платежа" });
-    }
-
-    const data = await response.json();
-
-    if (!data.id || !data.status || !data.confirmation?.confirmation_url) {
-      return res.status(500).json({ error: "Ошибка инициализации платежа" });
-    }
-
-    const payment = await prisma.payment.create({
-      data: {
-        userId: req.user.id,
-        provider: "yookassa",
-        providerPaymentId: data.id,
-        status: data.status,
-        plan: "focus",
-        amountKopeks: 9900,
-        currency: "RUB",
-        confirmationUrl: data.confirmation.confirmation_url,
-        paid: false,
-      },
-    });
-
-    res.json({ paymentId: payment.providerPaymentId, confirmationUrl: payment.confirmationUrl });
-  } catch { 
-    res.status(500).json({ error: "Ошибка при создании платежа" });
-  }
-});
-
+router.post("/focus/create", paymentCreateLimiter, createPaymentHandler("focus"));
+router.post("/forever/create", paymentCreateLimiter, createPaymentHandler("forever"));
 
 export default router;

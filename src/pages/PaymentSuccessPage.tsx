@@ -13,6 +13,9 @@ const PaymentSuccessPage = () => {
         if (data.plan === "focus" && data.subscriptionStatus === "active" && data.planExpiresAt && new Date(data.planExpiresAt) > new Date()) {
           setStatus("active");
           setExpiresAt(new Date(data.planExpiresAt).toLocaleDateString("ru-RU"));
+        } else if (data.plan === "forever" && data.subscriptionStatus === "active") {
+          setStatus("active");
+          setExpiresAt(null);
         } else {
           setStatus("pending");
         }
@@ -27,8 +30,8 @@ const PaymentSuccessPage = () => {
         
         {status === "active" && (
           <>
-            <h1 className="text-2xl font-bold text-white mb-2">Focus активен</h1>
-            <p className="text-slate-400 mb-6">Оплата прошла, тариф Focus активирован.</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Тариф активен</h1>
+            <p className="text-slate-400 mb-6">Оплата прошла, ваш тариф активирован.</p>
             {expiresAt && <p className="text-sm text-slate-500 mb-8">Действует до: {expiresAt}</p>}
           </>
         )}
@@ -36,7 +39,7 @@ const PaymentSuccessPage = () => {
         {status === "pending" && (
           <>
             <h1 className="text-2xl font-bold text-white mb-2">Платёж обрабатывается</h1>
-            <p className="text-slate-400 mb-4">Мы проверяем оплату. Обычно тариф Focus активируется в течение нескольких секунд.</p>
+            <p className="text-slate-400 mb-4">Мы проверяем оплату. Обычно тариф активируется в течение нескольких секунд.</p>
             <p className="text-sm text-slate-500 mb-8">Если тариф ещё не обновился, вернитесь к тарифам или обновите страницу чуть позже.</p>
           </>
         )}

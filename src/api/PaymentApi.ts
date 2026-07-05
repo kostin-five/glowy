@@ -10,9 +10,9 @@ export const PaymentApi = {
     );
     return data;
   },
-  createForeverPayment: async () => {
+  activateForeverPlan: async () => {
     const { data } = await axios.post(
-      `${API_BASE_URL}/payments/forever/create`,
+      `${API_BASE_URL}/payments/forever/activate`,
       undefined,
       { withCredentials: true }
     );

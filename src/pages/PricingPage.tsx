@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Tag, Check, Sparkles } from "lucide-react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
+import { useStartRoute } from "../store/useSettingsStore";
 
 type CurrentPlan = {
   plan?: string;
@@ -12,10 +13,13 @@ type CurrentPlan = {
 
 const PricingPage = () => {
   const navigate = useNavigate();
+  const startRoute = useStartRoute();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
+  const hasActivatedForeverRef = useRef(false);
   const paymentsEnabled = import.meta.env.VITE_PAYMENTS_ENABLED === "true";
 
 
@@ -37,9 +41,37 @@ const PricingPage = () => {
     currentPlan.plan === "forever" &&
     currentPlan.subscriptionStatus === "active";
 
-  const handlePlanClick = async (plan: "focus" | "forever") => {
-    const isPlanActive = plan === "focus" ? isFocusActive : isForeverActive;
-    if (!paymentsEnabled || isPlanActive) return;
+  const activateForeverPlan = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await PaymentApi.activateForeverPlan();
+      setCurrentPlan(data);
+      setSearchParams({}, { replace: true });
+      navigate(startRoute, { replace: true });
+    } catch {
+      alert("Не удалось активировать тариф Forever. Попробуйте позже.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [navigate, setSearchParams, startRoute]);
+
+  useEffect(() => {
+    if (
+      searchParams.get("activate") !== "forever" ||
+      hasActivatedForeverRef.current ||
+      !isAuthenticated ||
+      isGuest ||
+      isForeverActive
+    ) {
+      return;
+    }
+
+    hasActivatedForeverRef.current = true;
+    activateForeverPlan();
+  }, [activateForeverPlan, isAuthenticated, isForeverActive, isGuest, searchParams]);
+
+  const handleFocusClick = async () => {
+    if (!paymentsEnabled || isFocusActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login?redirect=/pricing");
@@ -48,9 +80,7 @@ const PricingPage = () => {
 
     try {
       setIsLoading(true);
-      const { confirmationUrl } = plan === "focus"
-        ? await PaymentApi.createFocusPayment()
-        : await PaymentApi.createForeverPayment();
+      const { confirmationUrl } = await PaymentApi.createFocusPayment();
       if (confirmationUrl) {
         window.location.href = confirmationUrl;
       } else {
@@ -66,9 +96,8 @@ const PricingPage = () => {
         typeof error.response.data === "object" &&
         error.response.data !== null &&
         "code" in error.response.data &&
-        (error.response.data.code === "FOCUS_ALREADY_ACTIVE" ||
-          error.response.data.code === "FOREVER_ALREADY_ACTIVE")
-          ? `У вас уже активен тариф ${plan === "focus" ? "Focus" : "Forever"}. Обновляем статус тарифа.`
+        error.response.data.code === "FOCUS_ALREADY_ACTIVE"
+          ? "У вас уже активен тариф Focus. Обновляем статус тарифа."
           : "Не удалось создать платеж. Попробуйте позже.";
 
       alert(message);
@@ -81,6 +110,17 @@ const PricingPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleForeverClick = async () => {
+    if (!paymentsEnabled || isForeverActive) return;
+
+    if (!isAuthenticated || isGuest) {
+      navigate(`/login?redirect=${encodeURIComponent("/pricing?activate=forever")}`);
+      return;
+    }
+
+    await activateForeverPlan();
   };
 
   const plans = [
@@ -115,7 +155,7 @@ const PricingPage = () => {
     },
     {
       name: "Forever",
-      price: "99 ₽",
+      price: "0 ₽",
       period: "навсегда",
       features: [
         "100 AI-запросов в день",
@@ -191,9 +231,9 @@ const PricingPage = () => {
                 disabled={plan.disabled || ((plan.name === "Focus" || plan.name === "Forever") && isLoading)}
                 onClick={
                   plan.name === "Focus"
-                    ? () => handlePlanClick("focus")
+                    ? handleFocusClick
                     : plan.name === "Forever"
-                      ? () => handlePlanClick("forever")
+                      ? handleForeverClick
                       : undefined
                 }
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${

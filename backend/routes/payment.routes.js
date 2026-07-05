@@ -22,14 +22,6 @@ const PLAN_CONFIG = {
       return expiresAt;
     },
   },
-  forever: {
-    priceRub: "99.00",
-    priceKopeks: 9900,
-    description: "вечный доступ Glowy Forever",
-    alreadyActiveCode: "FOREVER_ALREADY_ACTIVE",
-    alreadyActiveMessage: "Тариф Forever уже активен",
-    getPlanExpiresAt: () => null,
-  },
 };
 
 const isExpiredFocusUser = (user) =>
@@ -287,6 +279,47 @@ router.get("/current-plan", async (req, res) => {
 });
 
 router.post("/focus/create", paymentCreateLimiter, createPaymentHandler("focus"));
-router.post("/forever/create", paymentCreateLimiter, createPaymentHandler("forever"));
+
+router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
+  try {
+    const rawUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        plan: true,
+        subscriptionStatus: true,
+        planExpiresAt: true,
+      },
+    });
+    const user = await normalizePlanState(req.user.id, rawUser);
+
+    if (isActivePlan(user, "forever")) {
+      return res.json(user);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        plan: "forever",
+        subscriptionStatus: "active",
+        planExpiresAt: null,
+      },
+      select: {
+        plan: true,
+        subscriptionStatus: true,
+        planExpiresAt: true,
+      },
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("Payment forever/activate failed", {
+      code: error?.code || "UNKNOWN_ERROR",
+      status: error?.status || 500,
+      message: error?.message,
+      userId: req.user?.id,
+    });
+    res.status(500).json({ error: "Ошибка при активации тарифа" });
+  }
+});
 
 export default router;

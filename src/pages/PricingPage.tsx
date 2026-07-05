@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Tag, Check, Sparkles } from "lucide-react";
+import { Tag, Check } from "lucide-react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
 import { useStartRoute } from "../store/useSettingsStore";
@@ -31,15 +31,16 @@ const PricingPage = () => {
     }
   }, [isAuthenticated, isGuest]);
 
-  const isFocusActive = currentPlan &&
+  const isFocusActive = Boolean(currentPlan &&
     currentPlan.plan === "focus" &&
     currentPlan.subscriptionStatus === "active" &&
     currentPlan.planExpiresAt &&
-    new Date(currentPlan.planExpiresAt) > new Date();
+    new Date(currentPlan.planExpiresAt) > new Date());
 
-  const isForeverActive = currentPlan &&
+  const isForeverActive = Boolean(currentPlan &&
     currentPlan.plan === "forever" &&
-    currentPlan.subscriptionStatus === "active";
+    currentPlan.subscriptionStatus === "active");
+  const isStartActive = !isFocusActive && !isForeverActive;
 
   const activateForeverPlan = useCallback(async () => {
     try {
@@ -71,7 +72,7 @@ const PricingPage = () => {
   }, [activateForeverPlan, isAuthenticated, isForeverActive, isGuest, searchParams]);
 
   const handleFocusClick = async () => {
-    if (!paymentsEnabled || isFocusActive) return;
+    if (!paymentsEnabled || isFocusActive || isForeverActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login?redirect=/pricing");
@@ -134,8 +135,9 @@ const PricingPage = () => {
         "Хаб мыслей",
         "Аналитика дня",
       ],
-      cta: "Текущий тариф",
+      cta: isStartActive ? "Текущий тариф" : "Включён в тариф",
       disabled: true,
+      active: isStartActive,
     },
     {
       name: "Focus",
@@ -147,9 +149,13 @@ const PricingPage = () => {
         "Все функции Start",
         "Ранний доступ к новым функциям и обновлениям",
       ],
-      cta: isFocusActive ? "Текущий тариф" : (paymentsEnabled ? "Оформить Focus" : "Оплата подключается"),
+      cta: isFocusActive
+        ? "Текущий тариф"
+        : isForeverActive
+          ? "Недоступен при Forever"
+          : (paymentsEnabled ? "Оформить Focus" : "Оплата подключается"),
       highlight: true,
-      disabled: !paymentsEnabled || isFocusActive,
+      disabled: !paymentsEnabled || isFocusActive || isForeverActive,
       active: isFocusActive,
       expiresAt: currentPlan?.planExpiresAt,
     },
@@ -166,6 +172,7 @@ const PricingPage = () => {
       cta: isForeverActive ? "Текущий тариф" : (paymentsEnabled ? "Оформить Forever" : "Оплата подключается"),
       disabled: !paymentsEnabled || isForeverActive,
       active: isForeverActive,
+      accent: true,
     },
   ];
 
@@ -197,7 +204,7 @@ const PricingPage = () => {
             <div
               key={plan.name}
               className={`relative flex flex-col rounded-3xl border p-6 ${
-                plan.highlight
+                plan.highlight || plan.active
                   ? "border-indigo-500 bg-indigo-500/5 shadow-[0_0_40px_rgba(79,70,229,0.15)]"
                   : "border-slate-800 bg-slate-900/50"
               }`}
@@ -216,6 +223,11 @@ const PricingPage = () => {
                 {plan.active && plan.expiresAt && (
                   <p className="mt-2 text-sm text-indigo-400">
                     Активен до {new Date(plan.expiresAt).toLocaleDateString("ru-RU")}
+                  </p>
+                )}
+                {plan.name === "Forever" && plan.active && (
+                  <p className="mt-2 text-sm text-indigo-400">
+                    Активен бессрочно
                   </p>
                 )}
               </div>
@@ -237,44 +249,17 @@ const PricingPage = () => {
                       : undefined
                 }
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${
-                  plan.highlight
+                  plan.highlight || (plan.accent && !plan.disabled)
                     ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                    : "bg-slate-800 text-slate-300"
+                    : plan.active
+                      ? "bg-indigo-600/80 text-white"
+                      : "bg-slate-800 text-slate-300"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {(plan.name === "Focus" || plan.name === "Forever") && isLoading ? "Загрузка..." : plan.cta}
               </button>
             </div>
           ))}
-        </div>
-
-        <div className="mt-16 rounded-3xl border border-slate-800 bg-slate-900/30 p-8 text-center">
-          <Sparkles className="mx-auto mb-4 text-indigo-400" size={32} />
-          {paymentsEnabled ? (
-            <>
-              <h2 className="mb-4 text-xl font-bold">
-                {isFocusActive ? "Тариф Focus уже активен" : "Тариф Focus можно оформить онлайн"}
-              </h2>
-              <p className="mx-auto max-w-2xl text-slate-400">
-                {isFocusActive
-                  ? "Спасибо, что пользуетесь расширенными возможностями Glowy."
-                  : "Оформите подписку, чтобы получить 100 AI-запросов в день, приоритетную поддержку и ранний доступ к новым функциям."}
-                <br />
-                Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="mb-4 text-xl font-bold">Онлайн-оплата подключается</h2>
-              <p className="mx-auto max-w-2xl text-slate-400">
-                Тариф Focus готовится к запуску: после подключения платёжного
-                провайдера его можно будет оформить онлайн. Сейчас все
-                зарегистрированные пользователи могут пользоваться функциями
-                тарифа Start бесплатно.
-                Ознакомьтесь с <a href="/offer" className="text-indigo-300 hover:underline">Публичной офертой</a> и <a href="/refund-policy" className="text-indigo-300 hover:underline">Условиями возврата</a>.
-              </p>
-            </>
-          )}
         </div>
       </article>
     </main>

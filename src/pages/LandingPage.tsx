@@ -1,653 +1,663 @@
-import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import type { ComponentType, ReactNode } from "react";
+import { Link } from "react-router-dom";
 import {
   ArrowRight,
   Brain,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
-  Gauge,
+  ListChecks,
   LogIn,
-  Menu,
   PlayCircle,
+  ShieldCheck,
   Sparkles,
-  X,
+  Target,
+  Zap,
 } from "lucide-react";
-import type { Task } from "../types";
-import { useToDemoLogin } from "../store/useAuthStore";
-import { useTaskStore } from "../store/useTaskStore";
-import { useStartRoute } from "../store/useSettingsStore";
 
-const demoTaskPool: Array<Omit<Task, "id">> = [
+const demoScenarios = [
   {
-    title: "Разобрать входящие мысли в Хабе",
-    date: new Date().toISOString().slice(0, 10),
-    priority: "⚡️ P2",
-    category: "Glowy",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "med",
-    subtasks: [],
+    label: "С чего начать?",
+    prompt: "Я устал и не понимаю, с чего начать",
+    reply:
+      "Начни мягко: сначала короткая задача на 10 минут, потом один важный шаг. Я выбрал фокус без перегруза.",
+    tasks: [
+      {
+        title: "Ответить преподавателю",
+        meta: "Сегодня · Учеба",
+        energy: "Низкая",
+        color: "emerald",
+      },
+      {
+        title: "Собрать план проекта",
+        meta: "Сегодня · Glowy",
+        energy: "Средняя",
+        color: "amber",
+      },
+    ],
   },
   {
-    title: "Подготовить первый фокус-блок",
-    date: new Date().toISOString().slice(0, 10),
-    priority: "🔥 P1",
-    category: "Работа",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "high",
-    subtasks: [],
+    label: "Разобрать мысли",
+    prompt: "Надо купить продукты, дописать пост и убрать рабочий стол",
+    reply:
+      "Я отделил дела от шума и разложил их в список. Можно двигаться по одному пункту, без ощущения завала.",
+    tasks: [
+      {
+        title: "Купить продукты",
+        meta: "Сегодня · Быт",
+        energy: "Низкая",
+        color: "emerald",
+      },
+      {
+        title: "Дописать пост",
+        meta: "Завтра · Развитие",
+        energy: "Средняя",
+        color: "amber",
+      },
+      {
+        title: "Убрать рабочий стол",
+        meta: "Сегодня · Быт",
+        energy: "Низкая",
+        color: "emerald",
+      },
+    ],
   },
   {
-    title: "Запланировать короткий перерыв",
-    date: new Date().toISOString().slice(0, 10),
-    priority: "💤 P3",
-    category: "Быт",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "low",
-    subtasks: [],
-  },
-  {
-    title: "Проверить энергопотенциал дня",
-    date: new Date().toISOString().slice(0, 10),
-    priority: "⚡️ P2",
-    category: "Здоровье",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "med",
-    subtasks: [],
-  },
-  {
-    title: "Сформулировать одну важную цель",
-    date: new Date().toISOString().slice(0, 10),
-    priority: "🔥 P1",
-    category: "Учеба",
-    completed: false,
-    xpAwarded: false,
-    energyLevel: "high",
-    subtasks: [],
+    label: "Спланировать день",
+    prompt: "Смотря на мою энергию, распредели день",
+    reply:
+      "Сначала легкие задачи, затем один важный фокус. Высокоэнергичные дела лучше оставить на момент, когда появится запас сил.",
+    tasks: [
+      {
+        title: "Оплатить интернет",
+        meta: "Сегодня · Быт",
+        energy: "Низкая",
+        color: "emerald",
+      },
+      {
+        title: "Подготовить структуру релиза",
+        meta: "Сегодня · Работа",
+        energy: "Средняя",
+        color: "amber",
+      },
+    ],
   },
 ];
 
-const LandingPage = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [openFaqIndex, setOpenFaqIndex] = useState(0);
-  const navigate = useNavigate();
-  const toDemoLogin = useToDemoLogin();
-  const startRoute = useStartRoute();
-  const navLinks = [
-    { href: "#about", label: "О проекте" },
-    { href: "#faq", label: "FAQ" },
-    { href: "/pricing", label: "Цены" },
-  ];
-  const faqItems = [
-    {
-      question: "Можно ли попробовать Glowy без регистрации?",
-      answer:
-        "Да. Демо-режим дает быстро проверить Хаб мыслей и понять, как ИИ превращает хаотичный текст в задачи. При этом количество демо-запросов ограничено.",
-    },
-    {
-      question: "Что сохраняется после регистрации?",
-      answer:
-        "После регистрации сохраняются задачи, прогресс, уровни, настройки интерфейса и история работы с приложением. Можно спокойно возвращаться к плану позже.",
-    },
-    {
-      question: "Чем Glowy отличается от обычного списка дел?",
-      answer:
-        "Glowy делает акцент не только на сроках, но и на энергозатратности. Приложение помогает распределять силы, а не просто набивать день задачами.",
-    },
-    {
-      question: "Что умеет Хаб мыслей?",
-      answer:
-        "В режиме задач он разбирает текст на конкретные дела с датами, категориями, приоритетом и уровнем энергии. В режиме диалога он отвечает как спокойный ИИ-коуч.",
-    },
-  ];
+const problemCards = [
+  "Мысли лежат в заметках, чатах и голове одновременно.",
+  "Список задач растет, но не становится понятнее, с чего начать.",
+  "Планы не учитывают энергию, поэтому день быстро превращается в перегруз.",
+];
 
-  const handleDemoLogin = () => {
-    const shuffledTasks = [...demoTaskPool].sort(() => Math.random() - 0.5);
-    const demoTasks = shuffledTasks.slice(0, 3).map((task, index) => ({
-      ...task,
-      id: Date.now() + index,
-      subtasks: [],
-    }));
+const steps = [
+  {
+    title: "Выгрузи мысли",
+    text: "Пиши как есть: дела, тревожные хвосты, идеи, планы и обрывки мыслей.",
+  },
+  {
+    title: "Glowy разберет хаос",
+    text: "ИИ отделит разговор от задач, найдет шаги, даты, категории и энергию.",
+  },
+  {
+    title: "Подтверди направление",
+    text: "Ты остаешься главным: ассистент предлагает, а ты решаешь, что делать.",
+  },
+  {
+    title: "Двигайся спокойно",
+    text: "Задачи, фокус дня, прогресс и энергия собираются в один рабочий ритм.",
+  },
+];
 
-    toDemoLogin();
-    useTaskStore.getState().setTasks(demoTasks);
-    useTaskStore.getState().setUserProgress({ xp: 40, level: 1 });
-    navigate(startRoute);
-  };
+const featureCards = [
+  {
+    icon: Brain,
+    title: "Хаб мыслей",
+    text: "Свободный ввод вместо жесткой формы: можно писать как думается.",
+  },
+  {
+    icon: ListChecks,
+    title: "Задачи и подзадачи",
+    text: "Списки, чек-листы, категории, приоритеты и понятные даты.",
+  },
+  {
+    icon: Zap,
+    title: "Энергия дня",
+    text: "Планирование с учетом того, сколько сил есть прямо сейчас.",
+  },
+  {
+    icon: Target,
+    title: "Фокус дня",
+    text: "Подсказка, с чего начать, чтобы не тратить силы на выбор.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Мягкое планирование",
+    text: "Сегодня, завтра, без даты и будущие сценарии повторений.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Контроль за пользователем",
+    text: "ИИ помогает с черновой работой, но не забирает управление.",
+  },
+];
 
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
+const roadmapItems = [
+  "Голосовой ввод в Хаб мыслей",
+  "Подтверждение AI-действий перед изменениями",
+  "Интеграция в Телеграм",
+  "Более глубокая аналитика энергии и прогресса",
+];
+
+const faqs = [
+  {
+    question: "Можно ли попробовать Glowy бесплатно?",
+    answer:
+      "Да. Можно начать бесплатно, создать аккаунт и проверить Хаб мыслей, задачи, фокус дня и базовые лимиты ИИ.",
+  },
+  {
+    question: "Чем Glowy отличается от обычного списка дел?",
+    answer:
+      "Glowy не просто хранит задачи. Он помогает превратить поток мыслей в структуру, учитывает энергию и подсказывает мягкий следующий шаг.",
+  },
+  {
+    question: "ИИ сам меняет мои задачи?",
+    answer:
+      "Нет. Главная идея Glowy — ассистент предлагает и помогает, но пользователь сохраняет контроль над планом.",
+  },
+  {
+    question: "Что сохраняется после регистрации?",
+    answer:
+      "Задачи, подзадачи, прогресс, настройки интерфейса и история работы с приложением сохраняются в аккаунте.",
+  },
+];
+
+function LandingPage() {
+  const [activeDemo, setActiveDemo] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const scenario = demoScenarios[activeDemo];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
-      <section className="relative flex min-h-screen flex-col">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(79,70,229,0.25),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.18),transparent_30%)]" />
-        <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8">
-          <header className="flex items-center justify-between">
-            <div className="flex min-w-0 shrink-0 items-center gap-3 pr-2">
-              <img
-                src="/Glowy.png"
-                alt="Glowy"
-                width={40}
-                height={40}
-                decoding="async"
-                fetchPriority="high"
-                className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
-              />
-              <span className="whitespace-nowrap pr-1 font-display text-xl font-black italic leading-none text-indigo-400 sm:text-2xl">
-                GLOWY<span className="text-slate-100">.AI</span>
-              </span>
-            </div>
+    <main className="min-h-screen overflow-hidden bg-[#050816] text-slate-100">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/90 backdrop-blur-xl">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <a href="#top" className="flex items-center gap-3" aria-label="Glowy">
+            {/* <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-200/10">
+              <Sparkles className="text-cyan-100" size={22} />
+            </span> */}
+            <span className="text-2xl font-black italic tracking-normal text-white">
+              GLOWY<span className="text-indigo-400">.AI</span>
+            </span>
+          </a>
 
-            <nav
-              className="hidden items-center gap-12 text-sm font-semibold text-slate-300 lg:flex xl:gap-16"
-              aria-label="Публичная навигация"
-            >
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="transition-colors hover:text-white"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-
-            <div className="hidden items-center gap-3 sm:flex">
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-indigo-400 hover:text-white"
-              >
-                <LogIn size={16} />
-                Войти
-              </Link>
-              <Link
-                to="/register"
-                className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-[0_0_22px_rgba(79,70,229,0.3)] transition-colors hover:bg-indigo-500"
-              >
-                Регистрация
-              </Link>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900/70 text-slate-100 transition-colors hover:border-indigo-400 sm:hidden"
-              aria-label="Открыть меню"
-              aria-expanded={isMobileMenuOpen}
-            >
-              <Menu size={22} />
-            </button>
-          </header>
-
-          <div
-            className={`fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300 sm:hidden ${
-              isMobileMenuOpen
-                ? "pointer-events-auto opacity-100"
-                : "pointer-events-none opacity-0"
-            }`}
-            aria-hidden={!isMobileMenuOpen}
-            onClick={closeMobileMenu}
-          >
-            <aside
-              className={`ml-auto flex h-full w-full max-w-sm flex-col border-l border-slate-800 bg-slate-950 p-5 shadow-2xl transition-transform duration-300 ${
-                isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
-              }`}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img
-                    src="/Glowy.png"
-                    alt="Glowy"
-                    width={40}
-                    height={40}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-10 w-10"
-                  />
-                  <span className="whitespace-nowrap pr-1 font-display text-2xl font-black italic leading-none text-indigo-400">
-                    GLOWY<span className="text-slate-100">.AI</span>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeMobileMenu}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-800 text-slate-300 transition-colors hover:border-indigo-400 hover:text-white"
-                  aria-label="Закрыть меню"
-                >
-                  <X size={22} />
-                </button>
-              </div>
-
-              <nav className="mt-12 flex flex-col gap-3" aria-label="Мобильная публичная навигация">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMobileMenu}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/70 px-5 py-4 text-xl font-bold text-slate-100 transition-colors hover:border-indigo-400"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </nav>
-
-              <div className="mt-auto grid gap-3 pb-2">
-                <Link
-                  to="/login"
-                  onClick={closeMobileMenu}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-700 px-5 py-4 font-bold text-slate-100 transition-colors hover:border-indigo-400"
-                >
-                  <LogIn size={18} />
-                  Войти
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={closeMobileMenu}
-                  className="inline-flex items-center justify-center rounded-2xl bg-indigo-600 px-5 py-4 font-bold text-white shadow-[0_0_28px_rgba(79,70,229,0.35)] transition-colors hover:bg-indigo-500"
-                >
-                  Регистрация
-                </Link>
-              </div>
-            </aside>
+          <div className="hidden items-center gap-8 text-sm font-bold text-slate-300 lg:flex">
+            <a className="transition-colors hover:text-white" href="#how">
+              Как работает
+            </a>
+            <a className="transition-colors hover:text-white" href="#features">
+              Возможности
+            </a>
+            <a className="transition-colors hover:text-white" href="#plans">
+              Планы
+            </a>
+            <a className="transition-colors hover:text-white" href="#faq">
+              FAQ
+            </a>
           </div>
 
-          <div className="grid flex-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="min-w-0">
-              <div className="mb-6 inline-flex max-w-full items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-200 sm:px-4 sm:text-sm">
-                <Sparkles size={16} className="shrink-0" />
-                <span className="min-w-0 whitespace-normal">
-                  Таск-трекер, который бережет энергию
-                </span>
-              </div>
-              <h1 className="max-w-4xl text-wrap font-display text-4xl font-black leading-tight tracking-tight text-white sm:text-5xl md:text-7xl">
-                Превращай хаос мыслей в спокойный план дня
-              </h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
-                Glowy помогает выгрузить дела из головы, оценить
-                энергозатратность задач и двигаться без перегруза. ИИ-ассистент
-                разбирает мысли, создает задачи и подсказывает мягкий фокус.
-              </p>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/login"
+              className="hidden items-center gap-2 rounded-2xl border border-white/15 px-4 py-3 text-sm font-bold text-slate-200 transition-colors hover:border-white/30 hover:bg-white/5 sm:inline-flex"
+            >
+              <LogIn size={18} />
+              Войти
+            </Link>
+            <Link
+              to="/register"
+              className="rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-600/25 transition-colors hover:bg-indigo-500 sm:px-5"
+            >
+              Регистрация
+            </Link>
+          </div>
+        </nav>
+      </header>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  to="/register"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 font-bold text-white shadow-[0_0_28px_rgba(79,70,229,0.35)] transition-colors hover:bg-indigo-500 sm:w-auto sm:px-6"
-                >
-                  Регистрация
-                  <ArrowRight size={18} />
-                </Link>
-                <Link
-                  to="/login"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/70 px-5 py-3 font-bold text-slate-100 transition-colors hover:border-indigo-400 sm:w-auto sm:px-6"
-                >
-                  <LogIn size={18} />
-                  Войти
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-cyan-400/40 bg-cyan-400/10 px-5 py-3 font-bold text-cyan-100 transition-colors hover:bg-cyan-400/15 sm:w-auto sm:px-6"
-                >
-                  <PlayCircle size={18} />
-                  Демо-вход
-                </button>
-              </div>
-
-              <div id="about" className="mt-10 grid max-w-3xl scroll-mt-24 grid-cols-1 gap-4 sm:grid-cols-3">
-                <Feature icon={Brain} title="Хаб мыслей" text="ИИ разбирает поток мыслей на задачи." />
-                <Feature icon={Gauge} title="Энергия" text="День планируется с учетом сил." />
-                <Feature icon={CheckCircle2} title="Фокус" text="Активные задачи остаются в центре." />
-              </div>
-            </div>
-
-            <div className="relative min-w-0">
-              <div className="w-full max-w-full rounded-3xl border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur sm:rounded-4xl sm:p-5">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/15">
-                    <img
-                      src="/Glowy.png"
-                      alt=""
-                      width={32}
-                      height={32}
-                      loading="eager"
-                      decoding="async"
-                      className="h-8 w-8"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-display text-lg font-bold sm:text-xl">
-                      Пункт управления
-                    </p>
-                    <p className="text-sm text-slate-400">Демо-пространство Glowy</p>
-                  </div>
-                </div>
-
-                <div className="mb-4 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4">
-                  <p className="mb-3 text-sm font-semibold text-indigo-200">
-                    Хаб мыслей
-                  </p>
-                  <p className="rounded-xl bg-slate-950/60 p-3 text-sm leading-6 text-slate-300">
-                    “Подготовить первый фокус-блок, разобрать входящие мысли в
-                    Хабе и проверить энергопотенциал дня.”
-                  </p>
-                </div>
-
-                <div className="grid gap-4">
-                  <ShowcaseTaskCard
-                    title="Подготовить первый фокус-блок"
-                    category="Работа"
-                    priority="Высокий"
-                    accent="red"
-                    progress={{ done: 2, total: 4 }}
-                  />
-                  <ShowcaseTaskCard
-                    title="Разобрать входящие мысли в Хабе"
-                    category="Glowy"
-                    priority="Средний"
-                    accent="amber"
-                  />
-                  <ShowcaseTaskCard
-                    title="Проверить энергопотенциал дня"
-                    category="Здоровье"
-                    priority="Средний"
-                    accent="amber"
-                    completed
-                    xp="+24 XP"
-                  />
-                </div>
-              </div>
-            </div>
+      <section id="top" className="mx-auto max-w-7xl px-4 pb-24 pt-20 sm:px-6 sm:pt-28 lg:px-8 lg:pb-32">
+        <div className="mx-auto max-w-5xl text-center">
+          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-indigo-300/30 bg-indigo-400/10 px-4 py-2 text-sm font-bold text-indigo-100">
+            <Sparkles size={17} />
+            AI-планер для задач, мыслей и энергии
           </div>
 
-          <div className="grid gap-4 pb-10 lg:grid-cols-2">
-            <section
-              id="faq"
-              className="scroll-mt-24 rounded-3xl border border-slate-800 bg-slate-900/60 p-5"
+          <h1 className="text-5xl font-black leading-[0.95] tracking-normal text-white sm:text-6xl lg:text-8xl">
+            Превращай хаос мыслей в спокойный план дня
+          </h1>
+
+          <p className="mx-auto mt-8 max-w-3xl text-xl leading-9 text-slate-300">
+            Glowy помогает выгрузить дела из головы, разобрать мысли через ИИ,
+            оценить энергию и выбрать понятный фокус без перегруза.
+          </p>
+
+          <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+            <Link
+              to="/register"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-7 py-4 text-base font-black text-white shadow-xl shadow-indigo-600/25 transition-colors hover:bg-indigo-500"
             >
-              <h2 className="font-display text-xl font-bold text-white">
-                Часто задаваемые вопросы
-              </h2>
-              <div className="mt-4 grid gap-3">
-                {faqItems.map((item, index) => {
-                  const isOpen = openFaqIndex === index;
-
-                  return (
-                    <div
-                      key={item.question}
-                      className="rounded-2xl border border-slate-800 bg-slate-950/45"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaqIndex(isOpen ? -1 : index)}
-                        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-bold text-slate-100 transition-colors hover:text-indigo-200"
-                        aria-expanded={isOpen}
-                      >
-                        <span>{item.question}</span>
-                        <ChevronDown
-                          size={18}
-                          className={`shrink-0 text-indigo-300 transition-transform duration-300 ${
-                            isOpen ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-                      <div
-                        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-                          isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-                        }`}
-                      >
-                        <div className="overflow-hidden">
-                          <p className="px-4 pb-4 text-sm leading-6 text-slate-400">
-                            {item.answer}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section
-              id="pricing"
-              className="scroll-mt-24 rounded-3xl border border-indigo-400/30 bg-indigo-500/10 p-5"
+              Попробовать бесплатно
+              <ArrowRight size={20} />
+            </Link>
+            <a
+              href="#demo"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-300/30 px-7 py-4 text-base font-black text-cyan-100 transition-colors hover:bg-cyan-300/10"
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-300">
-                    Ранний доступ
-                  </p>
-                  <h2 className="mt-2 font-display text-xl font-bold text-white">
-                    Цены
-                  </h2>
-                </div>
-                <span className="w-fit rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-200">
-                  Сейчас бесплатно
-                </span>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                <div className="rounded-2xl border border-indigo-300/20 bg-slate-950/35 p-4">
-                  <p className="font-bold text-white">Бесплатно</p>
-                  <p className="mt-1 font-display text-3xl font-black text-indigo-200">
-                    0 ₽
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-indigo-100/75">
-                    В ранней версии можно бесплатно вести задачи, сохранять
-                    прогресс и пользоваться Хабом мыслей с дневными лимитами.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-slate-700/70 bg-slate-950/25 p-4">
-                  <p className="font-bold text-white">Онлайн-оплата подключается</p>
-                  <p className="mt-3 text-sm leading-6 text-slate-300">
-                    Тариф Focus за 99 ₽/месяц готовится к запуску: он даст
-                    больше ИИ-запросов, приоритетную поддержку и дополнительные
-                    возможности для бережного планирования.
-                  </p>
-                </div>
-              </div>
-            </section>
+              <PlayCircle size={20} />
+              Посмотреть демо
+            </a>
           </div>
+        </div>
 
-          <footer className="relative z-10 border-t border-slate-800 py-6 text-sm text-slate-500">
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_1.2fr] lg:gap-10">
-              <FooterGroup title="Проект">
-                <a
-                  href="https://t.me/glowy_ai"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="transition-colors hover:text-slate-200"
-                >
-                  Новости проекта в Telegram
-                </a>
-                <Link to="/pricing" className="transition-colors hover:text-slate-200">
-                  Цены
-                </Link>
-                <span className="pt-2 text-slate-600">Версия: v2.0.0</span>
-                <span className="break-all text-slate-600">
-                  Поддержка: contact@example.test
-                </span>
-              </FooterGroup>
-
-              <FooterGroup title="Документы">
-                <Link to="/terms" className="transition-colors hover:text-slate-200">
-                  Условия использования
-                </Link>
-                <Link to="/offer" className="transition-colors hover:text-slate-200">
-                  Публичная оферта
-                </Link>
-                <Link to="/refund-policy" className="transition-colors hover:text-slate-200">
-                  Условия возврата
-                </Link>
-              </FooterGroup>
-
-              <FooterGroup title="Данные и реквизиты">
-                <Link to="/privacy" className="transition-colors hover:text-slate-200">
-                  Политика конфиденциальности
-                </Link>
-                <Link
-                  to="/personal-data-consent"
-                  className="transition-colors hover:text-slate-200"
-                >
-                  Согласие на обработку данных
-                </Link>
-                <Link to="/contacts" className="transition-colors hover:text-slate-200">
-                  Контакты
-                </Link>
-                <Link to="/requisites" className="transition-colors hover:text-slate-200">
-                  Реквизиты
-                </Link>
-              </FooterGroup>
+        <div className="mt-20 grid gap-4 sm:grid-cols-3">
+          {[
+            ["3", "демо-запроса для быстрого старта"],
+            ["10+", "AI-запросов в день на Start"],
+            ["100", "запросов в день на Focus"],
+          ].map(([value, label]) => (
+            <div
+              key={label}
+              className="rounded-3xl border border-white/10 bg-white/[0.04] p-6"
+            >
+              <div className="text-4xl font-black text-white">{value}</div>
+              <div className="mt-2 text-sm font-semibold leading-6 text-slate-400">
+                {label}
+              </div>
             </div>
-          </footer>
+          ))}
         </div>
       </section>
-    </main>
-  );
-};
 
-const Feature = ({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: ComponentType<{ size?: number; className?: string }>;
-  title: string;
-  text: string;
-}) => (
-  <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-    <Icon size={20} className="mb-3 text-indigo-300" />
-    <p className="font-semibold text-slate-100">{title}</p>
-    <p className="mt-1 text-sm leading-5 text-slate-400">{text}</p>
-  </div>
-);
+      <section id="demo" className="border-y border-white/10 bg-slate-950/35 py-24 lg:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-cyan-200">
+              Живой сценарий
+            </p>
+            <h2 className="mt-5 text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+              Один чат понимает, где поддержать, а где создать задачи
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Нажми на пример и посмотри, как Glowy отвечает, выделяет задачи
+              и показывает план в рабочей панели.
+            </p>
+          </div>
 
-const FooterGroup = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) => (
-  <div className="flex flex-col gap-2">
-    <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-      {title}
-    </p>
-    {children}
-  </div>
-);
-
-const accentClasses = {
-  red: {
-    line: "bg-red-500",
-    badge: "border-red-400/80 bg-red-500/10 text-red-100",
-  },
-  amber: {
-    line: "bg-amber-400",
-    badge: "border-amber-400/80 bg-amber-400/10 text-amber-100",
-  },
-} as const;
-
-const ShowcaseTaskCard = ({
-  title,
-  category,
-  priority,
-  accent,
-  progress,
-  completed = false,
-  xp,
-}: {
-  title: string;
-  category: string;
-  priority: string;
-  accent: keyof typeof accentClasses;
-  progress?: { done: number; total: number };
-  completed?: boolean;
-  xp?: string;
-}) => {
-  const colors = accentClasses[accent];
-  const progressPercent = progress
-    ? Math.round((progress.done / progress.total) * 100)
-    : 0;
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-800/70 p-4 pl-5 ${
-        completed ? "opacity-65" : ""
-      }`}
-    >
-      <div className={`absolute inset-y-0 left-0 w-1.5 ${colors.line}`} />
-
-      <div className="flex items-start gap-3">
-        <div
-          className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${
-            completed
-              ? "border-emerald-300 bg-emerald-400/15 text-emerald-200"
-              : "border-slate-500"
-          }`}
-          aria-hidden="true"
-        >
-          {completed ? <CheckCircle2 size={16} /> : null}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p
-                className={`truncate text-lg font-bold leading-tight text-slate-100 ${
-                  completed ? "line-through decoration-slate-400/60" : ""
+          <div className="mt-14 flex flex-wrap justify-center gap-3">
+            {demoScenarios.map((item, index) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setActiveDemo(index)}
+                className={`rounded-full border px-5 py-3 text-sm font-black transition-all ${
+                  activeDemo === index
+                    ? "border-indigo-300 bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
+                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:bg-white/[0.08]"
                 }`}
               >
-                {title}
-              </p>
-              <p className="mt-1 text-sm text-slate-400">2026-06-10</p>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <span
-                className={`rounded-xl border px-3 py-1.5 text-sm font-black ${colors.badge}`}
-              >
-                {priority}
-              </span>
-              {xp ? (
-                <span className="rounded-xl border border-emerald-300/40 bg-emerald-400/15 px-3 py-1 text-sm font-black text-emerald-200 shadow-[0_0_22px_rgba(52,211,153,0.25)]">
-                  {xp}
-                </span>
-              ) : null}
-            </div>
+                {item.label}
+              </button>
+            ))}
           </div>
 
-          {progress ? (
-            <div className="mt-3 max-w-52">
-              <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-indigo-200">
-                <span>Подзадачи</span>
-                <span>
-                  {progress.done}/{progress.total}
-                </span>
+          <div className="mt-12 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-[2rem] border border-white/10 bg-[#111a2c] shadow-2xl shadow-black/30">
+              <div className="border-b border-white/10 p-6 sm:p-8">
+                <div className="flex items-center gap-3">
+                  <Sparkles className="text-indigo-200" size={32} />
+                  <div>
+                    <h3 className="text-3xl font-black text-white">
+                      Хаб мыслей
+                    </h3>
+                    <p className="mt-1 text-slate-400">
+                      Пиши свободно, без формы и лишних полей.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="h-1.5 rounded-full bg-slate-700/80">
+
+              <div className="min-h-[440px] space-y-7 bg-[#09111f] p-6 sm:p-8">
+                <div className="ml-auto max-w-[78%] rounded-[1.5rem] bg-indigo-600 px-6 py-5 text-lg font-bold text-white">
+                  {scenario.prompt}
+                </div>
                 <div
-                  className="h-full rounded-full bg-indigo-400 shadow-[0_0_14px_rgba(129,140,248,0.45)]"
-                  style={{ width: `${progressPercent}%` }}
-                />
+                  key={scenario.reply}
+                  className="max-w-[82%] rounded-[1.5rem] border border-slate-600/50 bg-slate-800/85 px-6 py-5 text-lg font-semibold leading-8 text-white"
+                >
+                  {scenario.reply}
+                </div>
               </div>
             </div>
-          ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="rounded-xl border border-slate-600 px-3 py-1.5 text-sm font-semibold text-slate-100">
-              {category}
-            </span>
+            <div className="rounded-[2rem] border border-white/10 bg-[#111a2c] p-6 shadow-2xl shadow-black/30 sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-3xl font-black text-white">
+                    Пункт управления
+                  </h3>
+                  <p className="mt-2 text-slate-400">
+                    Задачи появляются в контексте дня и энергии.
+                  </p>
+                </div>
+                <span className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-sm font-black text-emerald-200">
+                  энергия 65%
+                </span>
+              </div>
+
+              <div className="mt-8 space-y-4">
+                {scenario.tasks.map((task) => (
+                  <div
+                    key={task.title}
+                    className="rounded-3xl border border-white/10 bg-slate-950/45 p-5"
+                  >
+                    <div className="flex gap-4">
+                      <span
+                        className={`mt-1 h-16 w-1.5 shrink-0 rounded-full ${
+                          task.color === "emerald"
+                            ? "bg-emerald-400"
+                            : "bg-amber-400"
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xl font-black text-white">
+                          {task.title}
+                        </h4>
+                        <p className="mt-2 text-sm font-semibold text-slate-400">
+                          {task.meta}
+                        </p>
+                        <span className="mt-3 inline-flex rounded-xl border border-white/15 px-3 py-1 text-sm font-bold text-slate-200">
+                          {task.energy} энергия
+                        </span>
+                      </div>
+                      <CheckCircle2 className="text-slate-500" size={24} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section className="py-24 lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-4xl font-black leading-tight text-white sm:text-5xl">
+              Список задач не помогает, если непонятно, что делать дальше
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Glowy создан для моментов, когда задач много, мыслей еще больше,
+              а ясности мало.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            {problemCards.map((text, index) => (
+              <div
+                key={text}
+                className="rounded-3xl border border-white/10 bg-white/[0.04] p-8"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-lg font-black text-white">
+                  {index + 1}
+                </span>
+                <p className="mt-8 text-xl font-black leading-8 text-white">
+                  {text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how" className="bg-slate-950/35 py-24 text-white lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-4xl font-black leading-tight sm:text-5xl">
+              От мысли до плана — в одном диалоге
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Не нужно заранее понимать, как правильно оформить задачу. Просто
+              напиши, что происходит.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {steps.map((step, index) => (
+              <div
+                key={step.title}
+                className="rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-sm"
+              >
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-black text-white">
+                  {index + 1}
+                </span>
+                <h3 className="mt-8 text-2xl font-black">{step.title}</h3>
+                <p className="mt-4 text-base font-semibold leading-7 text-slate-300">
+                  {step.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="features" className="py-24 lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-4xl font-black leading-tight text-white sm:text-5xl">
+              Не просто хранит задачи — помогает ими управлять
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Внутри Glowy соединяются задачи, AI, энергия, прогресс и дневной
+              фокус.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {featureCards.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={item.title}
+                  className="rounded-3xl border border-white/10 bg-white/[0.04] p-8"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+                    <Icon size={24} />
+                  </span>
+                  <h3 className="mt-7 text-2xl font-black text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-4 text-base font-semibold leading-7 text-slate-400">
+                    {item.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* <section className="bg-slate-950/30 py-24 text-white lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid overflow-hidden rounded-[2rem] border border-slate-200 shadow-2xl shadow-slate-200/70 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="bg-indigo-600 p-8 text-white sm:p-12">
+              <h2 className="text-4xl font-black leading-tight sm:text-5xl">
+                ИИ предлагает — ты контролируешь
+              </h2>
+              <p className="mt-8 text-xl font-semibold leading-9 text-indigo-50">
+                Glowy не забирает управление на себя. Он помогает с черновой
+                работой: планом, задачами, сроками, приоритетами и следующим
+                шагом.
+              </p>
+            </div>
+            <div className="grid gap-4 bg-slate-950/30 p-8 sm:p-12">
+              {[
+                "Ассистент может создать черновик задач из потока мыслей.",
+                "Можно попросить перенести задачу или подобрать фокус.",
+                "Подтверждение важных AI-действий появится в следующих версиях.",
+              ].map((text) => (
+                <div
+                  key={text}
+                  className="rounded-3xl border border-slate-200 bg-white p-6 text-lg font-bold leading-8 text-slate-700"
+                >
+                  {text}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section> */}
+
+      <section id="plans" className="py-24 lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h2 className="text-4xl font-black leading-tight text-white sm:text-5xl">
+              Что появится дальше
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Glowy развивается в сторону личного AI-наставника, который
+              помогает планировать бережно и действовать яснее.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {roadmapItems.map((item, index) => (
+              <div
+                key={item}
+                className="rounded-3xl border border-white/10 bg-white/[0.04] p-8"
+              >
+                <span className="text-sm font-black uppercase tracking-[0.25em] text-indigo-200">
+                  0{index + 1}
+                </span>
+                <p className="mt-6 text-2xl font-black leading-8 text-white">
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="bg-slate-950/30 py-24 text-slate-950 lg:py-36">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="rounded-[2rem] bg-slate-900/50 p-8 text-center text-white sm:p-12 lg:p-16">
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-emerald-200">
+              Начни бесплатно
+            </p>
+            <h2 className="mx-auto mt-5 max-w-4xl text-4xl font-black leading-tight sm:text-5xl">
+              Создай первый спокойный план дня уже сегодня
+            </h2>
+            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-300">
+              Бесплатный старт подходит, чтобы проверить задачи, Хаб мыслей и
+              фокус дня. Расширенные AI-лимиты доступны в тарифах.
+            </p>
+            <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+              <Link
+                to="/register"
+                className="inline-flex items-center justify-center rounded-2xl bg-white px-7 py-4 text-base font-black text-slate-950 transition-colors hover:bg-slate-100"
+              >
+                Попробовать бесплатно
+              </Link>
+              <Link
+                to="/pricing"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-7 py-4 text-base font-black text-white transition-colors hover:bg-white/10"
+              >
+                Смотреть тарифы
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" className="py-24 lg:py-36">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:px-8">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.3em] text-indigo-200">
+              FAQ
+            </p>
+            <h2 className="mt-5 text-4xl font-black leading-tight text-white sm:text-5xl">
+              Частые вопросы
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((item, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <button
+                  key={item.question}
+                  type="button"
+                  onClick={() => setOpenFaq(isOpen ? null : index)}
+                  className="w-full rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-left transition-colors hover:bg-white/[0.07]"
+                >
+                  <span className="flex items-center justify-between gap-4 text-xl font-black text-white">
+                    {item.question}
+                    <ChevronDown
+                      className={`shrink-0 transition-transform ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                      size={22}
+                    />
+                  </span>
+                  {isOpen && (
+                    <span className="mt-5 block text-base font-semibold leading-7 text-slate-400">
+                      {item.answer}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/10 py-12">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 text-sm font-semibold text-slate-400 sm:px-6 md:grid-cols-3 lg:px-8">
+          <div>
+            <div className="text-2xl font-black italic text-white">
+              GLOWY<span className="text-indigo-400">.AI</span>
+            </div>
+            <p className="mt-4 leading-7">
+              Эмпатичный AI-планер для задач, мыслей, энергии и прогресса.
+            </p>
+            <p className="mt-4">Версия: v2.0.0</p>
+          </div>
+          <div className="grid gap-3">
+            <Link to="/pricing" className="hover:text-white">
+              Тарифы
+            </Link>
+            <Link to="/contacts" className="hover:text-white">
+              Контакты
+            </Link>
+            <Link to="/requisites" className="hover:text-white">
+              Реквизиты
+            </Link>
+          </div>
+          <div className="grid gap-3">
+            <Link to="/terms" className="hover:text-white">
+              Условия использования
+            </Link>
+            <Link to="/privacy" className="hover:text-white">
+              Политика конфиденциальности
+            </Link>
+            <Link to="/personal-data-consent" className="hover:text-white">
+              Согласие на обработку данных
+            </Link>
+            <Link to="/refund-policy" className="hover:text-white">
+              Условия возврата
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </main>
   );
-};
+}
 
 export default LandingPage;

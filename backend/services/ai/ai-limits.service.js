@@ -5,7 +5,7 @@ export const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const AI_LIMITS_BY_PLAN = {
   start: 10,
   focus: 100,
-  forever: 150,
+  forever: 100,
 };
 
 const getSafeAiPlan = (plan) => {

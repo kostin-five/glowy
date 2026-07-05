@@ -33,8 +33,13 @@ const PricingPage = () => {
     currentPlan.planExpiresAt &&
     new Date(currentPlan.planExpiresAt) > new Date();
 
-  const handleFocusClick = async () => {
-    if (!paymentsEnabled || isFocusActive) return;
+  const isForeverActive = currentPlan &&
+    currentPlan.plan === "forever" &&
+    currentPlan.subscriptionStatus === "active";
+
+  const handlePlanClick = async (plan: "focus" | "forever") => {
+    const isPlanActive = plan === "focus" ? isFocusActive : isForeverActive;
+    if (!paymentsEnabled || isPlanActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login?redirect=/pricing");
@@ -43,7 +48,9 @@ const PricingPage = () => {
 
     try {
       setIsLoading(true);
-      const { confirmationUrl } = await PaymentApi.createFocusPayment();
+      const { confirmationUrl } = plan === "focus"
+        ? await PaymentApi.createFocusPayment()
+        : await PaymentApi.createForeverPayment();
       if (confirmationUrl) {
         window.location.href = confirmationUrl;
       } else {
@@ -59,8 +66,9 @@ const PricingPage = () => {
         typeof error.response.data === "object" &&
         error.response.data !== null &&
         "code" in error.response.data &&
-        error.response.data.code === "FOCUS_ALREADY_ACTIVE"
-          ? "У вас уже активен тариф Focus. Обновляем статус тарифа."
+        (error.response.data.code === "FOCUS_ALREADY_ACTIVE" ||
+          error.response.data.code === "FOREVER_ALREADY_ACTIVE")
+          ? `У вас уже активен тариф ${plan === "focus" ? "Focus" : "Forever"}. Обновляем статус тарифа.`
           : "Не удалось создать платеж. Попробуйте позже.";
 
       alert(message);
@@ -107,7 +115,7 @@ const PricingPage = () => {
     },
     {
       name: "Forever",
-      price: "0 ₽",
+      price: "99 ₽",
       period: "навсегда",
       features: [
         "100 AI-запросов в день",
@@ -115,8 +123,9 @@ const PricingPage = () => {
         "Для первых пользователей",
         "Все будущие функции",
       ],
-      cta: "Промо-доступ",
-      disabled: true,
+      cta: isForeverActive ? "Текущий тариф" : (paymentsEnabled ? "Оформить Forever" : "Оплата подключается"),
+      disabled: !paymentsEnabled || isForeverActive,
+      active: isForeverActive,
     },
   ];
 
@@ -179,15 +188,21 @@ const PricingPage = () => {
                 ))}
               </ul>
               <button
-                disabled={plan.disabled || (plan.name === "Focus" && isLoading)}
-                onClick={plan.name === "Focus" ? handleFocusClick : undefined}
+                disabled={plan.disabled || ((plan.name === "Focus" || plan.name === "Forever") && isLoading)}
+                onClick={
+                  plan.name === "Focus"
+                    ? () => handlePlanClick("focus")
+                    : plan.name === "Forever"
+                      ? () => handlePlanClick("forever")
+                      : undefined
+                }
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${
                   plan.highlight
                     ? "bg-indigo-600 text-white hover:bg-indigo-500"
                     : "bg-slate-800 text-slate-300"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                {plan.name === "Focus" && isLoading ? "Загрузка..." : plan.cta}
+                {(plan.name === "Focus" || plan.name === "Forever") && isLoading ? "Загрузка..." : plan.cta}
               </button>
             </div>
           ))}

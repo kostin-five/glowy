@@ -56,6 +56,7 @@ Run the backend independently:
 cd backend
 npm install
 npm run serve
+npm run test
 ```
 
 The optional AI proxy is also independent:
@@ -66,10 +67,9 @@ npm install
 npm start
 ```
 
-CI currently runs root `npm run typecheck`, `npm run lint`, and `npm run test` on `master` and
-`dev`. The backend has no automated test script yet; when changing it, run a focused manual API
-scenario in addition to the relevant frontend checks. Do not claim a backend test suite ran when
-none exists.
+CI runs frontend typecheck, lint, unit tests, production build and Playwright checks, plus the
+isolated backend HTTP test suite, on pull requests and pushes targeting `master` and `dev`.
+Backend HTTP tests must stay database-free unless a separate test database is deliberately added.
 
 ## Implementation Conventions
 

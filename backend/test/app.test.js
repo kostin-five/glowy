@@ -1,0 +1,49 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import request from "supertest";
+import { createApp } from "../app.js";
+
+const allowedOrigin = "http://localhost:5173";
+
+test("health-check returns service status and a request identifier", async () => {
+  const app = createApp();
+  const response = await request(app).get("/api/health");
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, {
+    status: "ok",
+    service: "glowy-backend",
+  });
+  assert.match(response.headers["x-request-id"], /^[\da-f-]{36}$/i);
+});
+
+test("rejects requests from an unapproved origin before routes run", async () => {
+  const app = createApp();
+  const response = await request(app)
+    .get("/api/health")
+    .set("Origin", "https://untrusted.example");
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(response.body, { error: "Доступ запрещен" });
+});
+
+test("allows the local frontend origin", async () => {
+  const app = createApp();
+  const response = await request(app)
+    .get("/api/health")
+    .set("Origin", allowedOrigin);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers["access-control-allow-origin"], allowedOrigin);
+});
+
+test("returns a generic response for an unhandled server error", async () => {
+  const app = createApp({ testRoute: true });
+  const response = await request(app).get("/api/__test__/error");
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(response.body, {
+    error: "Внутренняя ошибка сервера. Попробуйте ещё раз позже.",
+  });
+  assert.match(response.headers["x-request-id"], /^[\da-f-]{36}$/i);
+});

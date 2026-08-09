@@ -2,6 +2,7 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { generateContentWithAiProvider } from "../services/ai/ai-provider.service.js";
 import {
   buildTaskAnalysisPrompt,
@@ -112,18 +113,18 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
       );
     } catch (error) {
       if (isExpectedAiUnavailableError(error)) {
-        console.error("Public Mind Hub AI unavailable", {
-          code: error?.code,
-          status: error?.status,
-          hubMode: "parse",
+        logger.error("ai.public_mind_hub.unavailable", {
+          req,
+          error,
+          statusCode: error?.status || 503,
         });
         return res.json(buildGracefulMindHubUnavailablePayload(error));
       }
 
-      console.error("Public Mind Hub parsing failed, using fallback:", {
-        code: error?.code,
-        status: error?.status,
-        hubMode: "parse",
+      logger.error("ai.public_mind_hub.fallback", {
+        req,
+        error,
+        statusCode: error?.status || 500,
       });
       parsedResult = {
         tasks: parseMindHubFallback(message, today),
@@ -146,12 +147,10 @@ router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
           : "Не удалось выделить конкретные задачи."),
     });
   } catch (error) {
-    const code = error?.code || "UNKNOWN_ERROR";
-    const status = error?.status || 500;
-    console.error("Public Mind Hub request failed", {
-      code,
-      status,
-      hubMode: requestHubMode,
+    logger.error("ai.public_mind_hub.failed", {
+      req,
+      error,
+      statusCode: error?.status || 500,
     });
 
     if (isExpectedAiUnavailableError(error)) {
@@ -170,11 +169,7 @@ router.get("/usage", async (req, res) => {
     const usage = await getAuthenticatedAiUsage(req.user.id);
     return res.json(usage);
   } catch (error) {
-    console.error("AI usage fetch failed", {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-    });
+    logger.error("ai.usage.fetch_failed", { req, error, statusCode: 500 });
 
     return res.status(500).json({ error: "Не удалось загрузить AI usage" });
   }
@@ -209,11 +204,10 @@ router.post("/analyze", async (req, res) => {
 
     res.json({ message: text });
   } catch (error) {
-    const code = error?.code || "UNKNOWN_ERROR";
-    const status = error?.status || 500;
-    console.error("AI analyze failed", {
-      code,
-      status,
+    logger.error("ai.analysis.failed", {
+      req,
+      error,
+      statusCode: error?.status || 500,
     });
 
     if (isExpectedAiUnavailableError(error)) {
@@ -292,11 +286,10 @@ router.post("/mind-hub", async (req, res) => {
 
         return res.json({ tasks: [], reply, limit: aiLimit.limit });
       } catch (error) {
-        const code = error?.code || "UNKNOWN_ERROR";
-        const status = error?.status || 500;
-        console.error("Mind Hub chat failed", {
-          code,
-          status,
+        logger.error("ai.mind_hub.chat_failed", {
+          req,
+          error,
+          statusCode: error?.status || 500,
         });
 
         if (isExpectedAiUnavailableError(error)) {
@@ -332,10 +325,10 @@ router.post("/mind-hub", async (req, res) => {
       parsedSuccessfully = true;
     } catch (error) {
       if (isExpectedAiUnavailableError(error)) {
-        console.error("Mind Hub AI unavailable", {
-          code: error?.code,
-          status: error?.status,
-          hubMode: "parse",
+        logger.error("ai.mind_hub.unavailable", {
+          req,
+          error,
+          statusCode: error?.status || 503,
         });
         return res.json(
           buildGracefulMindHubUnavailablePayload(error, {
@@ -344,10 +337,10 @@ router.post("/mind-hub", async (req, res) => {
         );
       }
 
-      console.error("Mind Hub parsing failed, using fallback:", {
-        code: error?.code,
-        status: error?.status,
-        hubMode: "parse",
+      logger.error("ai.mind_hub.fallback", {
+        req,
+        error,
+        statusCode: error?.status || 500,
       });
       parsedTasks = parseMindHubFallback(message, today);
     }
@@ -465,12 +458,10 @@ router.post("/mind-hub", async (req, res) => {
       limit: aiLimit.limit,
     });
   } catch (error) {
-    const code = error?.code || "UNKNOWN_ERROR";
-    const status = error?.status || 500;
-    console.error("Mind Hub request failed", {
-      code,
-      status,
-      hubMode: requestHubMode,
+    logger.error("ai.mind_hub.failed", {
+      req,
+      error,
+      statusCode: error?.status || 500,
     });
     res.status(500).json({
       error: "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",

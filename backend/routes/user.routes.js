@@ -1,6 +1,7 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const AUTH_COOKIE_NAME = "glowy_token";
@@ -31,6 +32,7 @@ router.get("/progress", async (req, res) => {
 
     res.json(user);
   } catch (e) {
+    logger.error("user.progress.fetch_failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при загрузке прогресса" });
   }
 });
@@ -60,6 +62,7 @@ router.put(
       });
       res.json(updatedUser);
     } catch (e) {
+      logger.error("user.energy.update_failed", { req, error: e, statusCode: 500 });
       res.status(500).json({ error: "Ошибка при обновлении" });
     }
   }
@@ -82,12 +85,7 @@ router.delete("/account", async (req, res) => {
     res.clearCookie(AUTH_COOKIE_NAME, AUTH_COOKIE_CLEAR_OPTIONS);
     return res.json({ ok: true });
   } catch (error) {
-    console.error("Delete account failed", {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-      userId: req.user?.id,
-    });
+    logger.error("user.account.delete_failed", { req, error, statusCode: 500 });
     return res.status(500).json({ error: "Не удалось удалить аккаунт" });
   }
 });

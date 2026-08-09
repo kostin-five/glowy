@@ -1,6 +1,7 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -69,8 +70,8 @@ router.get("/", async (req, res) => {
     });
     res.json(tasks);
   } catch (e) {
+    logger.error("tasks.list.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Не удалось загрузить задачи" });
-    console.error(e);
   }
 });
 
@@ -152,7 +153,7 @@ router.post(
 
     res.status(201).json(newTask);
   } catch (e) {
-    console.error(e);
+    logger.error("tasks.create.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при создании" });
   }
 });
@@ -296,6 +297,7 @@ router.put(
 
     res.json(result);
   } catch (e) {
+    logger.error("tasks.update.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при обновлении" });
   }
 });
@@ -318,6 +320,7 @@ router.delete("/:id", async (req, res) => {
     });
     res.json({ message: "Удалено" });
   } catch (e) {
+    logger.error("tasks.delete.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при удалении" });
   }
 });

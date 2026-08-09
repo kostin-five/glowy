@@ -1,6 +1,7 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -38,8 +39,8 @@ const getSubTasks = async (req, res) => {
     });
     res.json(subtasks);
   } catch (e) {
+    logger.error("subtasks.list.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Не удалось загрузить подзадачи" });
-    console.error(e);
   }
 };
 
@@ -76,7 +77,7 @@ const createSubTask = async (req, res) => {
     });
     res.status(201).json(newSubTask);
   } catch (e) {
-    console.error(e);
+    logger.error("subtasks.create.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при создании" });
   }
 };
@@ -116,6 +117,7 @@ const updateSubTask = async (req, res) => {
     });
     res.json(updatedSubTask);
   } catch (e) {
+    logger.error("subtasks.update.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при обновлении" });
   }
 };
@@ -135,6 +137,7 @@ const deleteSubTask = async (req, res) => {
     });
     res.json({ message: "Удалено" });
   } catch (e) {
+    logger.error("subtasks.delete.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при удалении" });
   }
 };

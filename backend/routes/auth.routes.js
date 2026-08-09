@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -110,7 +111,7 @@ router.post(
         level: newUser.level,
       });
     } catch (e) {
-      console.error("ОШИБКА РЕГИСТРАЦИИ:", e);
+      logger.error("auth.register.failed", { req, error: e, statusCode: 400 });
       res.status(400).json({ error: "Не удалось создать аккаунт" });
     }
   }
@@ -145,6 +146,7 @@ router.post("/login", loginLimiter, async (req, res) => {
       level: user.level,
     });
   } catch (e) {
+    logger.error("auth.login.failed", { req, error: e, statusCode: 400 });
     res.status(400).json({ error: "Ошибка при входе" });
   }
 });
@@ -173,6 +175,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 
     res.json(user);
   } catch (e) {
+    logger.error("auth.profile.fetch_failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при получении профиля" });
   }
 });

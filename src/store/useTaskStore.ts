@@ -18,6 +18,7 @@ import { useAuthStore } from "./useAuthStore";
 import { getLevelByXp, getXpReward } from "../utils/xp";
 import { normalizeTaskDate } from "../utils/taskDateGroups";
 import axios from "axios";
+import { trackProductEventOnce } from "../utils/analytics";
 
 interface TaskStore {
   tasks: Task[];
@@ -242,6 +243,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
             : [...state.tasks, result],
         };
       });
+      trackProductEventOnce("first_task_created");
       return result;
     } catch (e) {
       if (axios.isAxiosError(e)) {

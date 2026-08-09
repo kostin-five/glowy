@@ -7,6 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
 import { useToLogin } from "../store/useAuthStore";
 import { useStartRoute } from "../store/useSettingsStore";
+import { trackProductEventOnce } from "../utils/analytics";
 
 const RegisterPage = () => {
   const [name, setName] = useState<string>("");
@@ -39,10 +40,12 @@ const RegisterPage = () => {
     }
 
     setIsLoading(true);
+    trackProductEventOnce("signup_started");
 
     try {
       const data = await AuthApi.registerRequest({ name, email, password });
       toLogin(data.name || name, data.email || email);
+      trackProductEventOnce("signup_completed");
       navigate(redirect || startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
@@ -91,10 +94,14 @@ const RegisterPage = () => {
           className="w-full bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-5 sm:p-6 rounded-3xl flex flex-col gap-3.5 shadow-2xl"
         >
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+            <label
+              htmlFor="register-name"
+              className="block text-slate-300 text-sm font-medium mb-2 pl-1"
+            >
               Ваше имя
             </label>
             <input
+              id="register-name"
               type="text"
               placeholder="Напишите имя"
               value={name}
@@ -105,10 +112,14 @@ const RegisterPage = () => {
           </div>
 
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+            <label
+              htmlFor="register-email"
+              className="block text-slate-300 text-sm font-medium mb-2 pl-1"
+            >
               Почта
             </label>
             <input
+              id="register-email"
               type="email"
               placeholder="Введите почту"
               value={email}
@@ -120,12 +131,16 @@ const RegisterPage = () => {
           </div>
 
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+            <label
+              htmlFor="register-password"
+              className="block text-slate-300 text-sm font-medium mb-2 pl-1"
+            >
               Пароль (минимум 8 символов)
             </label>
             <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
+            <input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -144,12 +159,16 @@ const RegisterPage = () => {
           </div>
 
           <div>
-            <label className="block text-slate-300 text-sm font-medium mb-2 pl-1">
+            <label
+              htmlFor="register-confirm-password"
+              className="block text-slate-300 text-sm font-medium mb-2 pl-1"
+            >
               Подтвердите пароль
             </label>
             <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
+            <input
+              id="register-confirm-password"
+              type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

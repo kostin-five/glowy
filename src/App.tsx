@@ -19,6 +19,7 @@ import {
 } from "react";
 import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
 import RouteLoader from "./components/ui/RouteLoader";
+import AppErrorBoundary from "./components/ui/AppErrorBoundary";
 import CookieConsent from "./components/CookieConsent";
 import {
   useSetDarkMode,
@@ -52,9 +53,11 @@ const PaymentSuccessPage = lazy(() => import("./pages/PaymentSuccessPage"));
 const PaymentCancelPage = lazy(() => import("./pages/PaymentCancelPage"));
 
 const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
-  <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
-    {children}
-  </Suspense>
+  <AppErrorBoundary>
+    <Suspense fallback={<RouteLoader className="fixed inset-0 min-h-dvh" />}>
+      {children}
+    </Suspense>
+  </AppErrorBoundary>
 );
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
@@ -91,19 +94,21 @@ const ProtectedLayoutRoute = ({
   lazy?: boolean;
 }) => (
   <ProtectedRoute>
-    <AppLayout>
-      {lazy ? (
-        <Suspense
-          fallback={
-            <RouteLoader className="min-h-[calc(100dvh-8rem)] bg-transparent" />
-          }
-        >
-          {children}
-        </Suspense>
-      ) : (
-        children
-      )}
-    </AppLayout>
+    <AppErrorBoundary>
+      <AppLayout>
+        {lazy ? (
+          <Suspense
+            fallback={
+              <RouteLoader className="min-h-[calc(100dvh-8rem)] bg-transparent" />
+            }
+          >
+            {children}
+          </Suspense>
+        ) : (
+          children
+        )}
+      </AppLayout>
+    </AppErrorBoundary>
   </ProtectedRoute>
 );
 

@@ -39,7 +39,7 @@ export const TaskApi = {
   },
 
   async postTask(data: TaskDraft): Promise<Task> {
-    const response = await api.post("/", data);
+    const response = await api.post("", data);
     return response.data;
   },
 

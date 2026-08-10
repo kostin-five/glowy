@@ -1,6 +1,7 @@
 # Glowy AI Proxy
 
-Small private server that receives AI requests from the main Glowy backend, calls Google Gemini, and returns plain text responses.
+Small private server that receives AI requests from the main Glowy backend, calls DeepSeek, and
+returns plain text responses.
 
 The frontend must never call this service directly. Keep `AI_PROXY_SECRET` only on servers.
 
@@ -10,13 +11,13 @@ Create `.env` from `.env.example`:
 
 ```env
 PORT=3002
-GEMINI_API_KEY=
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=
+AI_PROVIDER=deepseek
 AI_PROXY_SECRET=
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
-`GEMINI_FALLBACK_MODEL` can stay empty if you do not have a confirmed available fallback model.
+Keep the DeepSeek key and `AI_PROXY_SECRET` only in server `.env` files.
 
 ## Local Run
 
@@ -48,7 +49,7 @@ Expected response:
 }
 ```
 
-## Gemini Request Example
+## Proxy Request Example
 
 ```bash
 curl -X POST https://YOUR_PROXY_DOMAIN/v1/gemini \

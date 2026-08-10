@@ -4,10 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TaskDraft } from "../types";
 
 const postTask = vi.fn();
+const getTasks = vi.fn();
 const trackProductEventOnce = vi.fn();
 
 vi.mock("../api/TaskApi", () => ({
-  TaskApi: { postTask },
+  TaskApi: { getTasks, postTask },
 }));
 
 vi.mock("../utils/analytics", () => ({ trackProductEventOnce }));
@@ -27,6 +28,7 @@ const draft: TaskDraft = {
 
 afterEach(() => {
   postTask.mockReset();
+  getTasks.mockReset();
   trackProductEventOnce.mockReset();
   useAuthStore.setState({ isAuthenticated: false, isGuest: false, token: null });
   useTaskStore.setState({ tasks: [] });
@@ -55,5 +57,30 @@ describe("task activation analytics", () => {
 
     expect(postTask).not.toHaveBeenCalled();
     expect(trackProductEventOnce).not.toHaveBeenCalled();
+  });
+
+  it("keeps the current task list when the API response is not a task array", async () => {
+    useAuthStore.setState({ isAuthenticated: true, isGuest: false });
+    useTaskStore.setState({
+      tasks: [
+        {
+          ...draft,
+          id: 1,
+          completed: false,
+          xpAwarded: false,
+          subtasks: [],
+        },
+      ],
+    });
+    postTask.mockReset();
+
+    // This mirrors an invalid response without allowing it to crash the task store.
+    getTasks.mockRejectedValueOnce(
+      new Error("Сервер вернул некорректный список задач")
+    );
+
+    await useTaskStore.getState().fetchTasks();
+
+    expect(useTaskStore.getState().tasks).toHaveLength(1);
   });
 });

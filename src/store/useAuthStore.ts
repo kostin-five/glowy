@@ -5,6 +5,11 @@ import { API_BASE_URL } from "../api/config";
 
 export const GUEST_REQUEST_LIMIT = 3;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+let authSessionVersion = 0;
+
+const invalidatePendingAuthChecks = () => {
+  authSessionVersion += 1;
+};
 
 const isGuestRequestWindowExpired = (resetDate: string | null) => {
   if (!resetDate) return true;
@@ -48,7 +53,8 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
-      toLogin: (name: string, email: string, token: string | null = null) =>
+      toLogin: (name: string, email: string, token: string | null = null) => {
+        invalidatePendingAuthChecks();
         set(() => ({
           isAuthenticated: true,
           isGuest: false,
@@ -56,7 +62,8 @@ export const useAuthStore = create<AuthStore>()(
           name: name,
           email: email,
           token: token,
-        })),
+        }));
+      },
       restoreAuthSession: () =>
         set((state) => {
           if (state.token && state.token.startsWith("demo-token-")) {
@@ -69,7 +76,8 @@ export const useAuthStore = create<AuthStore>()(
 
           return state;
         }),
-      toDemoLogin: () =>
+      toDemoLogin: () => {
+        invalidatePendingAuthChecks();
         set(() => ({
           isAuthenticated: true,
           isGuest: true,
@@ -78,8 +86,10 @@ export const useAuthStore = create<AuthStore>()(
           email: "demo",
           token: `demo-token-${Date.now()}`,
           currentEnergy: 100,
-        })),
-      toLogout: () =>
+        }));
+      },
+      toLogout: () => {
+        invalidatePendingAuthChecks();
         set(() => ({
           isAuthenticated: false,
           isGuest: false,
@@ -87,13 +97,17 @@ export const useAuthStore = create<AuthStore>()(
           name: "",
           email: null,
           token: null,
-        })),
+        }));
+      },
       checkAuth: async () => {
+        const requestSessionVersion = authSessionVersion;
         set({ isChecking: true });
         try {
           // Dynamic import to avoid circular dependency
           const { AuthApi } = await import("../api/AuthApi");
           const user = await AuthApi.meRequest();
+          if (requestSessionVersion !== authSessionVersion) return;
+
           set({
             isAuthenticated: true,
             isGuest: false,
@@ -102,6 +116,8 @@ export const useAuthStore = create<AuthStore>()(
             isChecking: false,
           });
         } catch {
+          if (requestSessionVersion !== authSessionVersion) return;
+
           set({
             isAuthenticated: false,
             isGuest: false,

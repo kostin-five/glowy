@@ -4,6 +4,7 @@ import { Tag, Check } from "lucide-react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
 import { useStartRoute } from "../store/useSettingsStore";
+import { trackProductEventOnce } from "../utils/analytics";
 
 type CurrentPlan = {
   plan?: string;
@@ -83,6 +84,7 @@ const PricingPage = () => {
       setIsLoading(true);
       const { confirmationUrl } = await PaymentApi.createFocusPayment();
       if (confirmationUrl) {
+        trackProductEventOnce("focus_checkout_started");
         window.location.href = confirmationUrl;
       } else {
         alert("Не удалось получить ссылку на оплату. Попробуйте позже.");

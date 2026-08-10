@@ -29,12 +29,17 @@ export interface TaskUpdateResponse {
 
 export const TaskApi = {
   async getTasks(): Promise<Task[]> {
-    const response = await api.get("/");
+    const response = await api.get("");
+
+    if (!Array.isArray(response.data)) {
+      throw new Error("Сервер вернул некорректный список задач");
+    }
+
     return response.data;
   },
 
   async postTask(data: TaskDraft): Promise<Task> {
-    const response = await api.post("/", data);
+    const response = await api.post("", data);
     return response.data;
   },
 

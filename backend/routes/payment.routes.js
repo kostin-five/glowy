@@ -2,6 +2,7 @@ import express from "express";
 import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -120,10 +121,10 @@ const createPaymentHandler = (plan) => async (req, res) => {
     });
 
     if (!response.ok) {
-      console.error("Payment create request to YooKassa failed", {
-        status: response.status,
-        userId: req.user.id,
-        plan,
+      logger.error("payments.yookassa.create_rejected", {
+        req,
+        error: new Error("YooKassa rejected payment creation"),
+        statusCode: response.status,
       });
       return res.status(500).json({ error: "Ошибка инициализации платежа" });
     }
@@ -150,12 +151,7 @@ const createPaymentHandler = (plan) => async (req, res) => {
 
     res.json({ paymentId: payment.providerPaymentId, confirmationUrl: payment.confirmationUrl });
   } catch (error) {
-    console.error(`Payment ${plan}/create failed`, {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-      userId: req.user?.id,
-    });
+    logger.error("payments.create.failed", { req, error, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при создании платежа" });
   }
 };
@@ -239,11 +235,7 @@ router.post("/yookassa/webhook", async (req, res) => {
 
     res.status(200).json({ ok: true });
   } catch (error) {
-    console.error("Payment webhook failed", {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-    });
+    logger.error("payments.webhook.failed", { req, error, statusCode: 500 });
     res.status(500).json({ error: "Ошибка обработки webhook" });
   }
 });
@@ -269,11 +261,7 @@ router.get("/current-plan", async (req, res) => {
 
     res.json(normalizedUser);
   } catch (error) {
-    console.error("Payment current-plan failed", {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-    });
+    logger.error("payments.current_plan.failed", { req, error, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при загрузке данных плана" });
   }
 });
@@ -312,11 +300,10 @@ router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
 
     res.json(updatedUser);
   } catch (error) {
-    console.error("Payment forever/activate failed", {
-      code: error?.code || "UNKNOWN_ERROR",
-      status: error?.status || 500,
-      message: error?.message,
-      userId: req.user?.id,
+    logger.error("payments.forever.activate_failed", {
+      req,
+      error,
+      statusCode: 500,
     });
     res.status(500).json({ error: "Ошибка при активации тарифа" });
   }

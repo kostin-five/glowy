@@ -1,6 +1,7 @@
 import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { prisma } from "../lib/prisma.js";
+import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
@@ -17,7 +18,7 @@ router.post("/", limitter, async (req, res) => {
   try {
     res.status(200).json({ message: "Запрос к ИИ прошел успешно!" });
   } catch (e) {
-    console.error(e);
+    logger.error("chat.request.failed", { req, error: e, statusCode: 500 });
     res.status(500).json({ error: "Внутренняя ошибка сервера" });
   }
 });

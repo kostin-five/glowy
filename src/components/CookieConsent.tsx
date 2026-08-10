@@ -1,21 +1,8 @@
 import { useEffect, useState } from "react";
+import { ANALYTICS_CONSENT_KEY, getAnalyticsConsent } from "../utils/analytics";
 
-const COOKIE_CONSENT_KEY = "glowy_cookie_consent";
 const YANDEX_METRIKA_SCRIPT_ID = "yandex-metrika-script";
 const DEFAULT_YANDEX_METRIKA_ID = 109727314;
-
-type YandexMetrikaFunction = {
-  (...args: unknown[]): void;
-  a?: unknown[];
-  l?: number;
-};
-
-declare global {
-  interface Window {
-    ym?: YandexMetrikaFunction;
-    __YANDEX_METRIKA_INITIALIZED__?: boolean;
-  }
-}
 
 const getMetrikaId = () => {
   const envId = Number(import.meta.env.VITE_YANDEX_METRIKA_ID);
@@ -23,8 +10,6 @@ const getMetrikaId = () => {
     ? envId
     : DEFAULT_YANDEX_METRIKA_ID;
 };
-
-const getCookieConsent = () => localStorage.getItem(COOKIE_CONSENT_KEY);
 
 const initYandexMetrika = () => {
   if (window.__YANDEX_METRIKA_INITIALIZED__) return;
@@ -58,7 +43,7 @@ const initYandexMetrika = () => {
 };
 
 const CookieConsent = () => {
-  const [consent, setConsent] = useState(() => getCookieConsent());
+  const [consent, setConsent] = useState(() => getAnalyticsConsent());
   const isAccepted = consent === "accepted";
   const isRejected = consent === "rejected";
 
@@ -69,12 +54,12 @@ const CookieConsent = () => {
   }, [isAccepted]);
 
   const acceptCookies = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "accepted");
+    localStorage.setItem(ANALYTICS_CONSENT_KEY, "accepted");
     setConsent("accepted");
   };
 
   const rejectCookies = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, "rejected");
+    localStorage.setItem(ANALYTICS_CONSENT_KEY, "rejected");
     setConsent("rejected");
   };
 

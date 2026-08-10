@@ -3,6 +3,7 @@ import type { Task } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
+import { trackProductEventOnce } from "../utils/analytics";
 
 export type MindHubMode = "chat" | "parse" | "auto";
 export type MindHubMessage = {
@@ -175,6 +176,9 @@ export default class AiApi {
         messages,
         currentEnergy: authStore.currentEnergy,
       });
+      if (authStore.isAuthenticated && !authStore.isGuest) {
+        trackProductEventOnce("first_ai_request");
+      }
       return response.data as MindHubResponse;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {

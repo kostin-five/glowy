@@ -40,7 +40,12 @@ const LoginPage = () => {
       navigate(redirect || startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        setError(e.response?.data?.error || "Неверная почта или пароль");
+        setError(
+          e.response?.data?.error ||
+            (e.request
+              ? "Не удалось подключиться к серверу. Попробуйте ещё раз через минуту."
+              : "Неверная почта или пароль")
+        );
       } else {
         setError("Что-то пошло не так");
       }

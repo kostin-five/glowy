@@ -3,7 +3,7 @@ import test from "node:test";
 import request from "supertest";
 import { createApp } from "../app.js";
 
-const allowedOrigin = "http://localhost:5173";
+const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
 
 test("health-check returns service status and a request identifier", async () => {
   const app = createApp();
@@ -27,14 +27,15 @@ test("rejects requests from an unapproved origin before routes run", async () =>
   assert.deepEqual(response.body, { error: "Доступ запрещен" });
 });
 
-test("allows the local frontend origin", async () => {
+test("allows supported local frontend origins", async () => {
   const app = createApp();
-  const response = await request(app)
-    .get("/api/health")
-    .set("Origin", allowedOrigin);
 
-  assert.equal(response.status, 200);
-  assert.equal(response.headers["access-control-allow-origin"], allowedOrigin);
+  for (const origin of allowedOrigins) {
+    const response = await request(app).get("/api/health").set("Origin", origin);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers["access-control-allow-origin"], origin);
+  }
 });
 
 test("returns a generic response for an unhandled server error", async () => {

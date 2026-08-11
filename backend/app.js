@@ -12,7 +12,11 @@ import { errorMiddleware } from "./middleware/error.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 
 const prodOrigins = ["https://glowy-ai.ru", "https://www.glowy-ai.ru"];
-const devOrigins = ["http://localhost:5173", "http://localhost:4173"];
+const devOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:4173",
+];
 
 const getAllowedOrigins = (isProd) =>
   process.env.CORS_ORIGINS

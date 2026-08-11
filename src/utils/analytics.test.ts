@@ -60,4 +60,24 @@ describe("product analytics", () => {
     expect(trackProductEventOnce("first_task_created")).toBe(false);
     expect(metrika).toHaveBeenCalledTimes(1);
   });
+
+  it("records draft confirmation without private text fields", () => {
+    localStorage.setItem(ANALYTICS_CONSENT_KEY, "accepted");
+    window.ym = metrika;
+    window.__YANDEX_METRIKA_INITIALIZED__ = true;
+
+    expect(
+      trackProductEvent("ai_draft_confirmed", {
+        title: "Личный текст задачи",
+        prompt: "Личное сообщение",
+      })
+    ).toBe(true);
+
+    expect(metrika).toHaveBeenCalledWith(
+      expect.any(Number),
+      "reachGoal",
+      "ai_draft_confirmed",
+      {}
+    );
+  });
 });

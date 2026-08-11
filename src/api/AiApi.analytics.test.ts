@@ -38,11 +38,12 @@ afterEach(() => {
 describe("AI activation analytics", () => {
   it("records the milestone after an authenticated AI response", async () => {
     useAuthStore.setState({ isAuthenticated: true, isGuest: false });
-    post.mockResolvedValue({ data: { tasks: [], reply: "Готово" } });
+    post.mockResolvedValue({ data: { drafts: [], reply: "Готово" } });
 
-    await AiApi.parseMindHub("Помоги выбрать следующую задачу");
+    const result = await AiApi.parseMindHub("Помоги выбрать следующую задачу");
 
     expect(trackProductEventOnce).toHaveBeenCalledWith("first_ai_request");
+    expect(result.drafts).toEqual([]);
   });
 
   it("does not record an activation event for a guest AI request", async () => {
@@ -52,10 +53,30 @@ describe("AI activation analytics", () => {
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
     });
-    post.mockResolvedValue({ data: { tasks: [], reply: "Готово" } });
+    post.mockResolvedValue({
+      data: {
+        drafts: [
+          {
+            title: " Подготовить доклад ",
+            date: "12.08.2026",
+            priority: "⚡️ P2",
+            category: "Учеба",
+            energyLevel: "high",
+            subtasks: [],
+          },
+        ],
+        reply: "Проверь черновик",
+      },
+    });
 
-    await AiApi.parseMindHub("Помоги выбрать следующую задачу");
+    const result = await AiApi.parseMindHub("Помоги выбрать следующую задачу");
 
     expect(trackProductEventOnce).not.toHaveBeenCalled();
+    expect(result.drafts).toEqual([
+      expect.objectContaining({
+        title: "Подготовить доклад",
+        date: "2026-08-12",
+      }),
+    ]);
   });
 });

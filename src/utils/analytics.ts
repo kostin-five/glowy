@@ -8,6 +8,7 @@ const allowedEvents = [
   "signup_completed",
   "first_task_created",
   "first_ai_request",
+  "ai_draft_confirmed",
   "focus_checkout_started",
 ] as const;
 

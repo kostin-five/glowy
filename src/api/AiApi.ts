@@ -1,9 +1,10 @@
 import axios from "axios";
-import type { Task } from "../types";
+import type { TaskDraft } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
 import { trackProductEventOnce } from "../utils/analytics";
+import { normalizeTaskDate } from "../utils/taskDateGroups";
 
 export type MindHubMode = "chat" | "parse" | "auto";
 export type MindHubMessage = {
@@ -24,13 +25,12 @@ export type AiUsage = {
 };
 
 export type MindHubResponse = {
-  tasks: Task[];
+  drafts: MindHubDraft[];
   reply: string | null;
-  actions?: {
-    updatedTasks?: Task[];
-  };
   limit?: MindHubLimit;
 };
+
+export type MindHubDraft = TaskDraft;
 
 const aiInstance = axios.create({
   baseURL: `${API_BASE_URL}/ai`,
@@ -58,48 +58,49 @@ const getGuestMindHubLimit = (): MindHubLimit => {
 };
 
 const getGuestLimitResponse = (): MindHubResponse => ({
-  tasks: [],
+  drafts: [],
   reply: GUEST_LIMIT_REPLY,
   limit: getGuestMindHubLimit(),
 });
 
-const normalizeGuestMindHubTasks = (tasks: Partial<Task>[]): Task[] =>
-  tasks
-    .map((task, index) => {
-      const taskId = Date.now() + index;
+const normalizeMindHubDrafts = (
+  value: unknown
+): MindHubDraft[] => {
+  const drafts = Array.isArray(value)
+    ? (value as Partial<MindHubDraft>[])
+    : [];
 
-      return {
-        id: taskId,
-        title: typeof task.title === "string" ? task.title : "",
-        date:
-          typeof task.date === "string"
-            ? task.date
-            : new Date().toISOString().slice(0, 10),
-        priority: task.priority ?? "⚡️ P2",
-        category: task.category ?? "Быт",
-        completed: false,
-        xpAwarded: false,
-        energyLevel: task.energyLevel ?? "med",
-        subtasks: Array.isArray(task.subtasks)
-          ? task.subtasks
-              .map((subtask, subtaskIndex) => ({
-                id: taskId + subtaskIndex + 1,
-                taskId,
-                title:
-                  typeof subtask?.title === "string"
-                    ? subtask.title.trim()
-                    : "",
-                completed: Boolean(subtask?.completed),
-                position:
-                  typeof subtask?.position === "number"
-                    ? subtask.position
-                    : subtaskIndex,
-              }))
-              .filter((subtask) => subtask.title.length > 0)
-          : [],
-      };
-    })
-    .filter((task) => task.title.trim().length > 0);
+  return drafts
+    .map((draft) => ({
+      title: typeof draft.title === "string" ? draft.title.trim() : "",
+      date: normalizeTaskDate(draft.date),
+      priority: ["🔥 P1", "⚡️ P2", "💤 P3"].includes(draft.priority ?? "")
+        ? draft.priority!
+        : "⚡️ P2",
+      category:
+        typeof draft.category === "string" && draft.category.trim()
+          ? draft.category.trim()
+          : "Быт",
+      completed: false,
+      energyLevel: ["low", "med", "high"].includes(draft.energyLevel ?? "")
+        ? draft.energyLevel!
+        : "med",
+      subtasks: Array.isArray(draft.subtasks)
+        ? draft.subtasks
+            .map((subtask, subtaskIndex) => ({
+              title:
+                typeof subtask?.title === "string"
+                  ? subtask.title.trim()
+                  : "",
+              completed: false,
+              position: subtaskIndex,
+            }))
+            .filter((subtask) => subtask.title.length > 0)
+        : [],
+    }))
+    .filter((draft) => draft.title.length > 0)
+    .slice(0, 5);
+};
 
 aiInstance.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -155,7 +156,7 @@ export default class AiApi {
         });
 
         return {
-          tasks: normalizeGuestMindHubTasks(response.data.tasks ?? []),
+          drafts: normalizeMindHubDrafts(response.data.drafts ?? []),
           reply: response.data.reply ?? null,
           limit: getGuestMindHubLimit(),
         };
@@ -179,11 +180,16 @@ export default class AiApi {
       if (authStore.isAuthenticated && !authStore.isGuest) {
         trackProductEventOnce("first_ai_request");
       }
-      return response.data as MindHubResponse;
+      return {
+        ...response.data,
+        drafts: normalizeMindHubDrafts(response.data.drafts ?? []),
+        reply:
+          typeof response.data.reply === "string" ? response.data.reply : null,
+      } as MindHubResponse;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
         return {
-          tasks: [],
+          drafts: [],
           reply: error.response.data?.error ?? "Лимит запросов исчерпан.",
           limit: error.response.data?.limit,
         };

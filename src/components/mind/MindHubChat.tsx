@@ -10,15 +10,17 @@ import {
 import axios from "axios";
 import { Check, Copy, Info, Send, Sparkles, X, Trash2 } from "lucide-react";
 import AiApi, {
+  type MindHubDraft,
   type MindHubLimit,
   type MindHubMessage,
   type MindHubMode,
 } from "../../api/AiApi";
 import type { Task } from "../../types";
-import { formatTaskDateForUI } from "../../utils/taskDateGroups";
 import { useTaskStore } from "../../store/useTaskStore";
+import { trackProductEvent } from "../../utils/analytics";
 import useTypewriter from "../../hooks/useTypewriter";
 import useNetworkStatus from "../../hooks/useNetworkStatus";
+import MindHubDraftCard from "./MindHubDraftCard";
 import {
   GUEST_REQUEST_LIMIT,
   useGuestRequestsCount,
@@ -32,7 +34,12 @@ type ChatMessage = {
   text: string;
 };
 
-const WELCOME_MESSAGE = "Выгрузи сюда мысли, дела или тревожные хвосты. Я сам пойму, где просто поддержать, а где превратить хаос в задачи.";
+const WELCOME_MESSAGE =
+  "Выгрузи сюда мысли, вопросы или тревожные хвосты. Я сначала отвечу, а если увижу конкретное дело — предложу черновик, который ты решишь сохранить или отклонить.";
+
+type PendingMindHubDraft = MindHubDraft & {
+  localId: string;
+};
 
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
@@ -176,6 +183,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     return new Set(saved.filter(m => m.role === "assistant").map(m => m.id));
   });
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
+  const [pendingDrafts, setPendingDrafts] = useState<PendingMindHubDraft[]>([]);
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
 
@@ -276,6 +284,31 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     [inputRef]
   );
 
+  const dismissDraft = (localId: string) => {
+    setPendingDrafts((current) =>
+      current.filter((draft) => draft.localId !== localId)
+    );
+  };
+
+  const confirmDraft = async (
+    localId: string,
+    draft: MindHubDraft
+  ): Promise<void> => {
+    const createdTask = await useTaskStore.getState().createTask(draft);
+
+    if (!createdTask) {
+      throw new Error("Не удалось сохранить задачу. Попробуй ещё раз.");
+    }
+
+    saveAiCreatedTaskIds([createdTask]);
+    dismissDraft(localId);
+    trackProductEvent("ai_draft_confirmed");
+    appendMessage({
+      role: "assistant",
+      text: `Задача «${createdTask.title}» сохранена.`,
+    });
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -307,39 +340,21 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       );
       setRegisteredAiLimit(result.limit ?? null);
 
-      if (result.actions?.updatedTasks?.length) {
-        const store = useTaskStore.getState();
-        const updatedById = new Map(
-          result.actions.updatedTasks.map((updatedTask) => [
-            updatedTask.id,
-            updatedTask,
-          ])
-        );
+      appendMessage({
+        role: "assistant",
+        text:
+          result.reply ||
+          "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.",
+      });
 
-        store.setTasks(
-          store.tasks.map((task) => updatedById.get(task.id) ?? task)
-        );
-        appendMessage({
-          role: "assistant",
-          text: result.reply || "Задача обновлена.",
-        });
-      } else if (result.tasks.length > 0) {
-        const store = useTaskStore.getState();
-        store.setTasks([...store.tasks, ...result.tasks]);
-        saveAiCreatedTaskIds(result.tasks);
-
-        const summary = getTaskSummary(result.tasks);
-        appendMessage({
-          role: "assistant",
-          text: result.reply ? `${result.reply} ${summary}` : summary,
-        });
-      } else {
-        appendMessage({
-          role: "assistant",
-          text:
-            result.reply ||
-            "Я не нашёл конкретных задач, но вижу, что мыслей много. Можем разложить их ещё чуть подробнее.",
-        });
+      if (result.drafts.length > 0) {
+        setPendingDrafts((current) => [
+          ...current,
+          ...result.drafts.map((draft, index) => ({
+            ...draft,
+            localId: `${Date.now()}-${index}`,
+          })),
+        ]);
       }
     } catch (error) {
       console.error(error);
@@ -366,7 +381,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-indigo-300" />
             <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
-              Хаб мыслей
+              Разгрузка мыслей
             </h2>
           </div>
           {messages.length > 0 && (
@@ -374,6 +389,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
               type="button"
               onClick={() => {
                 setMessages([]);
+                setPendingDrafts([]);
                 setTypedMessageIds(new Set());
                 localStorage.removeItem("glowy-mind-hub-chat");
               }}
@@ -438,6 +454,17 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             </div>
           )}
 
+          {pendingDrafts.map((draft) => (
+            <MindHubDraftCard
+              key={draft.localId}
+              draft={draft}
+              onDismiss={() => dismissDraft(draft.localId)}
+              onConfirm={(editedDraft) =>
+                confirmDraft(draft.localId, editedDraft)
+              }
+            />
+          ))}
+
         </div>
       </div>
 
@@ -447,12 +474,12 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       >
         {!isOnline && (
           <div className="mb-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-200">
-            Нет подключения к интернету. Хаб мыслей временно недоступен.
+            Нет подключения к интернету. Разгрузка мыслей временно недоступна.
           </div>
         )}
         <div className="relative mb-3 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/60">
           <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Пиши свободно — я сам отделю мысли от задач.
+            Пиши свободно — обычный вопрос останется разговором, а задачу я сначала покажу как черновик.
           </p>
           <button
             type="button"
@@ -602,52 +629,6 @@ const getRequestWord = (count: number) => {
   }
 
   return "запросов";
-};
-
-const getTaskWord = (count: number) => {
-  const lastDigit = count % 10;
-  const lastTwoDigits = count % 100;
-
-  if (lastDigit === 1 && lastTwoDigits !== 11) return "задачу";
-  if ([2, 3, 4].includes(lastDigit) && ![12, 13, 14].includes(lastTwoDigits)) {
-    return "задачи";
-  }
-
-  return "задач";
-};
-
-const getPriorityLabel = (priority?: string) => {
-  if (!priority) return null;
-  if (priority.includes("P1")) return "с высоким приоритетом";
-  if (priority.includes("P3")) return "с низким приоритетом";
-  return "со средним приоритетом";
-};
-
-const getEnergyLabel = (energyLevel?: string) => {
-  if (!energyLevel) return null;
-  if (energyLevel === "high") return "с высокой энергией";
-  if (energyLevel === "low") return "с низкой энергией";
-  return "со средней энергией";
-};
-
-const getTaskSummary = (tasks: Task[]) => {
-  if (tasks.length === 1) {
-    const task = tasks[0];
-    const parts = [`Я выделил задачу: «${task.title}»`];
-    const priorityLabel = getPriorityLabel(task.priority);
-    const energyLabel = getEnergyLabel(task.energyLevel);
-
-    if (priorityLabel) parts.push(`, ${priorityLabel}`);
-    if (energyLabel) parts.push(`, ${energyLabel}`);
-    if (task.date) parts.push(`, на ${formatTaskDateForUI(task.date).toLowerCase()}`);
-    if (task.category) parts.push(`, категория «${task.category}»`);
-
-    return parts.join("") + ".";
-  }
-
-  const titles = tasks.slice(0, 3).map((t) => `«${t.title}»`).join(", ");
-  const remaining = tasks.length > 3 ? ` и ещё ${tasks.length - 3}` : "";
-  return `Я выделил ${tasks.length} ${getTaskWord(tasks.length)}: ${titles}${remaining}.`;
 };
 
 export default MindHubChat;

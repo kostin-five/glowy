@@ -1,4 +1,3 @@
-import { prisma } from "../../lib/prisma.js";
 import {
   chatWithAiProvider,
   generateContentWithAiProvider,
@@ -9,12 +8,6 @@ import {
   parseCourseworkPlan,
   parseJsonLoose,
 } from "./mind-hub-parser.service.js";
-
-const taskInclude = {
-  subtasks: {
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
-  },
-};
 
 const formatEnergyForPrompt = (energyLevel) => {
   if (energyLevel === "high") return "высокая энергия";
@@ -28,7 +21,7 @@ const formatPriorityForPrompt = (priority = "") => {
   return "средний приоритет";
 };
 
-export const parseMindHubTasks = async (
+export const parseMindHubDrafts = async (
   message,
   today,
   activeTasksContext = [],
@@ -104,29 +97,6 @@ ${conversationString}`
 
   return normalizeMindHubPayload(parsedPayload, today, message);
 };
-
-export const createMindHubTasks = (tasks, userId) =>
-  prisma.$transaction(
-    tasks.map((task) =>
-      prisma.task.create({
-        data: {
-          title: task.title,
-          date: task.date,
-          priority: task.priority,
-          energyLevel: task.energyLevel,
-          category: task.category,
-          completed: false,
-          userId,
-          subtasks: task.subtasks?.length
-            ? {
-                create: task.subtasks,
-              }
-            : undefined,
-        },
-        include: taskInclude,
-      })
-    )
-  );
 
 export const normalizeTaskTitle = (title) =>
   title

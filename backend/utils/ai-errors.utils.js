@@ -93,7 +93,7 @@ export const buildGracefulMindHubUnavailablePayload = (error, extra = {}) => {
   const { body } = getMindHubErrorResponse(error);
 
   return {
-    tasks: [],
+    drafts: [],
     reply: body.error || getMindHubAiErrorResponse().error,
     aiUnavailable: true,
     retryable: Boolean(body.retryable),

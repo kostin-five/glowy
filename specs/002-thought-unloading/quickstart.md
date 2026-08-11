@@ -79,3 +79,12 @@ scroll, hidden fields or overlapped actions.
 - Inspect structured backend errors: no user message, AI reply, task title or step text is logged.
 - Do not use production database, keys or user content for validation.
 
+## Implementation verification (2026-08-12)
+
+- Frontend typecheck, lint, unit tests and production build pass.
+- Backend tests pass with both local frontend origins explicitly supplied to the test process.
+- Parser, read-only architecture, draft editing, reject, confirmation, double-click protection,
+  failed-save retry, step editing and analytics privacy are covered by automated tests.
+- The local landing and auth boundary were smoke-tested in the in-app browser. Full authenticated
+  dashboard scenarios and viewport checks at 360/390/430 px remain pending because the browser had
+  no local user session; no test account or database record was created for this verification.

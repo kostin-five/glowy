@@ -19,8 +19,8 @@ draft editing.
 
 **Purpose**: Confirm existing test boundaries and lock the feature contract before code changes.
 
-- [ ] T001 Record the no-persistence AI response contract in `specs/002-thought-unloading/contracts/mind-hub-api.md`
-- [ ] T002 Verify existing Vitest and Node test patterns in `vite.config.ts`, `src/components/ui/AppErrorBoundary.test.tsx`, and `backend/test/app.test.js`
+- [x] T001 Record the no-persistence AI response contract in `specs/002-thought-unloading/contracts/mind-hub-api.md`
+- [x] T002 Verify existing Vitest and Node test patterns in `vite.config.ts`, `src/components/ui/AppErrorBoundary.test.tsx`, and `backend/test/app.test.js`
 
 ---
 
@@ -30,9 +30,9 @@ draft editing.
 
 **⚠️ CRITICAL**: User-story work starts only after the response shape and parser are stable.
 
-- [ ] T003 Add frontend `MindHubDraft` and `MindHubResponse.drafts` types without saved task ids in `src/api/AiApi.ts`
-- [ ] T004 [P] Add parser tests for preserving reply with drafts, normalizing task fields, and rejecting malformed elements in `backend/services/ai/mind-hub-parser.service.test.js`
-- [ ] T005 Update the AI prompt and payload normalization to always return a reply plus optional drafts and forbid automatic mutations in `backend/services/ai/mind-hub-parser.service.js`
+- [x] T003 Add frontend `MindHubDraft` and `MindHubResponse.drafts` types without saved task ids in `src/api/AiApi.ts`
+- [x] T004 [P] Add parser tests for preserving reply with drafts, normalizing task fields, and rejecting malformed elements in `backend/services/ai/mind-hub-parser.service.test.js`
+- [x] T005 Update the AI prompt and payload normalization to always return a reply plus optional drafts and forbid automatic mutations in `backend/services/ai/mind-hub-parser.service.js`
 
 **Checkpoint**: The draft contract exists and parser tests pass without database access.
 
@@ -47,16 +47,16 @@ remain unchanged.
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Add backend regression tests proving response construction is read-only and returns `drafts: []` for reply-only payloads in `backend/services/ai/mind-hub-parser.service.test.js`
-- [ ] T007 [P] [US1] Update API client tests for reply-only and guest responses using `drafts` in `src/api/AiApi.analytics.test.ts`
+- [x] T006 [P] [US1] Add backend regression tests proving response construction is read-only and returns `drafts: []` for reply-only payloads in `backend/services/ai/mind-hub-parser.service.test.js`
+- [x] T007 [P] [US1] Update API client tests for reply-only and guest responses using `drafts` in `src/api/AiApi.analytics.test.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Remove task creation and existing-task date mutation from both Mind Hub routes and return read-only drafts in `backend/routes/ai.routes.js`
-- [ ] T009 [US1] Remove unused Mind Hub persistence helpers while retaining context, duplicate checks and limits in `backend/services/ai/mind-hub.service.js`
-- [ ] T010 [US1] Update `AiApi.parseMindHub` to normalize guest and authenticated drafts without creating fake Task objects in `src/api/AiApi.ts`
-- [ ] T011 [US1] Render AI replies without mutating the task store when drafts are returned in `src/components/mind/MindHubChat.tsx`
-- [ ] T012 [P] [US1] Rename current product copy from «Хаб мыслей» to «Разгрузка мыслей» in `src/components/mind/MindHubChat.tsx`, `src/pages/DashboardPage.tsx`, `src/pages/PricingPage.tsx`, and `src/pages/PrivacyPolicyPage.tsx`
+- [x] T008 [US1] Remove task creation and existing-task date mutation from both Mind Hub routes and return read-only drafts in `backend/routes/ai.routes.js`
+- [x] T009 [US1] Remove unused Mind Hub persistence helpers while retaining context, duplicate checks and limits in `backend/services/ai/mind-hub.service.js`
+- [x] T010 [US1] Update `AiApi.parseMindHub` to normalize guest and authenticated drafts without creating fake Task objects in `src/api/AiApi.ts`
+- [x] T011 [US1] Render AI replies without mutating the task store when drafts are returned in `src/components/mind/MindHubChat.tsx`
+- [x] T012 [P] [US1] Rename current product copy from «Хаб мыслей» to «Разгрузка мыслей» in `src/components/mind/MindHubChat.tsx`, `src/pages/DashboardPage.tsx`, `src/pages/PricingPage.tsx`, and `src/pages/PrivacyPolicyPage.tsx`
 
 **Checkpoint**: Ordinary questions and rejected AI output cannot create or update tasks.
 
@@ -71,15 +71,15 @@ second draft and verify no save.
 
 ### Tests for User Story 2
 
-- [ ] T013 [P] [US2] Add component tests for edit, reject, confirm, disabled double-click and failed-save retry in `src/components/mind/MindHubDraftCard.test.tsx`
-- [ ] T014 [P] [US2] Add consent-aware `ai_draft_confirmed` whitelist tests with no text payload in `src/utils/analytics.test.ts`
+- [x] T013 [P] [US2] Add component tests for edit, reject, confirm, disabled double-click and failed-save retry in `src/components/mind/MindHubDraftCard.test.tsx`
+- [x] T014 [P] [US2] Add consent-aware `ai_draft_confirmed` whitelist tests with no text payload in `src/utils/analytics.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T015 [US2] Build an accessible responsive draft editor with title, metadata, reject and confirm states in `src/components/mind/MindHubDraftCard.tsx`
-- [ ] T016 [US2] Integrate pending draft state and explicit `useTaskStore.createTask` confirmation into `src/components/mind/MindHubChat.tsx`
-- [ ] T017 [US2] Add `ai_draft_confirmed` to the consent-aware event whitelist in `src/utils/analytics.ts` and emit it only after successful save in `src/components/mind/MindHubChat.tsx`
-- [ ] T018 [US2] Preserve failed drafts for retry and mark successfully confirmed tasks for the existing recently-added dashboard list in `src/components/mind/MindHubChat.tsx`
+- [x] T015 [US2] Build an accessible responsive draft editor with title, metadata, reject and confirm states in `src/components/mind/MindHubDraftCard.tsx`
+- [x] T016 [US2] Integrate pending draft state and explicit `useTaskStore.createTask` confirmation into `src/components/mind/MindHubChat.tsx`
+- [x] T017 [US2] Add `ai_draft_confirmed` to the consent-aware event whitelist in `src/utils/analytics.ts` and emit it only after successful save in `src/components/mind/MindHubChat.tsx`
+- [x] T018 [US2] Preserve failed drafts for retry and mark successfully confirmed tasks for the existing recently-added dashboard list in `src/components/mind/MindHubChat.tsx`
 
 **Checkpoint**: A task is persisted only through an explicit, single, successful confirmation.
 
@@ -94,12 +94,12 @@ the final step list.
 
 ### Tests for User Story 3
 
-- [ ] T019 [US3] Extend draft-card tests for adding, renaming, removing and reordering step positions in `src/components/mind/MindHubDraftCard.test.tsx`
+- [x] T019 [US3] Extend draft-card tests for adding, renaming, removing and reordering step positions in `src/components/mind/MindHubDraftCard.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Add accessible step editing, add/remove controls, empty-step cleanup and sequential positions in `src/components/mind/MindHubDraftCard.tsx`
-- [ ] T021 [US3] Pass edited nested subtasks through the existing single Task API confirmation path in `src/components/mind/MindHubChat.tsx`
+- [x] T020 [US3] Add accessible step editing, add/remove controls, empty-step cleanup and sequential positions in `src/components/mind/MindHubDraftCard.tsx`
+- [x] T021 [US3] Pass edited nested subtasks through the existing single Task API confirmation path in `src/components/mind/MindHubChat.tsx`
 
 **Checkpoint**: One confirmed draft creates one main task and only its final selected steps.
 
@@ -109,11 +109,11 @@ the final step list.
 
 **Purpose**: Align documentation, privacy and full verification across all stories.
 
-- [ ] T022 [P] Update the AI boundary and explicit-confirmation flow in `docs/architecture.md`
-- [ ] T023 [P] Update expected manual scenarios and final implementation notes in `specs/002-thought-unloading/quickstart.md`
-- [ ] T024 Run `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `cd backend && npm run test`
+- [x] T022 [P] Update the AI boundary and explicit-confirmation flow in `docs/architecture.md`
+- [x] T023 [P] Update expected manual scenarios and final implementation notes in `specs/002-thought-unloading/quickstart.md`
+- [x] T024 Run `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and `cd backend && npm run test`
 - [ ] T025 Manually validate reply, reject, confirm, failed save and breakdown flows at desktop and 360/390/430 px using `specs/002-thought-unloading/quickstart.md`
-- [ ] T026 Review `git diff` for secret/user-content leakage and ensure `src/pages/LandingPage.tsx`, `.env`, and unrelated `ai-proxy/.env.example` deletion are excluded from commits
+- [x] T026 Review `git diff` for secret/user-content leakage and ensure `src/pages/LandingPage.tsx`, `.env`, and unrelated `ai-proxy/.env.example` deletion are excluded from commits
 
 ---
 
@@ -190,3 +190,7 @@ Task T014: Add analytics whitelist tests in src/utils/analytics.test.ts
   `ai-proxy/.env.example`.
 - No Prisma migration or production operation belongs to this task.
 
+## Phase 7: Convergence
+
+- [x] T027 Block or normalize AI draft titles longer than 255 characters with a clear editor state per Edge Cases (partial)
+- [x] T028 Remove duplicate non-empty steps before confirmation while preserving their first occurrence and sequential positions per Edge Cases (partial)

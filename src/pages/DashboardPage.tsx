@@ -216,8 +216,8 @@ const DashboardPage = () => {
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
                   <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Задач пока нет. Выгрузи мысли в Хаб, и я помогу превратить
-                    их в первый понятный шаг.
+                    Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при
+                    необходимости предложу первый шаг как черновик.
                   </p>
                   <button
                     type="button"
@@ -277,7 +277,7 @@ const DashboardPage = () => {
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Сегодня нет задач, добавленных через Хаб мыслей.
+                Сегодня нет задач, подтверждённых в Разгрузке мыслей.
               </p>
             )}
           </div>

@@ -5,6 +5,7 @@ import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
+import useMediaQuery from "../hooks/useMediaQuery";
 import { formatTaskDateForUI } from "../utils/taskDateGroups";
 import type { Task } from "../types";
 
@@ -162,8 +163,14 @@ const DashboardPage = () => {
     };
   }, [tasks, currentEnergy, aiTaskIds]);
   const mindHubInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const isDesktopLayout = useMediaQuery("(min-width: 1024px)");
 
   const focusMindHubInput = () => {
+    if (!isDesktopLayout) {
+      window.dispatchEvent(new Event("glowy:open-mobile-ai"));
+      return;
+    }
+
     mindHubInputRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "center",
@@ -234,9 +241,11 @@ const DashboardPage = () => {
           <EnergySlider />
         </div>
 
-        <div className="xl:col-span-5">
-          <MindHubChat inputRef={mindHubInputRef} />
-        </div>
+        {isDesktopLayout && (
+          <div className="xl:col-span-5">
+            <MindHubChat inputRef={mindHubInputRef} />
+          </div>
+        )}
 
         <section className="flex min-h-0 flex-col gap-6 xl:col-span-4 xl:h-[calc(100vh-12rem)]">
           <div className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">

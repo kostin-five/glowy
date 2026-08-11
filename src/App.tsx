@@ -36,6 +36,7 @@ const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const GlowyAiPage = lazy(() => import("./pages/GlowyAiPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -359,6 +360,14 @@ function App() {
           element={
             <ProtectedLayoutRoute>
               <SettingsPage />
+            </ProtectedLayoutRoute>
+          }
+        />
+        <Route
+          path="/ai"
+          element={
+            <ProtectedLayoutRoute>
+              <GlowyAiPage />
             </ProtectedLayoutRoute>
           }
         />

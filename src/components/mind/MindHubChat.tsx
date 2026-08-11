@@ -27,26 +27,23 @@ import {
   useGuestRequestsResetDate,
   useIsGuest,
 } from "../../store/useAuthStore";
-
-type ChatMessage = {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-};
+import {
+  type MindHubChatMessage,
+  useMindHubMessages,
+  useMindHubStore,
+  usePendingMindHubDrafts,
+} from "../../store/useMindHubStore";
 
 const WELCOME_MESSAGE =
   "Выгрузи мысли или вопросы. Я отвечу и предложу черновик задачи — сохранять решаешь ты.";
 
-type PendingMindHubDraft = MindHubDraft & {
-  localId: string;
-};
-
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
+  variant?: "dashboard" | "quick" | "page";
 }
 
 interface ChatMessageBubbleProps {
-  message: ChatMessage;
+  message: MindHubChatMessage;
   shouldType: boolean;
   onTypeComplete: (messageId: number) => void;
   onTextUpdate: () => void;
@@ -127,26 +124,6 @@ const ChatMessageBubble = ({
   );
 };
 
-const loadSavedMindHubMessages = (): ChatMessage[] => {
-  try {
-    const saved = localStorage.getItem("glowy-mind-hub-chat");
-    if (!saved) return [];
-
-    const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter(
-      (message): message is ChatMessage =>
-        typeof message?.id === "number" &&
-        (message.role === "user" || message.role === "assistant") &&
-        typeof message.text === "string"
-    );
-  } catch (error) {
-    console.error("Failed to load chat history", error);
-    return [];
-  }
-};
-
 const saveAiCreatedTaskIds = (tasks: Task[]) => {
   try {
     const saved = JSON.parse(
@@ -171,29 +148,29 @@ const saveAiCreatedTaskIds = (tasks: Task[]) => {
   }
 };
 
-const MindHubChat = ({ inputRef }: MindHubChatProps) => {
+const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const hubMode: MindHubMode = "auto";
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    loadSavedMindHubMessages
+  const messages = useMindHubMessages();
+  const pendingDrafts = usePendingMindHubDrafts();
+  const appendMessage = useMindHubStore((state) => state.appendMessage);
+  const addDrafts = useMindHubStore((state) => state.addDrafts);
+  const removeDraft = useMindHubStore((state) => state.removeDraft);
+  const clearConversation = useMindHubStore(
+    (state) => state.clearConversation
   );
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(() => {
-    const saved = loadSavedMindHubMessages();
-    return new Set(saved.filter(m => m.role === "assistant").map(m => m.id));
+    return new Set(
+      useMindHubStore
+        .getState()
+        .messages.filter((message) => message.role === "assistant")
+        .map((message) => message.id)
+    );
   });
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
-  const [pendingDrafts, setPendingDrafts] = useState<PendingMindHubDraft[]>([]);
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem("glowy-mind-hub-chat", JSON.stringify(messages));
-    } else {
-      localStorage.removeItem("glowy-mind-hub-chat");
-    }
-  }, [messages]);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -258,16 +235,6 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     )}px`;
   }, [text]);
 
-  const appendMessage = (message: Omit<ChatMessage, "id">) => {
-    setMessages((current) => [
-      ...current,
-      {
-        ...message,
-        id: Date.now() + current.length,
-      },
-    ]);
-  };
-
   const handleTypeComplete = useCallback((messageId: number) => {
     setTypedMessageIds((current) => new Set(current).add(messageId));
   }, []);
@@ -285,9 +252,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
   );
 
   const dismissDraft = (localId: string) => {
-    setPendingDrafts((current) =>
-      current.filter((draft) => draft.localId !== localId)
-    );
+    removeDraft(localId);
   };
 
   const confirmDraft = async (
@@ -315,7 +280,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     const message = text.trim();
     if (!message || isSending || !isOnline) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: MindHubChatMessage = {
       id: Date.now() + messages.length,
       role: "user",
       text: message,
@@ -328,7 +293,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     );
 
     shouldAutoScrollRef.current = true;
-    setMessages((current) => [...current, userMessage]);
+    appendMessage({ role: userMessage.role, text: userMessage.text });
     setText("");
     setIsSending(true);
 
@@ -348,13 +313,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
       });
 
       if (result.drafts.length > 0) {
-        setPendingDrafts((current) => [
-          ...current,
-          ...result.drafts.map((draft, index) => ({
-            ...draft,
-            localId: `${Date.now()}-${index}`,
-          })),
-        ]);
+        addDrafts(result.drafts);
       }
     } catch (error) {
       console.error(error);
@@ -374,9 +333,20 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
     }
   };
 
+  const sectionClassName =
+    variant === "quick"
+      ? "flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
+      : variant === "page"
+        ? "flex h-[calc(100dvh-11rem)] min-h-[32rem] max-h-[60rem] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none"
+        : "flex h-[min(760px,calc(100svh-6rem))] min-h-128 max-h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160 xl:max-h-none";
+
   return (
-    <section className="flex h-[min(760px,calc(100svh-6rem))] min-h-128 max-h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160 xl:max-h-none">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+    <section className={sectionClassName}>
+      <div
+        className={`sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 ${
+          variant === "quick" ? "p-4" : "p-5"
+        }`}
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Sparkles size={18} className="text-indigo-300" />
@@ -388,10 +358,8 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             <button
               type="button"
               onClick={() => {
-                setMessages([]);
-                setPendingDrafts([]);
+                clearConversation();
                 setTypedMessageIds(new Set());
-                localStorage.removeItem("glowy-mind-hub-chat");
               }}
               className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
               title="Очистить историю"
@@ -401,15 +369,19 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
             </button>
           )}
         </div>
-        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
-          {WELCOME_MESSAGE}
-        </p>
+        {variant !== "quick" && (
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {WELCOME_MESSAGE}
+          </p>
+        )}
       </div>
 
       <div
         ref={messagesContainerRef}
         onScroll={handleMessagesScroll}
-        className="mind-hub-scrollbar flex-1 overflow-y-auto bg-slate-100/60 px-5 py-5 dark:bg-slate-950/35"
+        className={`mind-hub-scrollbar flex-1 overflow-y-auto bg-slate-100/60 dark:bg-slate-950/35 ${
+          variant === "quick" ? "px-4 py-4" : "px-5 py-5"
+        }`}
       >
         <div className="flex flex-col gap-3">
           {!messages.length && (
@@ -470,7 +442,7 @@ const MindHubChat = ({ inputRef }: MindHubChatProps) => {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-slate-200 bg-white/95 p-4 dark:border-slate-800 dark:bg-slate-900/95"
+        className="border-t border-slate-200 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900/95"
       >
         {!isOnline && (
           <div className="mb-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-200">

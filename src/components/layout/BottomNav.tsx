@@ -1,45 +1,130 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  BarChart3,
-  CheckSquare,
-  LayoutDashboard,
-  Settings,
-  Trophy,
-} from "lucide-react";
+import { CheckSquare, Ellipsis, LayoutDashboard, Trophy } from "lucide-react";
+import GlowyAiOrb from "./GlowyAiOrb";
+import MobileAiSheet from "./MobileAiSheet";
+import MobileMoreSheet from "./MobileMoreSheet";
+
+type MobilePanel = "ai" | "more" | null;
+type OpenMobilePanel = {
+  name: Exclude<MobilePanel, null>;
+  pathname: string;
+};
 
 const BottomNav = () => {
   const location = useLocation();
+  const [openPanel, setOpenPanel] = useState<OpenMobilePanel | null>(null);
+  const activePanel =
+    openPanel?.pathname === location.pathname ? openPanel.name : null;
 
-  const menuItems = [
+  useEffect(() => {
+    const openAiSheet = () =>
+      setOpenPanel({ name: "ai", pathname: location.pathname });
+
+    window.addEventListener("glowy:open-mobile-ai", openAiSheet);
+    return () => window.removeEventListener("glowy:open-mobile-ai", openAiSheet);
+  }, [location.pathname]);
+
+  const navItems = [
     { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Задачи", icon: CheckSquare },
-    { to: "/stairs", label: "Уровни", icon: Trophy },
-    { to: "/analytics", label: "Аналитика", icon: BarChart3 },
-    { to: "/settings", label: "Настройки", icon: Settings },
   ];
+  const progressItem = { to: "/stairs", label: "Мой прогресс", icon: Trophy };
+  const isAiActive = activePanel === "ai" || location.pathname === "/ai";
+  const isMoreActive =
+    activePanel === "more" ||
+    location.pathname === "/analytics" ||
+    location.pathname === "/settings";
+
+  const renderLink = ({
+    to,
+    label,
+    icon: Icon,
+  }: (typeof navItems)[number]) => {
+    const isActive = location.pathname === to;
+
+    return (
+      <Link
+        key={to}
+        to={to}
+        aria-current={isActive ? "page" : undefined}
+        className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 pt-1 text-center transition-colors ${
+          isActive
+            ? "text-indigo-500 dark:text-indigo-300"
+            : "text-slate-600 active:text-slate-950 dark:text-slate-400 dark:active:text-slate-100"
+        }`}
+      >
+        <Icon size={20} strokeWidth={isActive ? 2.6 : 2} />
+        <span className="max-w-full truncate text-[9px] font-semibold leading-3 tracking-tight">
+          {label}
+        </span>
+      </Link>
+    );
+  };
 
   return (
-    <nav className="fixed bottom-0 left-0 z-40 flex h-16 w-full items-center justify-around border-t border-slate-200 bg-white/90 px-2 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90 lg:hidden">
-      {menuItems.map((item) => {
-        const isActive = location.pathname === item.to;
-        return (
-          <Link
-            key={item.to}
-            to={item.to}
-            className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all ${
-              isActive
-                ? "text-indigo-400"
-                : "text-slate-700 active:text-slate-900 dark:text-slate-400 dark:active:text-slate-200"
+    <>
+      <nav
+        aria-label="Основная мобильная навигация"
+        className="fixed inset-x-0 bottom-0 z-40 grid min-h-18 grid-cols-5 items-end border-t border-slate-200 bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/20 lg:hidden"
+      >
+        {navItems.map(renderLink)}
+
+        <div className="flex min-w-0 -translate-y-3 flex-col items-center justify-end gap-0.5">
+          <GlowyAiOrb
+            isActive={isAiActive}
+            onClick={() =>
+              setOpenPanel(
+                activePanel === "ai"
+                  ? null
+                  : { name: "ai", pathname: location.pathname }
+              )
+            }
+          />
+          <span
+            className={`text-[9px] font-extrabold leading-3 ${
+              isAiActive
+                ? "text-cyan-600 dark:text-cyan-300"
+                : "text-slate-700 dark:text-slate-300"
             }`}
           >
-            <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-[10px] font-medium tracking-tight">
-              {item.label}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
+            Glowy AI
+          </span>
+        </div>
+
+        {renderLink(progressItem)}
+
+        <button
+          type="button"
+          onClick={() =>
+            setOpenPanel(
+              activePanel === "more"
+                ? null
+                : { name: "more", pathname: location.pathname }
+            )
+          }
+          aria-label="Открыть меню «Ещё»"
+          aria-pressed={isMoreActive}
+          className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 pt-1 transition-colors ${
+            isMoreActive
+              ? "text-indigo-500 dark:text-indigo-300"
+              : "text-slate-600 active:text-slate-950 dark:text-slate-400 dark:active:text-slate-100"
+          }`}
+        >
+          <Ellipsis size={21} strokeWidth={isMoreActive ? 2.6 : 2} />
+          <span className="text-[9px] font-semibold leading-3">Ещё</span>
+        </button>
+      </nav>
+
+      <MobileAiSheet
+        isOpen={activePanel === "ai"}
+        onClose={() => setOpenPanel(null)}
+      />
+      <MobileMoreSheet
+        isOpen={activePanel === "more"}
+        onClose={() => setOpenPanel(null)}
+      />
+    </>
   );
 };
 

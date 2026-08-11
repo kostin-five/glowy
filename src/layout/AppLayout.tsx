@@ -15,7 +15,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 pb-24 md:px-8 lg:pb-6">
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:px-8 lg:pb-6">
           {children}
         </main>
       </div>

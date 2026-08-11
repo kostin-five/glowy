@@ -11,8 +11,8 @@ of the explicit-confirmation AI boundary.
 
 **Purpose**: Lock the UI contract and identify the existing extension points.
 
-- [ ] T001 Record mobile navigation, sheet, route and SVG accessibility contracts in `specs/003-mobile-glowy-ai/contracts/mobile-ai-ui.md`
-- [ ] T002 Verify router, layout, Headless UI modal and Testing Library patterns in `src/App.tsx`, `src/layout/AppLayout.tsx`, `src/components/ui/Modal.tsx`, and existing tests
+- [x] T001 Record mobile navigation, sheet, route and SVG accessibility contracts in `specs/003-mobile-glowy-ai/contracts/mobile-ai-ui.md`
+- [x] T002 Verify router, layout, Headless UI modal and Testing Library patterns in `src/App.tsx`, `src/layout/AppLayout.tsx`, `src/components/ui/Modal.tsx`, and existing tests
 
 ---
 
@@ -20,10 +20,10 @@ of the explicit-confirmation AI boundary.
 
 **Purpose**: Share one safe conversation between the quick and full surfaces.
 
-- [ ] T003 Add validated browser-local messages and pending draft state in `src/store/useMindHubStore.ts`
-- [ ] T004 [P] Add migration, invalid-payload, draft lifecycle and clear-state tests in `src/store/useMindHubStore.test.ts`
-- [ ] T005 Refactor `src/components/mind/MindHubChat.tsx` to use the shared conversation store without changing `AiApi` or Task API boundaries
-- [ ] T006 [P] Add chat regression tests for reply-only output, unsaved draft output and explicit confirmation in `src/components/mind/MindHubChat.test.tsx`
+- [x] T003 Add validated browser-local messages and pending draft state in `src/store/useMindHubStore.ts`
+- [x] T004 [P] Add migration, invalid-payload, draft lifecycle and clear-state tests in `src/store/useMindHubStore.test.ts`
+- [x] T005 Refactor `src/components/mind/MindHubChat.tsx` to use the shared conversation store without changing `AiApi` or Task API boundaries
+- [x] T006 [P] Add chat regression tests for reply-only output, unsaved draft output and explicit confirmation in `src/components/mind/MindHubChat.test.tsx`
 
 **Checkpoint**: Two mounted chat surfaces observe one conversation, while drafts remain outside the task store until confirmation.
 
@@ -37,15 +37,15 @@ of the explicit-confirmation AI boundary.
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Add navigation order, central trigger, single-sheet and close interaction tests in `src/components/layout/BottomNav.test.tsx`
-- [ ] T008 [P] [US1] Add reduced-motion and accessible-name assertions for the central orb in `src/components/layout/GlowyAiOrb.test.tsx`
+- [x] T007 [P] [US1] Add navigation order, central trigger, single-sheet and close interaction tests in `src/components/layout/BottomNav.test.tsx`
+- [x] T008 [P] [US1] Add reduced-motion and accessible-name assertions for the central orb in `src/components/layout/GlowyAiOrb.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [P] [US1] Build the code-native animated and reduced-motion-safe SVG orb in `src/components/layout/GlowyAiOrb.tsx`
-- [ ] T010 [US1] Build the accessible Headless UI quick bottom sheet shell in `src/components/layout/MobileAiSheet.tsx`
-- [ ] T011 [US1] Replace mobile navigation order and integrate mutually exclusive panel state in `src/components/layout/BottomNav.tsx`
-- [ ] T012 [US1] Update safe-area spacing and prevent content overlap in `src/layout/AppLayout.tsx`
+- [x] T009 [P] [US1] Build the code-native animated and reduced-motion-safe SVG orb in `src/components/layout/GlowyAiOrb.tsx`
+- [x] T010 [US1] Build the accessible Headless UI quick bottom sheet shell in `src/components/layout/MobileAiSheet.tsx`
+- [x] T011 [US1] Replace mobile navigation order and integrate mutually exclusive panel state in `src/components/layout/BottomNav.tsx`
+- [x] T012 [US1] Update safe-area spacing and prevent content overlap in `src/layout/AppLayout.tsx`
 
 **Checkpoint**: The new central mobile interaction works without changing any data.
 
@@ -59,13 +59,13 @@ of the explicit-confirmation AI boundary.
 
 ### Tests for User Story 2
 
-- [ ] T013 [US2] Extend compact chat tests for error state, draft reject and successful confirmation in `src/components/mind/MindHubChat.test.tsx`
+- [x] T013 [US2] Extend compact chat tests for error state, draft reject and successful confirmation in `src/components/mind/MindHubChat.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Add `quick`, `page`, and existing dashboard visual variants without duplicating behavior in `src/components/mind/MindHubChat.tsx`
-- [ ] T015 [US2] Mount the compact chat and Russian close/full-chat actions in `src/components/layout/MobileAiSheet.tsx`
-- [ ] T016 [US2] Avoid mounting the dashboard chat below the desktop breakpoint while preserving its desktop ref behavior in `src/pages/DashboardPage.tsx`
+- [x] T014 [US2] Add `quick`, `page`, and existing dashboard visual variants without duplicating behavior in `src/components/mind/MindHubChat.tsx`
+- [x] T015 [US2] Mount the compact chat and Russian close/full-chat actions in `src/components/layout/MobileAiSheet.tsx`
+- [x] T016 [US2] Avoid mounting the dashboard chat below the desktop breakpoint while preserving its desktop ref behavior in `src/pages/DashboardPage.tsx`
 
 **Checkpoint**: Quick AI is fully usable and preserves explicit confirmation.
 
@@ -79,14 +79,14 @@ of the explicit-confirmation AI boundary.
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add full-page heading and shared-chat render tests in `src/pages/GlowyAiPage.test.tsx`
-- [ ] T018 [P] [US3] Add protected `/ai` route source/regression coverage in `src/App.test.tsx`
+- [x] T017 [P] [US3] Add full-page heading and shared-chat render tests in `src/pages/GlowyAiPage.test.tsx`
+- [x] T018 [P] [US3] Add protected `/ai` route source/regression coverage in `src/App.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Create the full Glowy AI chat page in `src/pages/GlowyAiPage.tsx`
-- [ ] T020 [US3] Register lazy protected `/ai` routing in `src/App.tsx`
-- [ ] T021 [US3] Close the quick sheet before navigating from `src/components/layout/MobileAiSheet.tsx` to `/ai`
+- [x] T019 [US3] Create the full Glowy AI chat page in `src/pages/GlowyAiPage.tsx`
+- [x] T020 [US3] Register lazy protected `/ai` routing in `src/App.tsx`
+- [x] T021 [US3] Close the quick sheet before navigating from `src/components/layout/MobileAiSheet.tsx` to `/ai`
 
 **Checkpoint**: Quick and full entry points share one current conversation and one AI flow.
 
@@ -100,12 +100,12 @@ of the explicit-confirmation AI boundary.
 
 ### Tests for User Story 4
 
-- [ ] T022 [US4] Extend navigation tests for `/stairs`, More, `/analytics`, `/settings`, active states and route-change close in `src/components/layout/BottomNav.test.tsx`
+- [x] T022 [US4] Extend navigation tests for `/stairs`, More, `/analytics`, `/settings`, active states and route-change close in `src/components/layout/BottomNav.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T023 [US4] Build the accessible More bottom sheet with existing destinations in `src/components/layout/MobileMoreSheet.tsx`
-- [ ] T024 [US4] Integrate More and progress active states into `src/components/layout/BottomNav.tsx`
+- [x] T023 [US4] Build the accessible More bottom sheet with existing destinations in `src/components/layout/MobileMoreSheet.tsx`
+- [x] T024 [US4] Integrate More and progress active states into `src/components/layout/BottomNav.tsx`
 
 **Checkpoint**: All current primary mobile destinations remain reachable.
 
@@ -115,12 +115,12 @@ of the explicit-confirmation AI boundary.
 
 **Purpose**: Validate responsive, accessibility, architecture and privacy boundaries.
 
-- [ ] T025 [P] Document the shared conversation and mobile navigation boundaries in `docs/architecture.md`
-- [ ] T026 [P] Mark the completed navigation slice without claiming voice/server history in `docs/product-roadmap.md`
-- [ ] T027 [P] Update final verification notes in `specs/003-mobile-glowy-ai/quickstart.md`
-- [ ] T028 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`
+- [x] T025 [P] Document the shared conversation and mobile navigation boundaries in `docs/architecture.md`
+- [x] T026 [P] Mark the completed navigation slice without claiming voice/server history in `docs/product-roadmap.md`
+- [x] T027 [P] Update final verification notes in `specs/003-mobile-glowy-ai/quickstart.md`
+- [x] T028 Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`
 - [ ] T029 Manually validate light/dark/reduced-motion and 360/390/430 px scenarios from `specs/003-mobile-glowy-ai/quickstart.md`
-- [ ] T030 Review diff for user text/secrets, verify `src/pages/LandingPage.tsx` is untouched, and exclude unrelated `ai-proxy/.env.example` deletion from commits
+- [x] T030 Review diff for user text/secrets, verify `src/pages/LandingPage.tsx` is untouched, and exclude unrelated `ai-proxy/.env.example` deletion from commits
 
 ---
 

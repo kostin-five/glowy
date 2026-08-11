@@ -64,3 +64,12 @@ For each width 360, 390 and 430 px:
 - Do not log or inspect user message content outside the visible test conversation.
 - Confirm no changes to Landing Page, backend schema, production env or deploy configuration.
 - Voice input and server-side chat history are intentionally not part of this feature.
+
+## Implementation verification (2026-08-12)
+
+- Shared conversation migration/state, quick chat safety, explicit confirmation, navigation order,
+  central orb, Escape close, More destinations and protected `/ai` are covered by component tests.
+- Typecheck, lint and production build pass on the implementation branch.
+- The public local app and auth boundary were smoke-tested in the in-app browser. The protected
+  mobile viewport scenarios remain pending because that browser has no authenticated local
+  session; no test user or dev-database record was created to bypass this boundary.

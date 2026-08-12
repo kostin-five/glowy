@@ -238,7 +238,7 @@ describe("MindHubChat", () => {
     expect(await screen.findByText("Черновик задачи")).toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Создать задачу" }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить задачу" }));
 
     await waitFor(() => expect(createTask).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Задача «Ответить преподавателю» сохранена/)).toBeInTheDocument();
@@ -258,7 +258,7 @@ describe("MindHubChat", () => {
     ]);
 
     render(<MindHubChat variant="quick" />);
-    fireEvent.click(screen.getByRole("button", { name: "Не сохранять" }));
+    fireEvent.click(screen.getByRole("button", { name: "Удалить" }));
 
     expect(screen.queryByText("Черновик задачи")).not.toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();

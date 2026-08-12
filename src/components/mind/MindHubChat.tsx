@@ -214,6 +214,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const pendingDrafts = usePendingMindHubDrafts();
   const appendMessage = useMindHubStore((state) => state.appendMessage);
   const addDrafts = useMindHubStore((state) => state.addDrafts);
+  const updateDraft = useMindHubStore((state) => state.updateDraft);
   const removeDraft = useMindHubStore((state) => state.removeDraft);
   const clearConversation = useMindHubStore(
     (state) => state.clearConversation
@@ -638,6 +639,9 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
             <MindHubDraftCard
               key={draft.localId}
               draft={draft}
+              onChange={(editedDraft) =>
+                updateDraft(draft.localId, editedDraft)
+              }
               onDismiss={() => dismissDraft(draft.localId)}
               onConfirm={(editedDraft) =>
                 confirmDraft(draft.localId, editedDraft)

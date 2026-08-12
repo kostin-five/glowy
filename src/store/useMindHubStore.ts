@@ -18,6 +18,7 @@ interface MindHubStore {
   pendingDrafts: PendingMindHubDraft[];
   appendMessage: (message: Omit<MindHubChatMessage, "id">) => void;
   addDrafts: (drafts: MindHubDraft[]) => void;
+  updateDraft: (localId: string, draft: MindHubDraft) => void;
   removeDraft: (localId: string) => void;
   clearConversation: () => void;
 }
@@ -123,6 +124,21 @@ export const useMindHubStore = create<MindHubStore>()(
               localId: createLocalId("draft"),
             })),
           ],
+        })),
+      updateDraft: (localId, draft) =>
+        set((state) => ({
+          pendingDrafts: state.pendingDrafts.map((pendingDraft) =>
+            pendingDraft.localId === localId
+              ? {
+                  ...draft,
+                  localId,
+                  subtasks: draft.subtasks.map((subtask, position) => ({
+                    ...subtask,
+                    position,
+                  })),
+                }
+              : pendingDraft
+          ),
         })),
       removeDraft: (localId) =>
         set((state) => ({

@@ -78,6 +78,32 @@ describe("useMindHubStore", () => {
     expect(useMindHubStore.getState().pendingDrafts).toEqual([]);
   });
 
+  it("persists edits to an existing pending draft", async () => {
+    const { useMindHubStore } = await loadStore();
+    useMindHubStore.getState().addDrafts([draft]);
+    const [pending] = useMindHubStore.getState().pendingDrafts;
+
+    useMindHubStore.getState().updateDraft(pending.localId, {
+      ...draft,
+      priority: "💤 P3",
+      energyLevel: "high",
+      subtasks: [
+        { title: "Найти источники", completed: false, position: 8 },
+      ],
+    });
+
+    expect(useMindHubStore.getState().pendingDrafts[0]).toEqual(
+      expect.objectContaining({
+        localId: pending.localId,
+        priority: "💤 P3",
+        energyLevel: "high",
+        subtasks: [
+          { title: "Найти источники", completed: false, position: 0 },
+        ],
+      })
+    );
+  });
+
   it("clears messages and pending drafts together", async () => {
     const { useMindHubStore } = await loadStore();
 

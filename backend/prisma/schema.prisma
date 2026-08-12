@@ -20,6 +20,7 @@ model Task {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
   subtasks    SubTask[]
+  aiDraft     AiTaskDraft?
 
   @@map("tasks")
 }
@@ -39,6 +40,7 @@ model User {
   planExpiresAt      DateTime? @map("plan_expires_at")
   tasks              Task[]
   payments           Payment[]
+  aiConversation     AiConversation?
 
   @@map("users")
 }
@@ -72,4 +74,57 @@ model SubTask {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("sub_tasks")
+}
+
+model AiConversation {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @unique @map("user_id")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchanges AiExchange[]
+  drafts    AiTaskDraft[]
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("ai_conversations")
+}
+
+model AiExchange {
+  id              Int            @id @default(autoincrement())
+  conversationId  Int            @map("conversation_id")
+  conversation    AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  clientRequestId String         @map("client_request_id")
+  status          String         @default("pending")
+  userText        String         @map("user_text")
+  assistantText   String?        @map("assistant_text")
+  drafts          AiTaskDraft[]
+  createdAt       DateTime       @default(now()) @map("created_at")
+  completedAt     DateTime?      @map("completed_at")
+
+  @@unique([conversationId, clientRequestId])
+  @@index([conversationId, id])
+  @@map("ai_exchanges")
+}
+
+model AiTaskDraft {
+  id             Int            @id @default(autoincrement())
+  conversationId Int            @map("conversation_id")
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  exchangeId     Int            @map("exchange_id")
+  exchange       AiExchange     @relation(fields: [exchangeId], references: [id], onDelete: Cascade)
+  status         String         @default("pending")
+  version        Int            @default(1)
+  title          String
+  date           String
+  priority       String
+  energyLevel    String         @map("energy_level")
+  category       String
+  subtasks       Json
+  createdTaskId  Int?           @unique @map("created_task_id")
+  createdTask    Task?          @relation(fields: [createdTaskId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@index([conversationId, status])
+  @@index([exchangeId])
+  @@map("ai_task_drafts")
 }

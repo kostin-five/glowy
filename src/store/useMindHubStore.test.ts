@@ -117,4 +117,19 @@ describe("useMindHubStore", () => {
     expect(useMindHubStore.getState().messages).toEqual([]);
     expect(useMindHubStore.getState().pendingDrafts).toEqual([]);
   });
+
+  it("replaces registered local state with server exchanges", async () => {
+    const { useMindHubStore } = await loadStore();
+    useMindHubStore.getState().appendMessage({ role: "user", text: "Локально" });
+    useMindHubStore.getState().replaceServerConversation([{
+      id: 5,
+      userMessage: { id: "5-user", role: "user", text: "С сервера" },
+      assistantMessage: { id: "5-assistant", role: "assistant", text: "Ответ" },
+      drafts: [{ ...draft, id: 9, version: 1, status: "pending" }],
+      createdAt: "2026-08-12T00:00:00.000Z",
+    }]);
+
+    expect(useMindHubStore.getState().messages.map((message) => message.text)).toEqual(["С сервера", "Ответ"]);
+    expect(useMindHubStore.getState().pendingDrafts[0]).toEqual(expect.objectContaining({ id: 9, version: 1, localId: "server-draft-9" }));
+  });
 });

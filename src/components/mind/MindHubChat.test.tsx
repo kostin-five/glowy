@@ -8,14 +8,23 @@ import { useMindHubStore } from "../../store/useMindHubStore";
 import MindHubChat from "./MindHubChat";
 
 const createTask = vi.fn();
+const fetchTasks = vi.fn().mockResolvedValue(undefined);
+let isGuest = true;
 
 vi.mock("../../api/AiApi", () => ({
-  default: { parseMindHub: vi.fn() },
+  default: {
+    parseMindHub: vi.fn(),
+    getMindHubHistory: vi.fn(() => new Promise(() => undefined)),
+    updateMindHubDraft: vi.fn(),
+    confirmMindHubDraft: vi.fn(),
+    dismissMindHubDraft: vi.fn(),
+    clearMindHubHistory: vi.fn(),
+  },
 }));
 
 vi.mock("../../store/useTaskStore", () => ({
   useTaskStore: {
-    getState: () => ({ createTask }),
+    getState: () => ({ createTask, fetchTasks }),
   },
 }));
 
@@ -23,7 +32,7 @@ vi.mock("../../store/useAuthStore", () => ({
   GUEST_REQUEST_LIMIT: 3,
   useGuestRequestsCount: () => 0,
   useGuestRequestsResetDate: () => null,
-  useIsGuest: () => false,
+  useIsGuest: () => isGuest,
 }));
 
 vi.mock("../../hooks/useNetworkStatus", () => ({ default: () => true }));
@@ -33,6 +42,11 @@ vi.mock("../../hooks/useTypewriter", () => ({
 vi.mock("../../utils/analytics", () => ({ trackProductEvent: vi.fn() }));
 
 const parseMindHub = vi.mocked(AiApi.parseMindHub);
+const getMindHubHistory = vi.mocked(AiApi.getMindHubHistory);
+const updateMindHubDraft = vi.mocked(AiApi.updateMindHubDraft);
+const confirmMindHubDraft = vi.mocked(AiApi.confirmMindHubDraft);
+const dismissMindHubDraft = vi.mocked(AiApi.dismissMindHubDraft);
+const clearMindHubHistory = vi.mocked(AiApi.clearMindHubHistory);
 
 class MockSpeechRecognition {
   static instance: MockSpeechRecognition | null = null;
@@ -64,12 +78,21 @@ beforeEach(() => {
   localStorage.clear();
   useMindHubStore.getState().clearConversation();
   parseMindHub.mockReset();
+  getMindHubHistory.mockReset();
+  getMindHubHistory.mockImplementation(() => new Promise(() => undefined));
+  updateMindHubDraft.mockReset();
+  confirmMindHubDraft.mockReset();
+  dismissMindHubDraft.mockReset();
+  clearMindHubHistory.mockReset();
   createTask.mockReset();
+  fetchTasks.mockClear();
   MockSpeechRecognition.instance = null;
+  isGuest = true;
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
 
@@ -82,6 +105,50 @@ describe("MindHubChat", () => {
 
     expect(await screen.findByText("Можно начать с паузы.")).toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("replaces registered local content with server history without uploading it", async () => {
+    isGuest = false;
+    useMindHubStore.getState().appendMessage({ role: "user", text: "Старая локальная запись" });
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{
+        id: 7,
+        userMessage: { id: "7-user", role: "user", text: "Сообщение с сервера" },
+        assistantMessage: { id: "7-assistant", role: "assistant", text: "Серверный ответ" },
+        drafts: [],
+        createdAt: "2026-08-12T00:00:00.000Z",
+      }],
+      nextCursor: null,
+      hasMore: false,
+    });
+
+    render(<MindHubChat variant="page" />);
+
+    expect(await screen.findByText("Сообщение с сервера")).toBeInTheDocument();
+    expect(screen.queryByText("Старая локальная запись")).not.toBeInTheDocument();
+    expect(parseMindHub).not.toHaveBeenCalled();
+  });
+
+  it("does not render cached registered history before owner history loads", () => {
+    isGuest = false;
+    useMindHubStore.getState().appendMessage({ role: "user", text: "История другого входа" });
+
+    render(<MindHubChat variant="page" />);
+
+    expect(screen.queryByText("История другого входа")).not.toBeInTheDocument();
+    expect(screen.getByText("Загружаю историю…")).toBeInTheDocument();
+  });
+
+  it("shows a retry action after history loading fails and keeps typed text", async () => {
+    isGuest = false;
+    getMindHubHistory.mockRejectedValue(new Error("network"));
+    render(<MindHubChat variant="page" />);
+    const input = screen.getByPlaceholderText(/Например:/);
+    fireEvent.change(input, { target: { value: "Не потеряй этот текст" } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Не удалось загрузить историю");
+    expect(screen.getByRole("button", { name: "Повторить загрузку" })).toBeInTheDocument();
+    expect(input).toHaveValue("Не потеряй этот текст");
   });
 
   it("does not repeat the unloading heading in the quick sheet variant", () => {
@@ -262,6 +329,72 @@ describe("MindHubChat", () => {
 
     expect(screen.queryByText("Черновик задачи")).not.toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("confirms a synchronized draft through the server only once", async () => {
+    isGuest = false;
+    const serverDraft = {
+      title: "Сделать уроки", date: "2026-08-13", priority: "⚡️ P2" as const, category: "Учеба",
+      completed: false, energyLevel: "med" as const, subtasks: [], id: 19, version: 1, status: "pending" as const,
+    };
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{ id: 10, userMessage: { id: "10-user", role: "user", text: "Нужно сделать уроки" }, assistantMessage: { id: "10-assistant", role: "assistant", text: "Подготовил черновик" }, drafts: [serverDraft], createdAt: "2026-08-12T00:00:00.000Z" }],
+      nextCursor: null,
+      hasMore: false,
+    });
+    updateMindHubDraft.mockResolvedValue({
+      title: "Сделать уроки", date: "2026-08-13", priority: "⚡️ P2", category: "Учеба",
+      completed: false, energyLevel: "med", subtasks: [], id: 19, version: 2, status: "pending",
+    });
+    confirmMindHubDraft.mockResolvedValue({
+      draft: { title: "Сделать уроки", date: "2026-08-13", priority: "⚡️ P2", category: "Учеба", completed: false, energyLevel: "med", subtasks: [], id: 19, version: 2, status: "confirmed" },
+      task: { id: 55, title: "Сделать уроки", date: "2026-08-13", priority: "⚡️ P2", category: "Учеба", completed: false, xpAwarded: false, energyLevel: "med", subtasks: [] },
+    });
+
+    render(<MindHubChat variant="page" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Добавить задачу" }));
+
+    await waitFor(() => expect(confirmMindHubDraft).toHaveBeenCalledWith(19, 2));
+    expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("clears server history only after explicit confirmation", async () => {
+    isGuest = false;
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{ id: 11, userMessage: { id: "11-user", role: "user", text: "Личная запись" }, assistantMessage: { id: "11-assistant", role: "assistant", text: "Ответ" }, drafts: [], createdAt: "2026-08-12T00:00:00.000Z" }],
+      nextCursor: null,
+      hasMore: false,
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    clearMindHubHistory.mockResolvedValue();
+    render(<MindHubChat variant="page" />);
+    const clearButton = await screen.findByRole("button", { name: "Очистить историю" });
+
+    fireEvent.click(clearButton);
+    expect(clearMindHubHistory).not.toHaveBeenCalled();
+    expect(screen.getByText("Личная запись")).toBeInTheDocument();
+
+    fireEvent.click(clearButton);
+    await waitFor(() => expect(clearMindHubHistory).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByText("Личная запись")).not.toBeInTheDocument());
+    confirm.mockRestore();
+  });
+
+  it("keeps server history visible when deletion fails", async () => {
+    isGuest = false;
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{ id: 12, userMessage: { id: "12-user", role: "user", text: "Сохрани меня" }, assistantMessage: { id: "12-assistant", role: "assistant", text: "Сохраняю" }, drafts: [], createdAt: "2026-08-12T00:00:00.000Z" }],
+      nextCursor: null,
+      hasMore: false,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    clearMindHubHistory.mockRejectedValue(new Error("network"));
+    render(<MindHubChat variant="page" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Очистить историю" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ничего не исчезло");
+    expect(screen.getByText("Сохрани меня")).toBeInTheDocument();
   });
 
   it("shows a calm error without changing tasks", async () => {

@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { TaskDraft } from "../types";
+import type { Task, TaskDraft } from "../types";
 import { GUEST_REQUEST_LIMIT, useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
@@ -28,9 +28,29 @@ export type MindHubResponse = {
   drafts: MindHubDraft[];
   reply: string | null;
   limit?: MindHubLimit;
+  exchange?: MindHubExchange;
 };
 
-export type MindHubDraft = TaskDraft;
+export type MindHubDraft = TaskDraft & {
+  id?: number;
+  version?: number;
+  status?: "pending" | "confirming" | "confirmed" | "dismissed";
+  createdTaskId?: number | null;
+};
+
+export type MindHubExchange = {
+  id: number;
+  userMessage: { id: string; role: "user"; text: string };
+  assistantMessage: { id: string; role: "assistant"; text: string };
+  drafts: MindHubDraft[];
+  createdAt: string;
+};
+
+export type MindHubHistoryResponse = {
+  exchanges: MindHubExchange[];
+  nextCursor: number | null;
+  hasMore: boolean;
+};
 
 const aiInstance = axios.create({
   baseURL: `${API_BASE_URL}/ai`,
@@ -72,6 +92,12 @@ const normalizeMindHubDrafts = (
 
   return drafts
     .map((draft) => ({
+      ...(Number.isInteger(draft.id) ? { id: draft.id } : {}),
+      ...(Number.isInteger(draft.version) ? { version: draft.version } : {}),
+      ...(typeof draft.status === "string" ? { status: draft.status } : {}),
+      ...(Number.isInteger(draft.createdTaskId) || draft.createdTaskId === null
+        ? { createdTaskId: draft.createdTaskId }
+        : {}),
       title: typeof draft.title === "string" ? draft.title.trim() : "",
       date: normalizeTaskDate(draft.date),
       priority: ["🔥 P1", "⚡️ P2", "💤 P3"].includes(draft.priority ?? "")
@@ -115,6 +141,38 @@ aiInstance.interceptors.request.use((config) => {
 attachUnauthorizedInterceptor(aiInstance);
 
 export default class AiApi {
+  static async getMindHubHistory(cursor?: number): Promise<MindHubHistoryResponse> {
+    const response = await aiInstance.get("/mind-hub/history", {
+      params: { ...(cursor ? { cursor } : {}), limit: 20 },
+    });
+    const exchanges = Array.isArray(response.data?.exchanges)
+      ? response.data.exchanges.map((exchange: MindHubExchange) => ({
+          ...exchange,
+          drafts: normalizeMindHubDrafts(exchange.drafts),
+        }))
+      : [];
+    return { exchanges, nextCursor: response.data?.nextCursor ?? null, hasMore: Boolean(response.data?.hasMore) };
+  }
+
+  static async updateMindHubDraft(draft: MindHubDraft): Promise<MindHubDraft> {
+    if (!draft.id || !draft.version) throw new Error("Черновик ещё не синхронизирован");
+    const response = await aiInstance.patch(`/mind-hub/drafts/${draft.id}`, draft);
+    return normalizeMindHubDrafts([response.data])[0];
+  }
+
+  static async confirmMindHubDraft(draftId: number, version: number): Promise<{ draft: MindHubDraft; task: Task }> {
+    const response = await aiInstance.post(`/mind-hub/drafts/${draftId}/confirm`, { version });
+    return { draft: normalizeMindHubDrafts([response.data.draft])[0], task: response.data.task as Task };
+  }
+
+  static async dismissMindHubDraft(draftId: number): Promise<void> {
+    await aiInstance.delete(`/mind-hub/drafts/${draftId}`);
+  }
+
+  static async clearMindHubHistory(): Promise<void> {
+    await aiInstance.delete("/mind-hub/history");
+  }
+
   static async getAiUsage(): Promise<AiUsage | null> {
     try {
       const response = await aiInstance.get("/usage");
@@ -138,7 +196,10 @@ export default class AiApi {
   static async parseMindHub(
     message: string,
     hubMode: MindHubMode = "auto",
-    messages: MindHubMessage[] = []
+    messages: MindHubMessage[] = [],
+    clientRequestId = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `request-${Date.now()}-${Math.random().toString(36).slice(2)}`
   ): Promise<MindHubResponse> {
     const authStore = useAuthStore.getState();
 
@@ -174,7 +235,7 @@ export default class AiApi {
       const response = await aiInstance.post("/mind-hub", {
         message,
         hubMode,
-        messages,
+        clientRequestId,
         currentEnergy: authStore.currentEnergy,
       });
       if (authStore.isAuthenticated && !authStore.isGuest) {
@@ -183,6 +244,9 @@ export default class AiApi {
       return {
         ...response.data,
         drafts: normalizeMindHubDrafts(response.data.drafts ?? []),
+        exchange: response.data.exchange
+          ? { ...response.data.exchange, drafts: normalizeMindHubDrafts(response.data.exchange.drafts) }
+          : undefined,
         reply:
           typeof response.data.reply === "string" ? response.data.reply : null,
       } as MindHubResponse;

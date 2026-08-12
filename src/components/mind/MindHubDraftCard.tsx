@@ -109,6 +109,7 @@ const MindHubDraftCard = ({
       }));
 
     const normalizedDraft: MindHubDraft = {
+      ...editedDraft,
       title,
       date: editedDraft.date,
       priority: editedDraft.priority,

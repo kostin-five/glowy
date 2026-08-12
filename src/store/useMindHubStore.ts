@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { MindHubDraft } from "../api/AiApi";
+import type { MindHubDraft, MindHubExchange } from "../api/AiApi";
 import { normalizeTaskDate } from "../utils/taskDateGroups";
 
 export type MindHubChatMessage = {
-  id: number;
+  id: number | string;
   role: "user" | "assistant";
   text: string;
 };
@@ -19,6 +19,8 @@ interface MindHubStore {
   appendMessage: (message: Omit<MindHubChatMessage, "id">) => void;
   addDrafts: (drafts: MindHubDraft[]) => void;
   updateDraft: (localId: string, draft: MindHubDraft) => void;
+  replaceServerConversation: (exchanges: MindHubExchange[]) => void;
+  prependServerHistory: (exchanges: MindHubExchange[]) => void;
   removeDraft: (localId: string) => void;
   clearConversation: () => void;
 }
@@ -30,7 +32,7 @@ const normalizeMessages = (value: unknown): MindHubChatMessage[] =>
   Array.isArray(value)
     ? value.filter(
         (message): message is MindHubChatMessage =>
-          Number.isFinite(message?.id) &&
+          (Number.isFinite(message?.id) || typeof message?.id === "string") &&
           (message?.role === "user" || message?.role === "assistant") &&
           typeof message?.text === "string"
       )
@@ -48,6 +50,12 @@ const normalizeDraft = (value: unknown): PendingMindHubDraft | null => {
 
   return {
     localId,
+    ...(Number.isInteger(draft.id) ? { id: draft.id } : {}),
+    ...(Number.isInteger(draft.version) ? { version: draft.version } : {}),
+    ...(typeof draft.status === "string" ? { status: draft.status } : {}),
+    ...(Number.isInteger(draft.createdTaskId) || draft.createdTaskId === null
+      ? { createdTaskId: draft.createdTaskId }
+      : {}),
     title,
     date: normalizeTaskDate(draft.date),
     priority: ["🔥 P1", "⚡️ P2", "💤 P3"].includes(draft.priority ?? "")
@@ -102,6 +110,15 @@ const createLocalId = (prefix: string) => {
   return `${prefix}-${Date.now()}-${localSequence}`;
 };
 
+const flattenExchanges = (exchanges: MindHubExchange[]) =>
+  exchanges.flatMap((exchange) => [exchange.userMessage, exchange.assistantMessage]);
+
+const draftsFromExchanges = (exchanges: MindHubExchange[]) =>
+  exchanges.flatMap((exchange) => exchange.drafts.map((draft) => normalizeDraft({
+    ...draft,
+    localId: draft.id ? `server-draft-${draft.id}` : createLocalId("draft"),
+  }))).filter((draft): draft is PendingMindHubDraft => draft !== null);
+
 export const useMindHubStore = create<MindHubStore>()(
   persist(
     (set) => ({
@@ -121,7 +138,7 @@ export const useMindHubStore = create<MindHubStore>()(
             ...drafts.map((draft) => ({
               ...draft,
               subtasks: draft.subtasks.map((subtask) => ({ ...subtask })),
-              localId: createLocalId("draft"),
+              localId: draft.id ? `server-draft-${draft.id}` : createLocalId("draft"),
             })),
           ],
         })),
@@ -140,6 +157,14 @@ export const useMindHubStore = create<MindHubStore>()(
               : pendingDraft
           ),
         })),
+      replaceServerConversation: (exchanges) => set({
+        messages: normalizeMessages(flattenExchanges(exchanges)),
+        pendingDrafts: draftsFromExchanges(exchanges),
+      }),
+      prependServerHistory: (exchanges) => set((state) => ({
+        messages: [...normalizeMessages(flattenExchanges(exchanges)), ...state.messages],
+        pendingDrafts: [...draftsFromExchanges(exchanges), ...state.pendingDrafts],
+      })),
       removeDraft: (localId) =>
         set((state) => ({
           pendingDrafts: state.pendingDrafts.filter(

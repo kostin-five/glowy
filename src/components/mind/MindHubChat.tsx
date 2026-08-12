@@ -96,6 +96,12 @@ const getSpeechRecognition = (): SpeechRecognitionConstructor | null => {
   );
 };
 
+const joinVoiceText = (...parts: string[]) =>
+  parts
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+
 interface ChatMessageBubbleProps {
   message: MindHubChatMessage;
   shouldType: boolean;
@@ -233,6 +239,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const voiceSilenceTimeoutRef = useRef<number | null>(null);
   const shouldKeepListeningRef = useRef(false);
+  const voiceBaseTextRef = useRef("");
+  const voiceAccumulatedTextRef = useRef("");
+  const voiceSessionFinalTextRef = useRef("");
+  const voiceSessionInterimTextRef = useRef("");
   const isOnline = useNetworkStatus();
   const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
@@ -345,23 +355,29 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
-      let transcript = "";
+      const finalParts: string[] = [];
+      const interimParts: string[] = [];
 
       if (shouldKeepListeningRef.current) {
         scheduleVoiceSilencePause();
       }
 
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
-        if (event.results[index].isFinal) {
-          transcript += event.results[index][0].transcript;
-        }
+      for (let index = 0; index < event.results.length; index += 1) {
+        const transcript = event.results[index][0].transcript;
+        const target = event.results[index].isFinal ? finalParts : interimParts;
+        target.push(transcript);
       }
 
-      const recognizedText = transcript.trim();
-      if (!recognizedText) return;
+      voiceSessionFinalTextRef.current = joinVoiceText(...finalParts);
+      voiceSessionInterimTextRef.current = joinVoiceText(...interimParts);
 
-      setText((current) =>
-        [current.trimEnd(), recognizedText].filter(Boolean).join(" ")
+      setText(
+        joinVoiceText(
+          voiceBaseTextRef.current,
+          voiceAccumulatedTextRef.current,
+          voiceSessionFinalTextRef.current,
+          voiceSessionInterimTextRef.current
+        )
       );
       setVoiceInputError(null);
       window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -385,6 +401,14 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       if (speechRecognitionRef.current !== recognition) return;
 
       if (shouldKeepListeningRef.current) {
+        voiceAccumulatedTextRef.current = joinVoiceText(
+          voiceAccumulatedTextRef.current,
+          voiceSessionFinalTextRef.current,
+          voiceSessionInterimTextRef.current
+        );
+        voiceSessionFinalTextRef.current = "";
+        voiceSessionInterimTextRef.current = "";
+
         try {
           recognition.start();
           return;
@@ -404,6 +428,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
     speechRecognitionRef.current = recognition;
     shouldKeepListeningRef.current = true;
+    voiceBaseTextRef.current = text;
+    voiceAccumulatedTextRef.current = "";
+    voiceSessionFinalTextRef.current = "";
+    voiceSessionInterimTextRef.current = "";
     setVoiceInputError(null);
     setIsListening(true);
 
@@ -741,6 +769,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                 ? "text-slate-900 placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500"
                 : "cursor-not-allowed text-slate-500 placeholder:text-amber-700/80 dark:text-slate-500 dark:placeholder:text-amber-200/70"
             }`}
+            readOnly={isListening}
             disabled={isSending || !isOnline}
           />
           <button

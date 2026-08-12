@@ -107,6 +107,9 @@ describe("MindHubChat", () => {
       value: MockSpeechRecognition,
     });
     render(<MindHubChat variant="page" />);
+    fireEvent.change(screen.getByPlaceholderText(/Например:/), {
+      target: { value: "Нужно" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Начать голосовой ввод" }));
 
@@ -119,6 +122,30 @@ describe("MindHubChat", () => {
     expect(
       screen.getByRole("button", { name: "Остановить голосовой ввод" })
     ).toBeInTheDocument();
+
+    act(() => {
+      recognition?.onresult?.({
+        resultIndex: 0,
+        results: [{ isFinal: false, 0: { transcript: "купить продукты" } }],
+      });
+    });
+    expect(screen.getByPlaceholderText(/Например:/)).toHaveValue(
+      "Нужно купить продукты"
+    );
+
+    act(() => {
+      recognition?.onresult?.({
+        resultIndex: 0,
+        results: [
+          { isFinal: true, 0: { transcript: "купить продукты" } },
+          { isFinal: false, 0: { transcript: "и молоко" } },
+        ],
+      });
+    });
+    expect(screen.getByPlaceholderText(/Например:/)).toHaveValue(
+      "Нужно купить продукты и молоко"
+    );
+
     fireEvent.click(
       screen.getByRole("button", { name: "Остановить голосовой ввод" })
     );
@@ -127,13 +154,16 @@ describe("MindHubChat", () => {
     act(() => {
       recognition?.onresult?.({
         resultIndex: 0,
-        results: [{ isFinal: true, 0: { transcript: "Купить продукты" } }],
+        results: [
+          { isFinal: true, 0: { transcript: "купить продукты" } },
+          { isFinal: true, 0: { transcript: "и молоко" } },
+        ],
       });
       recognition?.onend?.();
     });
 
     expect(screen.getByPlaceholderText(/Например:/)).toHaveValue(
-      "Купить продукты"
+      "Нужно купить продукты и молоко"
     );
     expect(parseMindHub).not.toHaveBeenCalled();
   });

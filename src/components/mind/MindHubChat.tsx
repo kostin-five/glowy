@@ -46,6 +46,7 @@ import {
 
 const WELCOME_MESSAGE =
   "Выгрузи мысли или вопросы. Я отвечу и предложу черновик задачи — сохранять решаешь ты.";
+const VOICE_SILENCE_TIMEOUT_MS = 7_000;
 
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
@@ -230,6 +231,8 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voiceSilenceTimeoutRef = useRef<number | null>(null);
+  const shouldKeepListeningRef = useRef(false);
   const isOnline = useNetworkStatus();
   const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
@@ -291,8 +294,25 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     )}px`;
   }, [text]);
 
+  const clearVoiceSilenceTimeout = useCallback(() => {
+    if (voiceSilenceTimeoutRef.current === null) return;
+
+    window.clearTimeout(voiceSilenceTimeoutRef.current);
+    voiceSilenceTimeoutRef.current = null;
+  }, []);
+
+  const scheduleVoiceSilencePause = useCallback(() => {
+    clearVoiceSilenceTimeout();
+    voiceSilenceTimeoutRef.current = window.setTimeout(() => {
+      shouldKeepListeningRef.current = false;
+      speechRecognitionRef.current?.stop();
+    }, VOICE_SILENCE_TIMEOUT_MS);
+  }, [clearVoiceSilenceTimeout]);
+
   useEffect(
     () => () => {
+      shouldKeepListeningRef.current = false;
+      clearVoiceSilenceTimeout();
       const recognition = speechRecognitionRef.current;
       if (!recognition) return;
 
@@ -301,11 +321,13 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       recognition.onend = null;
       recognition.abort();
     },
-    []
+    [clearVoiceSilenceTimeout]
   );
 
   const handleVoiceInput = () => {
     if (isListening && speechRecognitionRef.current) {
+      shouldKeepListeningRef.current = false;
+      clearVoiceSilenceTimeout();
       speechRecognitionRef.current.stop();
       return;
     }
@@ -320,10 +342,14 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
     const recognition = new SpeechRecognition();
     recognition.lang = "ru-RU";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.onresult = (event) => {
       let transcript = "";
+
+      if (shouldKeepListeningRef.current) {
+        scheduleVoiceSilencePause();
+      }
 
       for (let index = event.resultIndex; index < event.results.length; index += 1) {
         if (event.results[index].isFinal) {
@@ -341,8 +367,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       window.requestAnimationFrame(() => textareaRef.current?.focus());
     };
     recognition.onerror = (event) => {
-      if (event.error === "aborted") return;
+      if (event.error === "aborted" || event.error === "no-speech") return;
 
+      shouldKeepListeningRef.current = false;
+      clearVoiceSilenceTimeout();
       if (speechRecognitionRef.current === recognition) {
         speechRecognitionRef.current = null;
         setIsListening(false);
@@ -354,19 +382,37 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       );
     };
     recognition.onend = () => {
-      if (speechRecognitionRef.current === recognition) {
-        speechRecognitionRef.current = null;
-        setIsListening(false);
+      if (speechRecognitionRef.current !== recognition) return;
+
+      if (shouldKeepListeningRef.current) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          shouldKeepListeningRef.current = false;
+          clearVoiceSilenceTimeout();
+          setVoiceInputError(
+            "Не удалось продолжить голосовой ввод. Попробуй ещё раз."
+          );
+        }
       }
+
+      clearVoiceSilenceTimeout();
+      speechRecognitionRef.current = null;
+      setIsListening(false);
     };
 
     speechRecognitionRef.current = recognition;
+    shouldKeepListeningRef.current = true;
     setVoiceInputError(null);
     setIsListening(true);
 
     try {
       recognition.start();
+      scheduleVoiceSilencePause();
     } catch {
+      shouldKeepListeningRef.current = false;
+      clearVoiceSilenceTimeout();
       speechRecognitionRef.current = null;
       setIsListening(false);
       setVoiceInputError("Не удалось запустить голосовой ввод. Попробуй ещё раз.");

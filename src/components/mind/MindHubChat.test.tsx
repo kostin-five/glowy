@@ -69,6 +69,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
 
@@ -112,6 +113,8 @@ describe("MindHubChat", () => {
     const recognition = MockSpeechRecognition.instance;
     expect(recognition).not.toBeNull();
     expect(recognition?.lang).toBe("ru-RU");
+    expect(recognition?.continuous).toBe(true);
+    expect(recognition?.interimResults).toBe(true);
     expect(recognition?.start).toHaveBeenCalledOnce();
     expect(
       screen.getByRole("button", { name: "Остановить голосовой ввод" })
@@ -133,6 +136,43 @@ describe("MindHubChat", () => {
       "Купить продукты"
     );
     expect(parseMindHub).not.toHaveBeenCalled();
+  });
+
+  it("keeps listening across browser pauses and stops after seven silent seconds", () => {
+    vi.useFakeTimers();
+    Object.defineProperty(window, "webkitSpeechRecognition", {
+      configurable: true,
+      value: MockSpeechRecognition,
+    });
+    render(<MindHubChat variant="page" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Начать голосовой ввод" }));
+    const recognition = MockSpeechRecognition.instance;
+
+    act(() => recognition?.onend?.());
+    expect(recognition?.start).toHaveBeenCalledTimes(2);
+    expect(
+      screen.getByRole("button", { name: "Остановить голосовой ввод" })
+    ).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(6_000));
+    act(() =>
+      recognition?.onresult?.({
+        resultIndex: 0,
+        results: [{ isFinal: false, 0: { transcript: "Купить" } }],
+      })
+    );
+    act(() => vi.advanceTimersByTime(6_999));
+    expect(recognition?.stop).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(recognition?.stop).toHaveBeenCalledOnce();
+
+    act(() => recognition?.onend?.());
+    expect(
+      screen.getByRole("button", { name: "Начать голосовой ввод" })
+    ).toBeInTheDocument();
+    expect(recognition?.start).toHaveBeenCalledTimes(2);
   });
 
   it("keeps an AI draft unsaved until explicit confirmation", async () => {

@@ -549,7 +549,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     variant === "quick"
       ? "flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
       : variant === "page"
-        ? "flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900 lg:h-[calc(100dvh-11rem)] lg:min-h-[32rem] lg:max-h-[60rem] lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-sm lg:dark:border-slate-700/50 lg:dark:bg-slate-800/50 lg:dark:shadow-none"
+        ? "flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
         : "flex h-[min(760px,calc(100svh-6rem))] min-h-128 max-h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160 xl:max-h-none";
 
   return (

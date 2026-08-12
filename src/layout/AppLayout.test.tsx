@@ -35,7 +35,8 @@ describe("AppLayout", () => {
     expect(screen.getByRole("main")).toHaveClass(
       "overflow-hidden",
       "p-0",
-      "pb-[calc(4rem+env(safe-area-inset-bottom))]"
+      "pb-[calc(4rem+env(safe-area-inset-bottom))]",
+      "lg:pb-0"
     );
     expect(screen.getByText("Нижняя навигация")).toBeInTheDocument();
   });

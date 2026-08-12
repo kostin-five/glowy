@@ -22,7 +22,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <main
           className={
             isFullScreenAi
-              ? "min-h-0 flex-1 overflow-hidden p-0 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:overflow-y-auto lg:px-8 lg:py-6 lg:pb-6"
+              ? "min-h-0 flex-1 overflow-hidden p-0 pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0"
               : "min-h-0 flex-1 overflow-y-auto px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:px-8 lg:pb-6"
           }
         >

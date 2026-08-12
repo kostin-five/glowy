@@ -4,6 +4,7 @@ import {
   CheckSquare,
   LogOut,
   LayoutDashboard,
+  MessageCircle,
   Settings,
   Trophy,
   User,
@@ -18,6 +19,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
+    { to: "/ai", label: "Чат", icon: MessageCircle },
     { to: "/stairs", label: "Мой прогресс", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
     { to: "/settings", label: "Настройки", icon: Settings },

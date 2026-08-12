@@ -48,7 +48,7 @@ const BottomNav = () => {
         key={to}
         to={to}
         aria-current={isActive ? "page" : undefined}
-        className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 pt-1 text-center transition-colors ${
+        className={`flex h-full min-w-0 flex-col items-center justify-center gap-1 px-1 text-center transition-colors ${
           isActive
             ? "text-indigo-500 dark:text-indigo-300"
             : "text-slate-600 active:text-slate-950 dark:text-slate-400 dark:active:text-slate-100"
@@ -66,23 +66,25 @@ const BottomNav = () => {
     <>
       <nav
         aria-label="Основная мобильная навигация"
-        className="fixed inset-x-0 bottom-0 z-40 grid min-h-14 grid-cols-5 items-end border-t border-slate-200 bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/20 lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-5 items-center border-t border-slate-200 bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/20 lg:hidden"
       >
         {navItems.map(renderLink)}
 
-        <div className="flex min-w-0 -translate-y-3 flex-col items-center justify-end gap-0.5">
-          <GlowyAiOrb
-            isActive={isAiActive}
-            onClick={() =>
-              setOpenPanel(
-                activePanel === "ai"
-                  ? null
-                  : { name: "ai", pathname: location.pathname }
-              )
-            }
-          />
+        <div className="relative h-full min-w-0">
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2">
+            <GlowyAiOrb
+              isActive={isAiActive}
+              onClick={() =>
+                setOpenPanel(
+                  activePanel === "ai"
+                    ? null
+                    : { name: "ai", pathname: location.pathname }
+                )
+              }
+            />
+          </div>
           <span
-            className={`text-[9px] font-extrabold leading-3 ${
+            className={`absolute inset-x-0 bottom-1 text-center text-[9px] font-extrabold leading-3 ${
               isAiActive
                 ? "text-cyan-600 dark:text-cyan-300"
                 : "text-slate-700 dark:text-slate-300"
@@ -105,7 +107,7 @@ const BottomNav = () => {
           }
           aria-label="Открыть меню «Ещё»"
           aria-pressed={isMoreActive}
-          className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 pt-1 transition-colors ${
+          className={`flex h-full min-w-0 flex-col items-center justify-center gap-1 px-1 transition-colors ${
             isMoreActive
               ? "text-indigo-500 dark:text-indigo-300"
               : "text-slate-600 active:text-slate-950 dark:text-slate-400 dark:active:text-slate-100"

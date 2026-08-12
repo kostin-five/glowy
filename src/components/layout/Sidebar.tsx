@@ -18,7 +18,7 @@ const SidebarContent = ({ location }: { location: Location }) => {
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
-    { to: "/stairs", label: "Лестница прогресса", icon: Trophy },
+    { to: "/stairs", label: "Мой прогресс", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
     { to: "/settings", label: "Настройки", icon: Settings },
   ];

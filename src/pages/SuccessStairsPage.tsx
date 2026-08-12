@@ -47,7 +47,7 @@ const SuccessStairsPage = () => {
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-20 md:px-8 lg:pb-8">
       <div>
         <h1 className="font-display text-3xl font-black text-slate-900 dark:text-slate-100 md:text-4xl">
-          Лестница прогресса
+          Мой прогресс
         </h1>
         <p className="mt-2 max-w-3xl text-slate-600 dark:text-slate-400">
           Бесконечная прогрессия Glowy: сохраняй баланс, грамотно расходуй силы

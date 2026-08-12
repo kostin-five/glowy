@@ -35,6 +35,7 @@ import {
   GUEST_REQUEST_LIMIT,
   useGuestRequestsCount,
   useGuestRequestsResetDate,
+  useEmail,
   useIsGuest,
 } from "../../store/useAuthStore";
 import {
@@ -105,7 +106,7 @@ const joinVoiceText = (...parts: string[]) =>
 interface ChatMessageBubbleProps {
   message: MindHubChatMessage;
   shouldType: boolean;
-  onTypeComplete: (messageId: number) => void;
+  onTypeComplete: (messageId: number | string) => void;
   onTextUpdate: () => void;
 }
 
@@ -146,8 +147,8 @@ const ChatMessageBubble = ({
       await navigator.clipboard.writeText(message.text);
       setIsCopied(true);
       window.setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy chat message:", error);
+    } catch {
+      console.error("Не удалось скопировать сообщение");
     }
   };
 
@@ -219,11 +220,21 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const clearConversation = useMindHubStore(
     (state) => state.clearConversation
   );
+  const replaceServerConversation = useMindHubStore(
+    (state) => state.replaceServerConversation
+  );
+  const prependServerHistory = useMindHubStore(
+    (state) => state.prependServerHistory
+  );
+  const storedOwnerKey = useMindHubStore((state) => state.ownerKey);
+  const setConversationOwner = useMindHubStore(
+    (state) => state.setConversationOwner
+  );
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceInputError, setVoiceInputError] = useState<string | null>(null);
-  const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(() => {
+  const [typedMessageIds, setTypedMessageIds] = useState<Set<number | string>>(() => {
     return new Set(
       useMindHubStore
         .getState()
@@ -246,6 +257,20 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const voiceSessionInterimTextRef = useRef("");
   const isOnline = useNetworkStatus();
   const isGuest = useIsGuest();
+  const accountEmail = useEmail();
+  const conversationOwnerKey = isGuest
+    ? "guest"
+    : accountEmail
+      ? `account:${accountEmail.trim().toLowerCase()}`
+      : null;
+  const isConversationOwnerReady =
+    storedOwnerKey === null || storedOwnerKey === conversationOwnerKey;
+  const visibleMessages = isConversationOwnerReady ? messages : [];
+  const visibleDrafts = isConversationOwnerReady ? pendingDrafts : [];
+  const [historyCursor, setHistoryCursor] = useState<number | null>(null);
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [conversationError, setConversationError] = useState<string | null>(null);
   const guestRequestsCount = useGuestRequestsCount();
   const guestRequestsResetDate = useGuestRequestsResetDate();
 
@@ -264,7 +289,6 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const activeAiLimit = isGuest ? guestAiLimit : registeredAiLimit;
   const shouldShowAiLimit =
     Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
-
   const isNearChatBottom = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return true;
@@ -293,7 +317,36 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
   useEffect(() => {
     scrollToBottom("smooth");
-  }, [messages.length, isSending, scrollToBottom]);
+  }, [visibleMessages.length, isSending, scrollToBottom]);
+
+  useEffect(() => {
+    if (conversationOwnerKey) setConversationOwner(conversationOwnerKey);
+  }, [conversationOwnerKey, setConversationOwner]);
+
+  const loadInitialHistory = useCallback(async () => {
+    setIsHistoryLoading(true);
+    setConversationError(null);
+    try {
+      const history = await AiApi.getMindHubHistory();
+      replaceServerConversation(history.exchanges);
+      setHistoryCursor(history.nextCursor);
+      setHasMoreHistory(history.hasMore);
+      setTypedMessageIds(new Set(history.exchanges.map((exchange) => exchange.assistantMessage.id)));
+    } catch {
+      console.error("Не удалось загрузить историю Glowy AI");
+      setConversationError(
+        "Синхронизация истории временно недоступна. Чат продолжает работать локально."
+      );
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [replaceServerConversation]);
+
+  useEffect(() => {
+    if (isGuest || !conversationOwnerKey) return;
+    const timer = window.setTimeout(() => void loadInitialHistory(), 0);
+    return () => window.clearTimeout(timer);
+  }, [conversationOwnerKey, isGuest, loadInitialHistory]);
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -448,11 +501,11 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     }
   };
 
-  const handleTypeComplete = useCallback((messageId: number) => {
+  const handleTypeComplete = useCallback((messageId: number | string) => {
     setTypedMessageIds((current) => new Set(current).add(messageId));
   }, []);
 
-  const latestAssistantMessageId = [...messages]
+  const latestAssistantMessageId = [...visibleMessages]
     .reverse()
     .find((message) => message.role === "assistant")?.id;
 
@@ -472,19 +525,52 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     localId: string,
     draft: MindHubDraft
   ): Promise<void> => {
-    const createdTask = await useTaskStore.getState().createTask(draft);
+    const createdTask: Task | undefined =
+      await useTaskStore.getState().createTask(draft);
 
     if (!createdTask) {
       throw new Error("Не удалось сохранить задачу. Попробуй ещё раз.");
     }
 
     saveAiCreatedTaskIds([createdTask]);
-    dismissDraft(localId);
+    removeDraft(localId);
     trackProductEvent("ai_draft_confirmed");
     appendMessage({
       role: "assistant",
       text: `Задача «${createdTask.title}» сохранена.`,
     });
+  };
+
+  const loadOlderHistory = async () => {
+    if (!historyCursor || isHistoryLoading) return;
+    setIsHistoryLoading(true);
+    try {
+      const history = await AiApi.getMindHubHistory(historyCursor);
+      prependServerHistory(history.exchanges);
+      setHistoryCursor(history.nextCursor);
+      setHasMoreHistory(history.hasMore);
+      setConversationError(null);
+    } catch {
+      console.error("Не удалось загрузить предыдущие сообщения");
+      setConversationError("Не удалось загрузить предыдущие сообщения. Попробуй ещё раз.");
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!window.confirm("Удалить всю историю Glowy AI? Созданные задачи останутся.")) return;
+    try {
+      if (!isGuest) await AiApi.clearMindHubHistory();
+      clearConversation();
+      setHistoryCursor(null);
+      setHasMoreHistory(false);
+      setTypedMessageIds(new Set());
+      setConversationError(null);
+    } catch {
+      console.error("Не удалось очистить историю Glowy AI");
+      setConversationError("Не удалось удалить историю. Ничего не исчезло — попробуй ещё раз.");
+    }
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -498,7 +584,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       role: "user",
       text: message,
     };
-    const requestMessages: MindHubMessage[] = [...messages, userMessage].map(
+    const requestMessages: MindHubMessage[] = [...visibleMessages, userMessage].map(
       ({ role, text }) => ({
         role,
         text,
@@ -528,8 +614,15 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       if (result.drafts.length > 0) {
         addDrafts(result.drafts);
       }
+      if (result.historySynced === false) {
+        setConversationError(
+          "Сообщение отправлено, но история пока сохранена только на этом устройстве."
+        );
+      } else {
+        setConversationError(null);
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Не удалось обработать сообщение Glowy AI");
       const serverError =
         axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
           ? error.response.data.error
@@ -564,13 +657,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                 {variant === "page" ? "Glowy AI" : "Разгрузка мыслей"}
               </h2>
             </div>
-            {messages.length > 0 && (
+            {visibleMessages.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  clearConversation();
-                  setTypedMessageIds(new Set());
-                }}
+                onClick={() => void handleClearHistory()}
                 className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
                 title="Очистить историю"
                 aria-label="Очистить историю"
@@ -593,7 +683,27 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
         }`}
       >
         <div className="flex flex-col gap-3">
-          {!messages.length && (
+          {conversationError && (
+            <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <p>{conversationError}</p>
+              {!isGuest && (
+                <button type="button" onClick={() => void loadInitialHistory()} className="mt-2 font-bold underline underline-offset-2">
+                  Повторить загрузку
+                </button>
+              )}
+            </div>
+          )}
+          {!isGuest && hasMoreHistory && (
+            <button
+              type="button"
+              onClick={() => void loadOlderHistory()}
+              disabled={isHistoryLoading}
+              className="self-center rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
+            >
+              {isHistoryLoading ? "Загружаю…" : "Показать предыдущие сообщения"}
+            </button>
+          )}
+          {!isHistoryLoading && !visibleMessages.length && (
             <ChatMessageBubble
               message={{
                 id: 0,
@@ -606,7 +716,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
             />
           )}
 
-          {messages.map((message) => {
+          {visibleMessages.map((message) => {
             const shouldType =
               message.role === "assistant" &&
               message.id === latestAssistantMessageId &&
@@ -635,13 +745,11 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
             </div>
           )}
 
-          {pendingDrafts.map((draft) => (
+          {visibleDrafts.map((draft) => (
             <MindHubDraftCard
               key={draft.localId}
               draft={draft}
-              onChange={(editedDraft) =>
-                updateDraft(draft.localId, editedDraft)
-              }
+              onChange={(editedDraft) => updateDraft(draft.localId, editedDraft)}
               onDismiss={() => dismissDraft(draft.localId)}
               onConfirm={(editedDraft) =>
                 confirmDraft(draft.localId, editedDraft)

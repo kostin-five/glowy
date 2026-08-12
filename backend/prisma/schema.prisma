@@ -39,6 +39,7 @@ model User {
   planExpiresAt      DateTime? @map("plan_expires_at")
   tasks              Task[]
   payments           Payment[]
+  aiConversation     AiConversation?
 
   @@map("users")
 }
@@ -72,4 +73,31 @@ model SubTask {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("sub_tasks")
+}
+
+model AiConversation {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @unique @map("user_id")
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exchanges AiExchange[]
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("ai_conversations")
+}
+
+model AiExchange {
+  id              Int            @id @default(autoincrement())
+  conversationId  Int            @map("conversation_id")
+  conversation    AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  clientRequestId String         @map("client_request_id")
+  status          String         @default("pending")
+  userText        String         @map("user_text")
+  assistantText   String?        @map("assistant_text")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  completedAt     DateTime?      @map("completed_at")
+
+  @@unique([conversationId, clientRequestId])
+  @@index([conversationId, id])
+  @@map("ai_exchanges")
 }

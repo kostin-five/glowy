@@ -22,6 +22,21 @@ import {
   getMindHubErrorResponse,
   isExpectedAiUnavailableError,
 } from "../utils/ai-errors.utils.js";
+import {
+  AiHistoryValidationError,
+  normalizeClientRequestId,
+  normalizeHistoryQuery,
+  normalizeMindHubMessage,
+} from "../services/ai/ai-history.validation.js";
+import {
+  buildMindHubResponseWithHistory,
+  clearHistory,
+  discardPendingExchange,
+  getRecentContext,
+  listHistory,
+  reserveExchange,
+  serializeExchange,
+} from "../services/ai/ai-history.service.js";
 
 const router = express.Router();
 
@@ -71,7 +86,9 @@ const getMindHubRequestPayload = (body) => {
     ? Math.min(100, Math.max(0, rawCurrentEnergy))
     : null;
 
-  return { message, hubMode, messages, currentEnergy };
+  const clientRequestId = body?.clientRequestId;
+
+  return { message, hubMode, messages, currentEnergy, clientRequestId };
 };
 
 const buildValidationError = (message, hubMode) => {
@@ -145,6 +162,50 @@ router.get("/usage", async (req, res) => {
   }
 });
 
+const sendHistoryError = (res, error) => {
+  if (error instanceof AiHistoryValidationError) {
+    return res.status(400).json({ error: error.message });
+  }
+  return null;
+};
+
+const discardHistoryReservation = async (exchange, req) => {
+  if (!exchange) return;
+  try {
+    await discardPendingExchange(exchange.id);
+  } catch (error) {
+    logger.error("ai.mind_hub.cleanup_failed", {
+      req,
+      error,
+      statusCode: 500,
+    });
+  }
+};
+
+router.get("/mind-hub/history", async (req, res) => {
+  try {
+    const query = normalizeHistoryQuery(req.query);
+    return res.json(await listHistory({ userId: req.user.id, ...query }));
+  } catch (error) {
+    if (sendHistoryError(res, error)) return;
+    logger.error("ai.mind_hub.history_failed", { req, error, statusCode: 500 });
+    return res.status(503).json({
+      error: "Синхронизация истории временно недоступна",
+      historyUnavailable: true,
+    });
+  }
+});
+
+router.delete("/mind-hub/history", async (req, res) => {
+  try {
+    await clearHistory(req.user.id);
+    return res.status(204).send();
+  } catch (error) {
+    logger.error("ai.mind_hub.history_delete_failed", { req, error, statusCode: 500 });
+    return res.status(500).json({ error: "Не удалось очистить историю" });
+  }
+});
+
 router.post("/analyze", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
@@ -200,12 +261,30 @@ router.post("/analyze", async (req, res) => {
 });
 
 router.post("/mind-hub", async (req, res) => {
+  let reservedExchange = null;
   try {
-    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
+    const { message: rawMessage, hubMode, messages, currentEnergy, clientRequestId: rawClientRequestId } = getMindHubRequestPayload(req.body);
+    const message = normalizeMindHubMessage(rawMessage);
     const validationError = buildValidationError(message, hubMode);
 
     if (validationError) {
       return res.status(400).json({ error: validationError });
+    }
+
+    let historySynced = false;
+    try {
+      const clientRequestId = normalizeClientRequestId(rawClientRequestId);
+      const reservation = await reserveExchange({ userId: req.user.id, clientRequestId, userText: message });
+      reservedExchange = reservation.isNew ? reservation.exchange : null;
+      if (!reservation.isNew) {
+        if (reservation.exchange.status === "completed") {
+          const exchange = serializeExchange(reservation.exchange);
+          return res.json({ exchange, drafts: [], reply: exchange.assistantMessage.text, historySynced: true });
+        }
+        return res.status(409).json({ error: "Этот запрос уже обрабатывается. Подожди немного." });
+      }
+    } catch (historyError) {
+      logger.error("ai.mind_hub.history_reserve_failed", { req, error: historyError, statusCode: 503 });
     }
 
     const activeTasks = await prisma.task.findMany({
@@ -233,88 +312,67 @@ router.post("/mind-hub", async (req, res) => {
     const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
 
     if (!aiLimitPreview.allowed) {
+      await discardHistoryReservation(reservedExchange, req);
+      reservedExchange = null;
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
         limit: aiLimitPreview.limit,
       });
     }
 
-    if (hubMode === "chat") {
-      try {
-        const reply = await getCoachReply(message, messages);
-        const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
-
-        if (!aiLimit.allowed) {
-          return res.status(429).json({
-            error: "Лимит запросов исчерпан.",
-            limit: aiLimit.limit,
-          });
-        }
-
-        return res.json({ drafts: [], reply, limit: aiLimit.limit });
-      } catch (error) {
-        logger.error("ai.mind_hub.chat_failed", {
-          req,
-          error,
-          statusCode: error?.status || 500,
-        });
-
-        if (isExpectedAiUnavailableError(error)) {
-          return res.json(
-            buildGracefulMindHubUnavailablePayload(error, {
-              limit: aiLimitPreview.limit,
-            })
-          );
-        }
-
-        const { status: errStatus, body } = getMindHubErrorResponse(error);
-        return res.status(errStatus).json(body);
-      }
+    let conversationMessages = messages;
+    try {
+      if (reservedExchange) conversationMessages = await getRecentContext(req.user.id);
+    } catch (historyError) {
+      logger.error("ai.mind_hub.history_context_failed", { req, error: historyError, statusCode: 503 });
     }
 
-    const today = formatDateDDMMYYYY(new Date());
-    const parsedResult = await parseMindHubDrafts(
-      message,
-      today,
-      activeTasks,
-      effectiveCurrentEnergy,
-      messages
-    );
-    const isExplicitNewRequest =
-      /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(
-        message
-      );
-    const duplicates = parsedResult.drafts.filter((draft) =>
-      isDuplicateTask(draft, activeTasks)
-    );
-    const drafts = isExplicitNewRequest
-      ? parsedResult.drafts
-      : parsedResult.drafts.filter(
-          (draft) => !isDuplicateTask(draft, activeTasks)
-        );
+    let drafts = [];
+    let reply = null;
+
+    if (hubMode === "chat") {
+      reply = await getCoachReply(message, conversationMessages);
+    } else {
+      const today = formatDateDDMMYYYY(new Date());
+      const parsedResult = await parseMindHubDrafts(message, today, activeTasks, effectiveCurrentEnergy, conversationMessages);
+      const isExplicitNewRequest = /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(message);
+      const duplicates = parsedResult.drafts.filter((draft) => isDuplicateTask(draft, activeTasks));
+      drafts = isExplicitNewRequest ? parsedResult.drafts : parsedResult.drafts.filter((draft) => !isDuplicateTask(draft, activeTasks));
+      const duplicateReply = drafts.length === 0 && duplicates.length > 0 ? `Такая задача уже есть: «${duplicates[0].title}».` : null;
+      reply = duplicateReply || ensureMixedInputReply(message, drafts, parsedResult.reply) || "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.";
+    }
+
     const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
 
     if (!aiLimit.allowed) {
+      await discardHistoryReservation(reservedExchange, req);
+      reservedExchange = null;
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
         limit: aiLimit.limit,
       });
     }
 
-    const duplicateReply =
-      drafts.length === 0 && duplicates.length > 0
-        ? `Такая задача уже есть: «${duplicates[0].title}».`
-        : null;
-
-    return res.json({
+    const finalized = await buildMindHubResponseWithHistory({
+      reservedExchange,
       drafts,
-      reply:
-        duplicateReply ||
-        ensureMixedInputReply(message, drafts, parsedResult.reply) ||
-        "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.",
+      reply,
       limit: aiLimit.limit,
     });
+    historySynced = finalized.body.historySynced;
+    if (finalized.historyError) {
+      logger.error("ai.mind_hub.history_complete_failed", {
+        req,
+        error: finalized.historyError,
+        statusCode: 503,
+      });
+      await discardHistoryReservation(reservedExchange, req);
+    }
+    reservedExchange = null;
+    return res.json({ ...finalized.body, historySynced });
   } catch (error) {
+    await discardHistoryReservation(reservedExchange, req);
+    if (sendHistoryError(res, error)) return;
     logger.error("ai.mind_hub.failed", {
       req,
       error,

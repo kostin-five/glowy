@@ -8,9 +8,14 @@ import { useMindHubStore } from "../../store/useMindHubStore";
 import MindHubChat from "./MindHubChat";
 
 const createTask = vi.fn();
+let isGuest = true;
 
 vi.mock("../../api/AiApi", () => ({
-  default: { parseMindHub: vi.fn() },
+  default: {
+    parseMindHub: vi.fn(),
+    getMindHubHistory: vi.fn(() => new Promise(() => undefined)),
+    clearMindHubHistory: vi.fn(),
+  },
 }));
 
 vi.mock("../../store/useTaskStore", () => ({
@@ -23,7 +28,8 @@ vi.mock("../../store/useAuthStore", () => ({
   GUEST_REQUEST_LIMIT: 3,
   useGuestRequestsCount: () => 0,
   useGuestRequestsResetDate: () => null,
-  useIsGuest: () => false,
+  useEmail: () => "test@example.com",
+  useIsGuest: () => isGuest,
 }));
 
 vi.mock("../../hooks/useNetworkStatus", () => ({ default: () => true }));
@@ -33,6 +39,8 @@ vi.mock("../../hooks/useTypewriter", () => ({
 vi.mock("../../utils/analytics", () => ({ trackProductEvent: vi.fn() }));
 
 const parseMindHub = vi.mocked(AiApi.parseMindHub);
+const getMindHubHistory = vi.mocked(AiApi.getMindHubHistory);
+const clearMindHubHistory = vi.mocked(AiApi.clearMindHubHistory);
 
 class MockSpeechRecognition {
   static instance: MockSpeechRecognition | null = null;
@@ -62,14 +70,20 @@ const sendMessage = (text: string) => {
 beforeEach(() => {
   HTMLElement.prototype.scrollTo = vi.fn();
   localStorage.clear();
+  useMindHubStore.setState({ ownerKey: null });
   useMindHubStore.getState().clearConversation();
   parseMindHub.mockReset();
+  getMindHubHistory.mockReset();
+  getMindHubHistory.mockImplementation(() => new Promise(() => undefined));
+  clearMindHubHistory.mockReset();
   createTask.mockReset();
   MockSpeechRecognition.instance = null;
+  isGuest = true;
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
 
@@ -82,6 +96,50 @@ describe("MindHubChat", () => {
 
     expect(await screen.findByText("Можно начать с паузы.")).toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("replaces registered local content with server history without uploading it", async () => {
+    isGuest = false;
+    useMindHubStore.getState().appendMessage({ role: "user", text: "Старая локальная запись" });
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{
+        id: 7,
+        userMessage: { id: "7-user", role: "user", text: "Сообщение с сервера" },
+        assistantMessage: { id: "7-assistant", role: "assistant", text: "Серверный ответ" },
+        createdAt: "2026-08-12T00:00:00.000Z",
+      }],
+      nextCursor: null,
+      hasMore: false,
+    });
+
+    render(<MindHubChat variant="page" />);
+
+    expect(await screen.findByText("Сообщение с сервера")).toBeInTheDocument();
+    expect(screen.queryByText("Старая локальная запись")).not.toBeInTheDocument();
+    expect(parseMindHub).not.toHaveBeenCalled();
+  });
+
+  it("keeps cached registered history usable while owner history loads", () => {
+    isGuest = false;
+    useMindHubStore.getState().appendMessage({ role: "user", text: "История другого входа" });
+
+    render(<MindHubChat variant="page" />);
+
+    expect(screen.getByText("История другого входа")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Например:/)).toBeEnabled();
+  });
+
+  it("keeps chat working locally when history loading fails", async () => {
+    isGuest = false;
+    getMindHubHistory.mockRejectedValue(new Error("network"));
+    parseMindHub.mockResolvedValue({ drafts: [], reply: "Локальный ответ", historySynced: false });
+    render(<MindHubChat variant="page" />);
+    sendMessage("Не потеряй этот текст");
+
+    expect(await screen.findByText("Локальный ответ")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("история пока сохранена только на этом устройстве");
+    expect(screen.getByRole("button", { name: "Повторить загрузку" })).toBeInTheDocument();
+    expect(parseMindHub).toHaveBeenCalledOnce();
   });
 
   it("does not repeat the unloading heading in the quick sheet variant", () => {
@@ -262,6 +320,45 @@ describe("MindHubChat", () => {
 
     expect(screen.queryByText("Черновик задачи")).not.toBeInTheDocument();
     expect(createTask).not.toHaveBeenCalled();
+  });
+
+  it("clears server history only after explicit confirmation", async () => {
+    isGuest = false;
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{ id: 11, userMessage: { id: "11-user", role: "user", text: "Личная запись" }, assistantMessage: { id: "11-assistant", role: "assistant", text: "Ответ" }, createdAt: "2026-08-12T00:00:00.000Z" }],
+      nextCursor: null,
+      hasMore: false,
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    clearMindHubHistory.mockResolvedValue();
+    render(<MindHubChat variant="page" />);
+    const clearButton = await screen.findByRole("button", { name: "Очистить историю" });
+
+    fireEvent.click(clearButton);
+    expect(clearMindHubHistory).not.toHaveBeenCalled();
+    expect(screen.getByText("Личная запись")).toBeInTheDocument();
+
+    fireEvent.click(clearButton);
+    await waitFor(() => expect(clearMindHubHistory).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.queryByText("Личная запись")).not.toBeInTheDocument());
+    confirm.mockRestore();
+  });
+
+  it("keeps server history visible when deletion fails", async () => {
+    isGuest = false;
+    getMindHubHistory.mockResolvedValue({
+      exchanges: [{ id: 12, userMessage: { id: "12-user", role: "user", text: "Сохрани меня" }, assistantMessage: { id: "12-assistant", role: "assistant", text: "Сохраняю" }, createdAt: "2026-08-12T00:00:00.000Z" }],
+      nextCursor: null,
+      hasMore: false,
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    clearMindHubHistory.mockRejectedValue(new Error("network"));
+    render(<MindHubChat variant="page" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Очистить историю" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ничего не исчезло");
+    expect(screen.getByText("Сохрани меня")).toBeInTheDocument();
   });
 
   it("shows a calm error without changing tasks", async () => {

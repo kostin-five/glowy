@@ -60,6 +60,14 @@ describe("MindHubChat", () => {
     expect(createTask).not.toHaveBeenCalled();
   });
 
+  it("does not repeat the unloading heading in the quick sheet variant", () => {
+    render(<MindHubChat variant="quick" />);
+
+    expect(
+      screen.queryByRole("heading", { name: "Разгрузка мыслей" })
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps an AI draft unsaved until explicit confirmation", async () => {
     parseMindHub.mockResolvedValue({
       reply: "Я подготовил черновик.",

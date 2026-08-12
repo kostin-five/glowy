@@ -342,39 +342,35 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
   return (
     <section className={sectionClassName}>
-      <div
-        className={`sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 ${
-          variant === "quick" ? "p-4" : "p-5"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-indigo-300" />
-            <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
-              Разгрузка мыслей
-            </h2>
+      {variant !== "quick" && (
+        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-indigo-300" />
+              <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
+                Разгрузка мыслей
+              </h2>
+            </div>
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearConversation();
+                  setTypedMessageIds(new Set());
+                }}
+                className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                title="Очистить историю"
+                aria-label="Очистить историю"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
           </div>
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                clearConversation();
-                setTypedMessageIds(new Set());
-              }}
-              className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
-              title="Очистить историю"
-              aria-label="Очистить историю"
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
-        </div>
-        {variant !== "quick" && (
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
             {WELCOME_MESSAGE}
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       <div
         ref={messagesContainerRef}

@@ -15,7 +15,7 @@ vi.mock("../components/mind/MindHubChat", () => ({
 
 describe("GlowyAiPage", () => {
   it("renders the shared chat as a full page", () => {
-    render(<GlowyAiPage />);
+    const { container } = render(<GlowyAiPage />);
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Glowy AI" })
@@ -24,5 +24,6 @@ describe("GlowyAiPage", () => {
       "data-variant",
       "page"
     );
+    expect(container.firstElementChild).toHaveClass("h-full", "min-h-0");
   });
 });

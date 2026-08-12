@@ -68,6 +68,15 @@ describe("MindHubChat", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("uses a full-height surface and Glowy AI heading on the full page", () => {
+    const { container } = render(<MindHubChat variant="page" />);
+
+    expect(container.querySelector("section")).toHaveClass("h-full", "min-h-0");
+    expect(
+      screen.getByRole("heading", { name: "Glowy AI" })
+    ).toBeInTheDocument();
+  });
+
   it("keeps an AI draft unsaved until explicit confirmation", async () => {
     parseMindHub.mockResolvedValue({
       reply: "Я подготовил черновик.",

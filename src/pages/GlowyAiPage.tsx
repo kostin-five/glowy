@@ -3,8 +3,8 @@ import MindHubChat from "../components/mind/MindHubChat";
 
 const GlowyAiPage = () => {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-      <header className="flex items-start gap-3">
+    <div className="flex h-full min-h-0 flex-col bg-slate-50 dark:bg-slate-950 lg:mx-auto lg:w-full lg:max-w-5xl lg:gap-5 lg:bg-transparent">
+      <header className="hidden items-start gap-3 lg:flex">
         <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-indigo-600 text-white shadow-[0_0_24px_rgba(34,211,238,0.3)]">
           <Sparkles size={21} aria-hidden="true" />
         </span>

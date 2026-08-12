@@ -28,24 +28,9 @@ export type MindHubResponse = {
   drafts: MindHubDraft[];
   reply: string | null;
   limit?: MindHubLimit;
-  exchange?: MindHubExchange;
-  historySynced?: boolean;
 };
 
 export type MindHubDraft = TaskDraft;
-
-export type MindHubExchange = {
-  id: number;
-  userMessage: { id: string; role: "user"; text: string };
-  assistantMessage: { id: string; role: "assistant"; text: string };
-  createdAt: string;
-};
-
-export type MindHubHistoryResponse = {
-  exchanges: MindHubExchange[];
-  nextCursor: number | null;
-  hasMore: boolean;
-};
 
 const aiInstance = axios.create({
   baseURL: `${API_BASE_URL}/ai`,
@@ -130,20 +115,6 @@ aiInstance.interceptors.request.use((config) => {
 attachUnauthorizedInterceptor(aiInstance);
 
 export default class AiApi {
-  static async getMindHubHistory(cursor?: number): Promise<MindHubHistoryResponse> {
-    const response = await aiInstance.get("/mind-hub/history", {
-      params: { ...(cursor ? { cursor } : {}), limit: 20 },
-    });
-    const exchanges = Array.isArray(response.data?.exchanges)
-      ? response.data.exchanges as MindHubExchange[]
-      : [];
-    return { exchanges, nextCursor: response.data?.nextCursor ?? null, hasMore: Boolean(response.data?.hasMore) };
-  }
-
-  static async clearMindHubHistory(): Promise<void> {
-    await aiInstance.delete("/mind-hub/history");
-  }
-
   static async getAiUsage(): Promise<AiUsage | null> {
     try {
       const response = await aiInstance.get("/usage");
@@ -167,10 +138,7 @@ export default class AiApi {
   static async parseMindHub(
     message: string,
     hubMode: MindHubMode = "auto",
-    messages: MindHubMessage[] = [],
-    clientRequestId = typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `request-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    messages: MindHubMessage[] = []
   ): Promise<MindHubResponse> {
     const authStore = useAuthStore.getState();
 
@@ -206,7 +174,6 @@ export default class AiApi {
       const response = await aiInstance.post("/mind-hub", {
         message,
         hubMode,
-        clientRequestId,
         messages,
         currentEnergy: authStore.currentEnergy,
       });
@@ -216,7 +183,6 @@ export default class AiApi {
       return {
         ...response.data,
         drafts: normalizeMindHubDrafts(response.data.drafts ?? []),
-        exchange: response.data.exchange ?? undefined,
         reply:
           typeof response.data.reply === "string" ? response.data.reply : null,
       } as MindHubResponse;

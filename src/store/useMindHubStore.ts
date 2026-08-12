@@ -1,10 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { MindHubDraft, MindHubExchange } from "../api/AiApi";
+import type { MindHubDraft } from "../api/AiApi";
 import { normalizeTaskDate } from "../utils/taskDateGroups";
 
 export type MindHubChatMessage = {
-  id: number | string;
+  id: number;
   role: "user" | "assistant";
   text: string;
 };
@@ -14,15 +14,11 @@ export type PendingMindHubDraft = MindHubDraft & {
 };
 
 interface MindHubStore {
-  ownerKey: string | null;
   messages: MindHubChatMessage[];
   pendingDrafts: PendingMindHubDraft[];
   appendMessage: (message: Omit<MindHubChatMessage, "id">) => void;
   addDrafts: (drafts: MindHubDraft[]) => void;
   updateDraft: (localId: string, draft: MindHubDraft) => void;
-  replaceServerConversation: (exchanges: MindHubExchange[]) => void;
-  prependServerHistory: (exchanges: MindHubExchange[]) => void;
-  setConversationOwner: (ownerKey: string) => void;
   removeDraft: (localId: string) => void;
   clearConversation: () => void;
 }
@@ -34,7 +30,7 @@ const normalizeMessages = (value: unknown): MindHubChatMessage[] =>
   Array.isArray(value)
     ? value.filter(
         (message): message is MindHubChatMessage =>
-          (Number.isFinite(message?.id) || typeof message?.id === "string") &&
+          Number.isFinite(message?.id) &&
           (message?.role === "user" || message?.role === "assistant") &&
           typeof message?.text === "string"
       )
@@ -106,22 +102,9 @@ const createLocalId = (prefix: string) => {
   return `${prefix}-${Date.now()}-${localSequence}`;
 };
 
-const flattenExchanges = (exchanges: MindHubExchange[]) =>
-  exchanges.flatMap((exchange) => [exchange.userMessage, exchange.assistantMessage]);
-
-const deduplicateMessages = (messages: MindHubChatMessage[]) => {
-  const seen = new Set<number | string>();
-  return messages.filter((message) => {
-    if (seen.has(message.id)) return false;
-    seen.add(message.id);
-    return true;
-  });
-};
-
 export const useMindHubStore = create<MindHubStore>()(
   persist(
     (set) => ({
-      ownerKey: null,
       messages: loadLegacyMessages(),
       pendingDrafts: [],
       appendMessage: (message) =>
@@ -157,25 +140,6 @@ export const useMindHubStore = create<MindHubStore>()(
               : pendingDraft
           ),
         })),
-      replaceServerConversation: (exchanges) => set((state) => ({
-        messages: deduplicateMessages(
-          normalizeMessages(flattenExchanges(exchanges))
-        ),
-        pendingDrafts: state.pendingDrafts,
-      })),
-      prependServerHistory: (exchanges) => set((state) => ({
-        messages: deduplicateMessages([
-          ...normalizeMessages(flattenExchanges(exchanges)),
-          ...state.messages,
-        ]),
-        pendingDrafts: state.pendingDrafts,
-      })),
-      setConversationOwner: (ownerKey) =>
-        set((state) =>
-          state.ownerKey && state.ownerKey !== ownerKey
-            ? { ownerKey, messages: [], pendingDrafts: [] }
-            : { ownerKey }
-        ),
       removeDraft: (localId) =>
         set((state) => ({
           pendingDrafts: state.pendingDrafts.filter(
@@ -187,8 +151,7 @@ export const useMindHubStore = create<MindHubStore>()(
     {
       name: STORE_KEY,
       version: 1,
-      partialize: ({ ownerKey, messages, pendingDrafts }) => ({
-        ownerKey,
+      partialize: ({ messages, pendingDrafts }) => ({
         messages,
         pendingDrafts,
       }),
@@ -200,8 +163,6 @@ export const useMindHubStore = create<MindHubStore>()(
 
         return {
           ...current,
-          ownerKey:
-            typeof state.ownerKey === "string" ? state.ownerKey : null,
           messages:
             state.messages === undefined
               ? current.messages

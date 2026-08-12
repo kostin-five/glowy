@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AiApi from "../../api/AiApi";
 import { useMindHubStore } from "../../store/useMindHubStore";
 import MindHubChat from "./MindHubChat";
@@ -34,6 +34,24 @@ vi.mock("../../utils/analytics", () => ({ trackProductEvent: vi.fn() }));
 
 const parseMindHub = vi.mocked(AiApi.parseMindHub);
 
+class MockSpeechRecognition {
+  static instance: MockSpeechRecognition | null = null;
+
+  lang = "";
+  continuous = true;
+  interimResults = true;
+  onresult: ((event: unknown) => void) | null = null;
+  onerror: ((event: unknown) => void) | null = null;
+  onend: (() => void) | null = null;
+  start = vi.fn();
+  stop = vi.fn();
+  abort = vi.fn();
+
+  constructor() {
+    MockSpeechRecognition.instance = this;
+  }
+}
+
 const sendMessage = (text: string) => {
   fireEvent.change(screen.getByPlaceholderText(/Например:/), {
     target: { value: text },
@@ -47,6 +65,11 @@ beforeEach(() => {
   useMindHubStore.getState().clearConversation();
   parseMindHub.mockReset();
   createTask.mockReset();
+  MockSpeechRecognition.instance = null;
+});
+
+afterEach(() => {
+  Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
 
 describe("MindHubChat", () => {
@@ -75,6 +98,41 @@ describe("MindHubChat", () => {
     expect(
       screen.getByRole("heading", { name: "Glowy AI" })
     ).toBeInTheDocument();
+  });
+
+  it("adds recognized Russian speech to the message draft without sending it", () => {
+    Object.defineProperty(window, "webkitSpeechRecognition", {
+      configurable: true,
+      value: MockSpeechRecognition,
+    });
+    render(<MindHubChat variant="page" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Начать голосовой ввод" }));
+
+    const recognition = MockSpeechRecognition.instance;
+    expect(recognition).not.toBeNull();
+    expect(recognition?.lang).toBe("ru-RU");
+    expect(recognition?.start).toHaveBeenCalledOnce();
+    expect(
+      screen.getByRole("button", { name: "Остановить голосовой ввод" })
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Остановить голосовой ввод" })
+    );
+    expect(recognition?.stop).toHaveBeenCalledOnce();
+
+    act(() => {
+      recognition?.onresult?.({
+        resultIndex: 0,
+        results: [{ isFinal: true, 0: { transcript: "Купить продукты" } }],
+      });
+      recognition?.onend?.();
+    });
+
+    expect(screen.getByPlaceholderText(/Например:/)).toHaveValue(
+      "Купить продукты"
+    );
+    expect(parseMindHub).not.toHaveBeenCalled();
   });
 
   it("keeps an AI draft unsaved until explicit confirmation", async () => {

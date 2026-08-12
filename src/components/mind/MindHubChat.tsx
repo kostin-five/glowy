@@ -8,7 +8,17 @@ import {
   type MutableRefObject,
 } from "react";
 import axios from "axios";
-import { Check, Copy, Info, Send, Sparkles, X, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Info,
+  Mic,
+  Send,
+  Sparkles,
+  Square,
+  X,
+  Trash2,
+} from "lucide-react";
 import AiApi, {
   type MindHubDraft,
   type MindHubLimit,
@@ -41,6 +51,49 @@ interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
   variant?: "dashboard" | "quick" | "page";
 }
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+
+interface SpeechRecognitionEventLike extends Event {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionErrorEventLike extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+const getSpeechRecognition = (): SpeechRecognitionConstructor | null => {
+  if (typeof window === "undefined") return null;
+
+  const speechWindow = window as typeof window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+
+  return (
+    speechWindow.SpeechRecognition ??
+    speechWindow.webkitSpeechRecognition ??
+    null
+  );
+};
 
 interface ChatMessageBubbleProps {
   message: MindHubChatMessage;
@@ -160,6 +213,8 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   );
   const [text, setText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceInputError, setVoiceInputError] = useState<string | null>(null);
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(() => {
     return new Set(
       useMindHubStore
@@ -174,6 +229,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const isOnline = useNetworkStatus();
   const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
@@ -235,6 +291,88 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     )}px`;
   }, [text]);
 
+  useEffect(
+    () => () => {
+      const recognition = speechRecognitionRef.current;
+      if (!recognition) return;
+
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      recognition.abort();
+    },
+    []
+  );
+
+  const handleVoiceInput = () => {
+    if (isListening && speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      return;
+    }
+
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) {
+      setVoiceInputError(
+        "Голосовой ввод не поддерживается в этом браузере."
+      );
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ru-RU";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      let transcript = "";
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        if (event.results[index].isFinal) {
+          transcript += event.results[index][0].transcript;
+        }
+      }
+
+      const recognizedText = transcript.trim();
+      if (!recognizedText) return;
+
+      setText((current) =>
+        [current.trimEnd(), recognizedText].filter(Boolean).join(" ")
+      );
+      setVoiceInputError(null);
+      window.requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+    recognition.onerror = (event) => {
+      if (event.error === "aborted") return;
+
+      if (speechRecognitionRef.current === recognition) {
+        speechRecognitionRef.current = null;
+        setIsListening(false);
+      }
+      setVoiceInputError(
+        event.error === "not-allowed" || event.error === "service-not-allowed"
+          ? "Разреши доступ к микрофону, чтобы использовать голосовой ввод."
+          : "Не удалось распознать речь. Попробуй ещё раз."
+      );
+    };
+    recognition.onend = () => {
+      if (speechRecognitionRef.current === recognition) {
+        speechRecognitionRef.current = null;
+        setIsListening(false);
+      }
+    };
+
+    speechRecognitionRef.current = recognition;
+    setVoiceInputError(null);
+    setIsListening(true);
+
+    try {
+      recognition.start();
+    } catch {
+      speechRecognitionRef.current = null;
+      setIsListening(false);
+      setVoiceInputError("Не удалось запустить голосовой ввод. Попробуй ещё раз.");
+    }
+  };
+
   const handleTypeComplete = useCallback((messageId: number) => {
     setTypedMessageIds((current) => new Set(current).add(messageId));
   }, []);
@@ -278,7 +416,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     event.preventDefault();
 
     const message = text.trim();
-    if (!message || isSending || !isOnline) return;
+    if (!message || isSending || isListening || !isOnline) return;
 
     const userMessage: MindHubChatMessage = {
       id: Date.now() + messages.length,
@@ -560,14 +698,36 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
             disabled={isSending || !isOnline}
           />
           <button
+            type="button"
+            onClick={handleVoiceInput}
+            disabled={isSending || (!isOnline && !isListening)}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              isListening
+                ? "animate-pulse bg-rose-500 text-white hover:bg-rose-400"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+            aria-label={
+              isListening ? "Остановить голосовой ввод" : "Начать голосовой ввод"
+            }
+            aria-pressed={isListening}
+            title={isListening ? "Остановить запись" : "Голосовой ввод"}
+          >
+            {isListening ? <Square size={16} /> : <Mic size={18} />}
+          </button>
+          <button
             type="submit"
-            disabled={!text.trim() || isSending || !isOnline}
+            disabled={!text.trim() || isSending || isListening || !isOnline}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Отправить мысли"
           >
             <Send size={18} />
           </button>
         </div>
+        {voiceInputError && (
+          <p className="mt-2 text-xs text-rose-600 dark:text-rose-300" role="status">
+            {voiceInputError}
+          </p>
+        )}
       </form>
     </section>
   );

@@ -31,11 +31,10 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Редактировать задачу" }));
     fireEvent.change(screen.getByLabelText("Название задачи"), {
       target: { value: "Подготовить короткий доклад" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Добавить задачу" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать задачу" }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
     expect(onConfirm).toHaveBeenCalledWith(
@@ -55,7 +54,7 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Удалить" }));
+    fireEvent.click(screen.getByRole("button", { name: "Не сохранять" }));
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
@@ -75,7 +74,7 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    const confirm = screen.getByRole("button", { name: "Добавить задачу" });
+    const confirm = screen.getByRole("button", { name: "Создать задачу" });
     fireEvent.click(confirm);
     fireEvent.click(confirm);
 
@@ -84,7 +83,7 @@ describe("MindHubDraftCard", () => {
 
     resolveSave?.();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Добавить задачу" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: "Создать задачу" })).toBeEnabled()
     );
   });
 
@@ -102,7 +101,7 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Добавить задачу" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать задачу" }));
     expect(await screen.findByText("Сеть недоступна")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Повторить сохранение" }));
@@ -120,15 +119,15 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText("Подзадача 1"), {
+    fireEvent.change(screen.getByLabelText("Шаг 1"), {
       target: { value: "Найти три источника" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Удалить подзадачу 2" }));
-    fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
-    fireEvent.change(screen.getByLabelText("Подзадача 2"), {
+    fireEvent.click(screen.getByRole("button", { name: "Удалить шаг 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить шаг" }));
+    fireEvent.change(screen.getByLabelText("Шаг 2"), {
       target: { value: "Проверить структуру" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Добавить задачу" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать задачу" }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
     expect(onConfirm).toHaveBeenCalledWith(
@@ -151,7 +150,7 @@ describe("MindHubDraftCard", () => {
     );
 
     expect(screen.getByText("Сократи название до 255 символов")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Добавить задачу" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Создать задачу" })).toBeDisabled();
   });
 
   it("drops duplicate steps and keeps sequential positions", async () => {
@@ -172,7 +171,7 @@ describe("MindHubDraftCard", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Добавить задачу" }));
+    fireEvent.click(screen.getByRole("button", { name: "Создать задачу" }));
 
     await waitFor(() => expect(onConfirm).toHaveBeenCalledTimes(1));
     expect(onConfirm).toHaveBeenCalledWith(
@@ -181,39 +180,6 @@ describe("MindHubDraftCard", () => {
           { title: "Собрать источники", completed: false, position: 0 },
           { title: "Сделать слайды", completed: false, position: 1 },
         ],
-      })
-    );
-  });
-
-  it("keeps compact priority, energy and subtask edits in the draft", () => {
-    const onChange = vi.fn();
-
-    render(
-      <MindHubDraftCard
-        draft={draft}
-        onChange={onChange}
-        onConfirm={vi.fn()}
-        onDismiss={vi.fn()}
-      />
-    );
-
-    expect(screen.queryByLabelText("Название задачи")).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Приоритет задачи"), {
-      target: { value: "💤 P3" },
-    });
-    fireEvent.change(screen.getByLabelText("Энергозатратность задачи"), {
-      target: { value: "med" },
-    });
-    fireEvent.change(screen.getByLabelText("Подзадача 1"), {
-      target: { value: "Найти источники" },
-    });
-
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        energyLevel: "med",
-        subtasks: expect.arrayContaining([
-          expect.objectContaining({ title: "Найти источники" }),
-        ]),
       })
     );
   });

@@ -3,7 +3,6 @@ import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
-import { createTaskForUser, taskInclude } from "../services/tasks/task-create.service.js";
 
 const router = express.Router();
 
@@ -13,6 +12,12 @@ const parseId = (value) => {
 };
 
 router.use(authMiddleware);
+
+const taskInclude = {
+  subtasks: {
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+  },
+};
 
 const LEVEL_THRESHOLDS = [
   0, 50, 100, 250, 500, 1000, 1500, 2000, 3000, 4000, 5000, 7000, 9000, 10000,
@@ -116,7 +121,35 @@ router.post(
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      const newTask = await createTaskForUser(prisma, req.user.id, req.body);
+      const { title, energyLevel, priority, date, category, subtasks } = req.body;
+    const subtasksToCreate = Array.isArray(subtasks)
+      ? subtasks
+          .map((sub, index) => ({
+            title: typeof sub.title === "string" ? sub.title.trim() : "",
+            completed: Boolean(sub.completed),
+            position: Number.isInteger(sub.position) ? sub.position : index,
+          }))
+          .filter((sub) => sub.title.length > 0)
+      : [];
+
+    const newTask = await prisma.task.create({
+      data: {
+        title,
+        energyLevel,
+        category,
+        date,
+        priority,
+        completed: false,
+        userId: req.user.id,
+        subtasks: subtasksToCreate.length
+          ? {
+              create: subtasksToCreate,
+            }
+          : undefined,
+      },
+
+      include: taskInclude,
+    });
 
     res.status(201).json(newTask);
   } catch (e) {

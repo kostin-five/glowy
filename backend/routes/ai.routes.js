@@ -22,27 +22,6 @@ import {
   getMindHubErrorResponse,
   isExpectedAiUnavailableError,
 } from "../utils/ai-errors.utils.js";
-import {
-  AiHistoryValidationError,
-  normalizeClientRequestId,
-  normalizeDraftPayload,
-  normalizeHistoryQuery,
-  normalizeMindHubMessage,
-} from "../services/ai/ai-history.validation.js";
-import {
-  AiHistoryConflictError,
-  AiHistoryNotFoundError,
-  clearHistory,
-  completeExchange,
-  confirmDraft,
-  discardPendingExchange,
-  dismissDraft,
-  getRecentContext,
-  listHistory,
-  reserveExchange,
-  serializeExchange,
-  updateDraft,
-} from "../services/ai/ai-history.service.js";
 
 const router = express.Router();
 
@@ -92,9 +71,7 @@ const getMindHubRequestPayload = (body) => {
     ? Math.min(100, Math.max(0, rawCurrentEnergy))
     : null;
 
-  const clientRequestId = body?.clientRequestId;
-
-  return { message, hubMode, messages, currentEnergy, clientRequestId };
+  return { message, hubMode, messages, currentEnergy };
 };
 
 const buildValidationError = (message, hubMode) => {
@@ -168,85 +145,6 @@ router.get("/usage", async (req, res) => {
   }
 });
 
-const parsePositiveId = (value) => {
-  const id = Number(value);
-  return Number.isInteger(id) && id > 0 ? id : null;
-};
-
-const sendHistoryError = (res, error) => {
-  if (error instanceof AiHistoryValidationError) {
-    return res.status(400).json({ error: error.message });
-  }
-  if (error instanceof AiHistoryNotFoundError) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error instanceof AiHistoryConflictError) {
-    return res.status(409).json({ error: error.message, draft: error.currentDraft });
-  }
-  return null;
-};
-
-router.get("/mind-hub/history", async (req, res) => {
-  try {
-    const query = normalizeHistoryQuery(req.query);
-    return res.json(await listHistory({ userId: req.user.id, ...query }));
-  } catch (error) {
-    if (sendHistoryError(res, error)) return;
-    logger.error("ai.mind_hub.history_failed", { req, error, statusCode: 500 });
-    return res.status(500).json({ error: "Не удалось загрузить историю диалога" });
-  }
-});
-
-router.patch("/mind-hub/drafts/:draftId", async (req, res) => {
-  try {
-    const draftId = parsePositiveId(req.params.draftId);
-    if (!draftId) return res.status(400).json({ error: "Некорректный ID черновика" });
-    const payload = normalizeDraftPayload(req.body, { requireVersion: true });
-    return res.json(await updateDraft({ userId: req.user.id, draftId, payload }));
-  } catch (error) {
-    if (sendHistoryError(res, error)) return;
-    logger.error("ai.mind_hub.draft_update_failed", { req, error, statusCode: 500 });
-    return res.status(500).json({ error: "Не удалось сохранить черновик" });
-  }
-});
-
-router.post("/mind-hub/drafts/:draftId/confirm", async (req, res) => {
-  try {
-    const draftId = parsePositiveId(req.params.draftId);
-    const version = Number(req.body?.version);
-    if (!draftId || !Number.isInteger(version) || version < 1) {
-      return res.status(400).json({ error: "Некорректные данные черновика" });
-    }
-    return res.json(await confirmDraft({ userId: req.user.id, draftId, version }));
-  } catch (error) {
-    if (sendHistoryError(res, error)) return;
-    logger.error("ai.mind_hub.draft_confirm_failed", { req, error, statusCode: 500 });
-    return res.status(500).json({ error: "Не удалось добавить задачу" });
-  }
-});
-
-router.delete("/mind-hub/drafts/:draftId", async (req, res) => {
-  try {
-    const draftId = parsePositiveId(req.params.draftId);
-    if (!draftId) return res.status(400).json({ error: "Некорректный ID черновика" });
-    return res.json(await dismissDraft({ userId: req.user.id, draftId }));
-  } catch (error) {
-    if (sendHistoryError(res, error)) return;
-    logger.error("ai.mind_hub.draft_dismiss_failed", { req, error, statusCode: 500 });
-    return res.status(500).json({ error: "Не удалось удалить черновик" });
-  }
-});
-
-router.delete("/mind-hub/history", async (req, res) => {
-  try {
-    await clearHistory(req.user.id);
-    return res.status(204).send();
-  } catch (error) {
-    logger.error("ai.mind_hub.history_delete_failed", { req, error, statusCode: 500 });
-    return res.status(500).json({ error: "Не удалось очистить историю" });
-  }
-});
-
 router.post("/analyze", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
@@ -302,25 +200,12 @@ router.post("/analyze", async (req, res) => {
 });
 
 router.post("/mind-hub", async (req, res) => {
-  let reservedExchange = null;
   try {
-    const { message: rawMessage, hubMode, currentEnergy, clientRequestId: rawClientRequestId } = getMindHubRequestPayload(req.body);
-    const message = normalizeMindHubMessage(rawMessage);
-    const clientRequestId = normalizeClientRequestId(rawClientRequestId);
+    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
     const validationError = buildValidationError(message, hubMode);
 
     if (validationError) {
       return res.status(400).json({ error: validationError });
-    }
-
-    const reservation = await reserveExchange({ userId: req.user.id, clientRequestId, userText: message });
-    reservedExchange = reservation.isNew ? reservation.exchange : null;
-    if (!reservation.isNew) {
-      if (reservation.exchange.status === "completed") {
-        const exchange = serializeExchange(reservation.exchange);
-        return res.json({ exchange, drafts: exchange.drafts, reply: exchange.assistantMessage.text });
-      }
-      return res.status(409).json({ error: "Этот запрос уже обрабатывается. Подожди немного." });
     }
 
     const activeTasks = await prisma.task.findMany({
@@ -348,60 +233,88 @@ router.post("/mind-hub", async (req, res) => {
     const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
 
     if (!aiLimitPreview.allowed) {
-      await discardPendingExchange(reservedExchange.id);
-      reservedExchange = null;
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
         limit: aiLimitPreview.limit,
       });
     }
 
-    const serverMessages = await getRecentContext(req.user.id);
-
-    let drafts = [];
-    let reply = null;
-
     if (hubMode === "chat") {
-      reply = await getCoachReply(message, serverMessages);
-    } else {
-      const today = formatDateDDMMYYYY(new Date());
-      const parsedResult = await parseMindHubDrafts(message, today, activeTasks, effectiveCurrentEnergy, serverMessages);
-      const isExplicitNewRequest = /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(message);
-      const duplicates = parsedResult.drafts.filter((draft) => isDuplicateTask(draft, activeTasks));
-      drafts = isExplicitNewRequest ? parsedResult.drafts : parsedResult.drafts.filter((draft) => !isDuplicateTask(draft, activeTasks));
-      const duplicateReply = drafts.length === 0 && duplicates.length > 0 ? `Такая задача уже есть: «${duplicates[0].title}».` : null;
-      reply = duplicateReply || ensureMixedInputReply(message, drafts, parsedResult.reply) || "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.";
+      try {
+        const reply = await getCoachReply(message, messages);
+        const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
+
+        if (!aiLimit.allowed) {
+          return res.status(429).json({
+            error: "Лимит запросов исчерпан.",
+            limit: aiLimit.limit,
+          });
+        }
+
+        return res.json({ drafts: [], reply, limit: aiLimit.limit });
+      } catch (error) {
+        logger.error("ai.mind_hub.chat_failed", {
+          req,
+          error,
+          statusCode: error?.status || 500,
+        });
+
+        if (isExpectedAiUnavailableError(error)) {
+          return res.json(
+            buildGracefulMindHubUnavailablePayload(error, {
+              limit: aiLimitPreview.limit,
+            })
+          );
+        }
+
+        const { status: errStatus, body } = getMindHubErrorResponse(error);
+        return res.status(errStatus).json(body);
+      }
     }
 
+    const today = formatDateDDMMYYYY(new Date());
+    const parsedResult = await parseMindHubDrafts(
+      message,
+      today,
+      activeTasks,
+      effectiveCurrentEnergy,
+      messages
+    );
+    const isExplicitNewRequest =
+      /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(
+        message
+      );
+    const duplicates = parsedResult.drafts.filter((draft) =>
+      isDuplicateTask(draft, activeTasks)
+    );
+    const drafts = isExplicitNewRequest
+      ? parsedResult.drafts
+      : parsedResult.drafts.filter(
+          (draft) => !isDuplicateTask(draft, activeTasks)
+        );
     const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
 
     if (!aiLimit.allowed) {
-      await discardPendingExchange(reservedExchange.id);
-      reservedExchange = null;
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
         limit: aiLimit.limit,
       });
     }
 
-    const completed = await completeExchange({ exchangeId: reservedExchange.id, assistantText: reply, drafts });
-    reservedExchange = null;
-    const exchange = serializeExchange(completed);
+    const duplicateReply =
+      drafts.length === 0 && duplicates.length > 0
+        ? `Такая задача уже есть: «${duplicates[0].title}».`
+        : null;
+
     return res.json({
-      exchange,
-      drafts: exchange.drafts,
-      reply: exchange.assistantMessage.text,
+      drafts,
+      reply:
+        duplicateReply ||
+        ensureMixedInputReply(message, drafts, parsedResult.reply) ||
+        "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.",
       limit: aiLimit.limit,
     });
   } catch (error) {
-    if (reservedExchange) {
-      try {
-        await discardPendingExchange(reservedExchange.id);
-      } catch (cleanupError) {
-        logger.error("ai.mind_hub.cleanup_failed", { req, error: cleanupError, statusCode: 500 });
-      }
-    }
-    if (sendHistoryError(res, error)) return;
     logger.error("ai.mind_hub.failed", {
       req,
       error,

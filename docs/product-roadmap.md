@@ -176,8 +176,9 @@ Workspace**. Для безопасного размещения большой o
 
 ## v2.2.1 — AI-провайдеры и Founder
 
-**Цель.** Убрать устаревший Gemini и отдельный AI-proxy, оставить в backend один
-нейтральный слой провайдеров: основной DeepSeek и резервный GigaChat. Одновременно
+**Цель.** Убрать устаревший Gemini и перенести основной AI-flow из отдельного
+AI-proxy в backend, оставив один нейтральный слой провайдеров: основной DeepSeek
+и резервный GigaChat. Одновременно
 закрыть бесплатную кампанию Forever под названием Founder, сохранив доступ уже
 получившим его людям.
 
@@ -197,7 +198,8 @@ Workspace**. Для безопасного размещения большой o
 4. **Реализовать GigaChat безопасно.** Authorization key хранится только в
    backend env; access token кэшируется в памяти сервера и обновляется до
    истечения. GigaChat никогда не вызывается напрямую из frontend.
-5. **Удалить ai-proxy только после успешной проверки.** Удалить `ai-proxy/`, его
+5. **Удалить ai-proxy только после успешной проверки.** До проверки оставить его
+   provider-neutral rollback-вариантом. Затем удалить `ai-proxy/`, его
    PM2/service config, env examples и старый Netherlands route после того, как
    direct backend flow стабильно работает в dev и production-like проверке.
 6. **Перейти от Forever к Founder.** Сохранить действующим пользователям вечный
@@ -216,7 +218,8 @@ Workspace**. Для безопасного размещения большой o
 - Backend: `backend/services/ai/`, AI routes, error mapping, usage/cost logging,
   payment/current-plan routes и их тесты.
 - Frontend: Pricing, Settings, success page, AI API clients и тексты ошибок.
-- Infrastructure: Timeweb env/PM2, удаление proxy deployment, GigaChat кабинеты;
+- Infrastructure: Timeweb env/PM2, проверка и последующее удаление proxy
+  deployment, GigaChat кабинеты;
   эти действия выполняет только Богдан.
 - Документы: `.env.example`, AI/privacy/legal/payment docs и release notes.
 

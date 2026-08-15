@@ -18,7 +18,7 @@ Glowy помогает пользователю:
 
 ## Текущий релиз
 
-Текущий продуктовый трек: `v2.0.0`.
+Текущий продуктовый трек: `v2.2.1`.
 
 Ключевые изменения:
 
@@ -26,16 +26,16 @@ Glowy помогает пользователю:
 - Единый frontend-контракт дат задач: `YYYY-MM-DD | ""`.
 - Mind Hub auto-flow с контекстом активных задач, проверкой дублей, переносом дат и устойчивым AI fallback.
 - Dashboard 2.0 с фокусом дня, задачами из Хаба и рекомендациями с учётом энергии.
-- Тарифы Start, Focus и Forever.
+- Тарифы Start, Focus и Founder; будущий платный Forever подготовлен, но выключен.
 - Focus checkout через ЮKassa.
-- Бесплатная активация Forever для первых пользователей.
+- Сохранён пожизненный Founder для участников завершённой промо-программы.
 
 ## Технологии
 
 - Frontend: React, TypeScript, Vite, Tailwind CSS, Zustand.
 - Backend: Node.js, Express, Prisma, PostgreSQL.
 - Auth: HttpOnly cookie session и восстановление сессии через `/auth/me`.
-- AI: прямой Gemini provider или AI proxy mode.
+- AI: прямой DeepSeek с GigaChat fallback; временный proxy mode остаётся только для отката.
 - Payments: YooKassa checkout и webhook для тарифа Focus.
 - Process manager: PM2.
 - Deploy: Vercel frontend, VPS/Timeweb backend, Timeweb PostgreSQL.
@@ -66,11 +66,12 @@ Glowy помогает пользователю:
 | Demo | Бесплатно | 3/день | Гостевой демо-доступ |
 | Start | Бесплатно | 10/день | Базовый тариф зарегистрированного пользователя |
 | Focus | 99 ₽/месяц | 100/день | Платный тариф через ЮKassa, действует 30 дней |
-| Forever | Бесплатный промо | 100/день | Постоянный доступ для первых пользователей |
+| Founder | Закрытый промо | 100/день | Сохранённый пожизненный доступ первых пользователей |
+| Forever | Пока недоступен | 100/день | Будущий пожизненный тариф с единоразовой оплатой |
 
 Focus активируется после успешного webhook от ЮKassa.
 
-Forever активируется без оплаты через backend endpoint для авторизованного пользователя и не имеет срока окончания.
+Новая выдача Founder закрыта на backend. Ранее активированный доступ остаётся бессрочным. Платный Forever не создаёт платежи, пока серверный флаг явно не включён.
 
 ## Переменные окружения
 
@@ -95,19 +96,28 @@ YOOKASSA_SECRET_KEY=...
 YOOKASSA_RETURN_URL=https://glowy-ai.ru/payment/success
 YOOKASSA_CANCEL_URL=https://glowy-ai.ru/payment/cancel
 
-AI_PROVIDER=gemini
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_FALLBACK_MODEL=gemini-2.5-flash-lite
+AI_PROVIDER_MODE=direct
+AI_PROVIDER_TIMEOUT_MS=30000
+DEEPSEEK_API_KEY=...
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+GIGACHAT_AUTH_KEY=...
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
+GIGACHAT_MODEL=GigaChat
+GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
+GIGACHAT_BASE_URL=https://api.giga.chat
+
+FOUNDER_SIGNUP_ENABLED=false
+PAID_FOREVER_ENABLED=false
+FOREVER_PRICE_RUB=
 ```
 
-Если используется AI proxy вместо прямого Gemini:
+Временный rollback через AI proxy:
 
 ```env
-AI_PROVIDER=proxy
+AI_PROVIDER_MODE=proxy
 AI_PROXY_URL=https://...
 AI_PROXY_SECRET=...
-AI_PROXY_TIMEOUT_MS=120000
 ```
 
 ## Локальная разработка
@@ -202,16 +212,18 @@ Focus payment flow:
 5. Backend повторно проверяет платёж через ЮKassa API.
 6. Backend активирует `focus` на 30 дней.
 
-Forever activation:
+Founder и будущий Forever:
 
-1. Гость нажимает Forever и попадает на login/register с сохранённым pricing intent.
-2. Авторизованный пользователь вызывает `POST /api/payments/forever/activate`.
-3. Backend устанавливает `plan = "forever"`, `subscriptionStatus = "active"`, `planExpiresAt = null`.
+1. Старое внутреннее значение `forever` остаётся в базе без миграции, но бесплатный пожизненный доступ отображается как Founder.
+2. `POST /api/payments/forever/activate` закрыт, если `FOUNDER_SIGNUP_ENABLED` не равен `true`.
+3. Будущий checkout использует `POST /api/payments/forever/create` и общий YooKassa flow.
+4. Backend отклоняет его до обращения в YooKassa, пока `PAID_FOREVER_ENABLED=false`.
 
 ## Документация
 
 - [Kodik review notes](docs/README_KODIK_REVIEW.md)
 - [v2.0.0 release notes](docs/releases/v2.0.0-product-release.md)
+- [v2.2.1 release notes](docs/releases/v2.2.1-ai-providers-and-founder.md)
 - [Payments live checklist](docs/payments-live-checklist.md)
 - [VPS deploy notes](deploy/README.md)
 

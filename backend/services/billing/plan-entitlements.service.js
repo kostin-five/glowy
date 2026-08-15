@@ -18,8 +18,5 @@ export const toPublicPlanState = (user, hasPaidForeverPayment = false) => {
   };
 };
 
-export const isFounderSignupEnabled = () =>
-  process.env.FOUNDER_SIGNUP_ENABLED === "true";
-
 export const isPaidForeverEnabled = () =>
   process.env.PAID_FOREVER_ENABLED === "true";

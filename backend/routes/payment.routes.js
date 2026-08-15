@@ -5,7 +5,6 @@ import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import {
-  isFounderSignupEnabled,
   isPaidForeverEnabled,
   toPublicPlanState,
 } from "../services/billing/plan-entitlements.service.js";
@@ -338,13 +337,6 @@ router.post(
 
 router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
   try {
-    if (!isFounderSignupEnabled()) {
-      return res.status(403).json({
-        code: "FOUNDER_PROMOTION_CLOSED",
-        error: "Промо-доступ Founder больше не оформляется",
-      });
-    }
-
     const rawUser = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -375,7 +367,7 @@ router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
 
     res.json(toPublicPlanState(updatedUser));
   } catch (error) {
-    logger.error("payments.forever.activate_failed", {
+    logger.error("payments.founder.activate_failed", {
       req,
       error,
       statusCode: 500,

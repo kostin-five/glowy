@@ -77,6 +77,8 @@ test("prompt defines drafts as proposals and forbids data mutation", () => {
   const prompt = buildMindHubParsePrompt("Как мне отдохнуть?", "12.08.2026");
 
   assert.match(prompt, /"drafts"/);
+  assert.match(prompt, /говори о себе только в мужском роде/i);
+  assert.match(prompt, /никогда не используй женский род/i);
   assert.match(prompt, /не создавай и не изменяй данные пользователя/i);
   assert.match(prompt, /явного подтверждения пользователя/i);
   assert.doesNotMatch(prompt, /"actions"/);

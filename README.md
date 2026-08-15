@@ -26,9 +26,9 @@ Glowy помогает пользователю:
 - Единый frontend-контракт дат задач: `YYYY-MM-DD | ""`.
 - Mind Hub auto-flow с контекстом активных задач, проверкой дублей, переносом дат и устойчивым AI fallback.
 - Dashboard 2.0 с фокусом дня, задачами из Хаба и рекомендациями с учётом энергии.
-- Тарифы Start, Focus и Founder; будущий платный Forever подготовлен, но выключен.
+- Тарифы Start, Focus и бесплатный пожизненный Founder для первых пользователей.
 - Focus checkout через ЮKassa.
-- Сохранён пожизненный Founder для участников завершённой промо-программы.
+- Founder доступен первым пользователям бесплатно и бессрочно.
 
 ## Технологии
 
@@ -66,12 +66,11 @@ Glowy помогает пользователю:
 | Demo | Бесплатно | 3/день | Гостевой демо-доступ |
 | Start | Бесплатно | 10/день | Базовый тариф зарегистрированного пользователя |
 | Focus | 99 ₽/месяц | 100/день | Платный тариф через ЮKassa, действует 30 дней |
-| Founder | Закрытый промо | 100/день | Сохранённый пожизненный доступ первых пользователей |
-| Forever | Пока недоступен | 100/день | Будущий пожизненный тариф с единоразовой оплатой |
+| Founder | Бесплатно | 100/день | Пожизненный доступ первых пользователей |
 
 Focus активируется после успешного webhook от ЮKassa.
 
-Новая выдача Founder закрыта на backend. Ранее активированный доступ остаётся бессрочным. Платный Forever не создаёт платежи, пока серверный флаг явно не включён.
+Founder доступен первым пользователям бесплатно и бессрочно. Для совместимости значение тарифа хранится в базе как `forever`, но во внешнем API и интерфейсе отображается как Founder.
 
 ## Переменные окружения
 
@@ -103,11 +102,10 @@ DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 GIGACHAT_AUTH_KEY=...
 GIGACHAT_SCOPE=GIGACHAT_API_PERS
-GIGACHAT_MODEL=GigaChat
+GIGACHAT_MODEL=GigaChat-2-Max
 GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
 GIGACHAT_BASE_URL=https://api.giga.chat
 
-FOUNDER_SIGNUP_ENABLED=false
 PAID_FOREVER_ENABLED=false
 FOREVER_PRICE_RUB=
 ```
@@ -212,12 +210,11 @@ Focus payment flow:
 5. Backend повторно проверяет платёж через ЮKassa API.
 6. Backend активирует `focus` на 30 дней.
 
-Founder и будущий Forever:
+Founder:
 
 1. Старое внутреннее значение `forever` остаётся в базе без миграции, но бесплатный пожизненный доступ отображается как Founder.
-2. `POST /api/payments/forever/activate` закрыт, если `FOUNDER_SIGNUP_ENABLED` не равен `true`.
-3. Будущий checkout использует `POST /api/payments/forever/create` и общий YooKassa flow.
-4. Backend отклоняет его до обращения в YooKassa, пока `PAID_FOREVER_ENABLED=false`.
+2. Авторизованный пользователь активирует Founder через совместимый endpoint `POST /api/payments/forever/activate`.
+3. Founder бессрочный, не создаёт платёж и получает лимит 100 AI-запросов в день.
 
 ## Документация
 

@@ -75,7 +75,6 @@ GIGACHAT_SCOPE=GIGACHAT_API_PERS
 GIGACHAT_MODEL=GigaChat
 GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
 GIGACHAT_BASE_URL=https://api.giga.chat
-FOUNDER_SIGNUP_ENABLED=false
 PAID_FOREVER_ENABLED=false
 FOREVER_PRICE_RUB=
 CORS_ORIGINS=https://glowy-ai.ru,https://www.glowy-ai.ru,https://dev.glowy-ai.ru,http://localhost:5173,http://localhost:4173

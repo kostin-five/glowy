@@ -56,13 +56,14 @@ const planLabels = {
   demo: "Демо-доступ",
   start: "Стартовый",
   focus: "Focus",
+  founder: "Founder",
   forever: "Forever",
 } as const;
 
 const SettingsPage = () => {
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [aiUsage, setAiUsage] = useState<{
-    plan: "demo" | "start" | "focus" | "forever";
+    plan: "demo" | "start" | "focus" | "founder" | "forever";
     used: number;
     limit: number;
     remaining: number;

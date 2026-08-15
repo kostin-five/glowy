@@ -4,6 +4,11 @@ import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import {
+  isFounderSignupEnabled,
+  isPaidForeverEnabled,
+  toPublicPlanState,
+} from "../services/billing/plan-entitlements.service.js";
 
 const router = express.Router();
 
@@ -23,6 +28,34 @@ const PLAN_CONFIG = {
       return expiresAt;
     },
   },
+  forever: {
+    description: "вечный доступ Glowy Forever",
+    alreadyActiveCode: "LIFETIME_PLAN_ALREADY_ACTIVE",
+    alreadyActiveMessage: "У вас уже активен пожизненный тариф",
+    getPlanExpiresAt: () => null,
+  },
+};
+
+const getPlanConfig = (plan) => {
+  const config = PLAN_CONFIG[plan];
+  if (!config) return null;
+
+  if (plan !== "forever") return config;
+
+  const rawPriceRub = process.env.FOREVER_PRICE_RUB || "";
+  const parsedPrice = Number(rawPriceRub);
+
+  return {
+    ...config,
+    priceRub:
+      Number.isFinite(parsedPrice) && parsedPrice > 0
+        ? parsedPrice.toFixed(2)
+        : "",
+    priceKopeks:
+      Number.isFinite(parsedPrice) && parsedPrice > 0
+        ? Math.round(parsedPrice * 100)
+        : 0,
+  };
 };
 
 const isExpiredFocusUser = (user) =>
@@ -76,7 +109,17 @@ const isActivePlan = (user, plan) => {
 
 const createPaymentHandler = (plan) => async (req, res) => {
   try {
-    const planConfig = PLAN_CONFIG[plan];
+    if (plan === "forever" && !isPaidForeverEnabled()) {
+      return res.status(403).json({
+        code: "PAID_FOREVER_DISABLED",
+        error: "Тариф Forever пока недоступен для оформления",
+      });
+    }
+
+    const planConfig = getPlanConfig(plan);
+    if (!planConfig?.priceRub || !planConfig.priceKopeks) {
+      return res.status(500).json({ error: "Ошибка конфигурации тарифа" });
+    }
     const rawUser = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -86,6 +129,13 @@ const createPaymentHandler = (plan) => async (req, res) => {
       },
     });
     const user = await normalizePlanState(req.user.id, rawUser);
+
+    if (isActivePlan(user, "forever")) {
+      return res.status(409).json({
+        code: "LIFETIME_PLAN_ALREADY_ACTIVE",
+        error: "У вас уже активен пожизненный тариф",
+      });
+    }
 
     if (isActivePlan(user, plan)) {
       return res.status(409).json({
@@ -192,15 +242,17 @@ router.post("/yookassa/webhook", async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    const localPlanConfig = getPlanConfig(localPayment.plan);
+
     if (event.event === "payment.succeeded" && yookassaPayment.status === "succeeded") {
       if (
         yookassaPayment.id !== paymentId ||
-        !PLAN_CONFIG[localPayment.plan] ||
-        yookassaPayment.amount?.value !== PLAN_CONFIG[localPayment.plan].priceRub ||
+        !localPlanConfig ||
+        yookassaPayment.amount?.value !== localPlanConfig.priceRub ||
         yookassaPayment.amount?.currency !== "RUB" ||
         String(yookassaPayment.metadata?.userId) !== String(localPayment.userId) ||
         yookassaPayment.metadata?.plan !== localPayment.plan ||
-        localPayment.amountKopeks !== PLAN_CONFIG[localPayment.plan].priceKopeks ||
+        localPayment.amountKopeks !== localPlanConfig.priceKopeks ||
         localPayment.currency !== "RUB"
       ) {
         return res.status(200).json({ ok: true });
@@ -208,7 +260,7 @@ router.post("/yookassa/webhook", async (req, res) => {
 
       if (localPayment.paid) return res.status(200).json({ ok: true });
 
-      const planExpiresAt = PLAN_CONFIG[localPayment.plan].getPlanExpiresAt();
+      const planExpiresAt = localPlanConfig.getPlanExpiresAt();
 
       await prisma.$transaction([
         prisma.payment.update({
@@ -250,6 +302,15 @@ router.get("/current-plan", async (req, res) => {
         plan: true,
         subscriptionStatus: true,
         planExpiresAt: true,
+        payments: {
+          where: {
+            plan: "forever",
+            paid: true,
+            status: "succeeded",
+          },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
 
@@ -259,7 +320,9 @@ router.get("/current-plan", async (req, res) => {
 
     const normalizedUser = await normalizePlanState(req.user.id, user);
 
-    res.json(normalizedUser);
+    res.json(
+      toPublicPlanState(normalizedUser, Boolean(normalizedUser.payments?.length))
+    );
   } catch (error) {
     logger.error("payments.current_plan.failed", { req, error, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при загрузке данных плана" });
@@ -267,9 +330,21 @@ router.get("/current-plan", async (req, res) => {
 });
 
 router.post("/focus/create", paymentCreateLimiter, createPaymentHandler("focus"));
+router.post(
+  "/forever/create",
+  paymentCreateLimiter,
+  createPaymentHandler("forever")
+);
 
 router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
   try {
+    if (!isFounderSignupEnabled()) {
+      return res.status(403).json({
+        code: "FOUNDER_PROMOTION_CLOSED",
+        error: "Промо-доступ Founder больше не оформляется",
+      });
+    }
+
     const rawUser = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -281,7 +356,7 @@ router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
     const user = await normalizePlanState(req.user.id, rawUser);
 
     if (isActivePlan(user, "forever")) {
-      return res.json(user);
+      return res.json(toPublicPlanState(user));
     }
 
     const updatedUser = await prisma.user.update({
@@ -298,7 +373,7 @@ router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
       },
     });
 
-    res.json(updatedUser);
+    res.json(toPublicPlanState(updatedUser));
   } catch (error) {
     logger.error("payments.forever.activate_failed", {
       req,

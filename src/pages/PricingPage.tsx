@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tag, Check } from "lucide-react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
-import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
 
 type CurrentPlan = {
@@ -14,13 +13,10 @@ type CurrentPlan = {
 
 const PricingPage = () => {
   const navigate = useNavigate();
-  const startRoute = useStartRoute();
-  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
-  const hasActivatedForeverRef = useRef(false);
   const paymentsEnabled = import.meta.env.VITE_PAYMENTS_ENABLED === "true";
 
 
@@ -38,42 +34,17 @@ const PricingPage = () => {
     currentPlan.planExpiresAt &&
     new Date(currentPlan.planExpiresAt) > new Date());
 
-  const isForeverActive = Boolean(currentPlan &&
+  const isFounderActive = Boolean(currentPlan &&
+    currentPlan.plan === "founder" &&
+    currentPlan.subscriptionStatus === "active");
+  const isPaidForeverActive = Boolean(currentPlan &&
     currentPlan.plan === "forever" &&
     currentPlan.subscriptionStatus === "active");
-  const isStartActive = !isFocusActive && !isForeverActive;
-
-  const activateForeverPlan = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await PaymentApi.activateForeverPlan();
-      setCurrentPlan(data);
-      setSearchParams({}, { replace: true });
-      navigate(startRoute, { replace: true });
-    } catch {
-      alert("Не удалось активировать тариф Forever. Попробуйте позже.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [navigate, setSearchParams, startRoute]);
-
-  useEffect(() => {
-    if (
-      searchParams.get("activate") !== "forever" ||
-      hasActivatedForeverRef.current ||
-      !isAuthenticated ||
-      isGuest ||
-      isForeverActive
-    ) {
-      return;
-    }
-
-    hasActivatedForeverRef.current = true;
-    activateForeverPlan();
-  }, [activateForeverPlan, isAuthenticated, isForeverActive, isGuest, searchParams]);
+  const isLifetimeActive = isFounderActive || isPaidForeverActive;
+  const isStartActive = !isFocusActive && !isLifetimeActive;
 
   const handleFocusClick = async () => {
-    if (!paymentsEnabled || isFocusActive || isForeverActive) return;
+    if (!paymentsEnabled || isFocusActive || isLifetimeActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login?redirect=/pricing");
@@ -115,17 +86,6 @@ const PricingPage = () => {
     }
   };
 
-  const handleForeverClick = async () => {
-    if (!paymentsEnabled || isForeverActive) return;
-
-    if (!isAuthenticated || isGuest) {
-      navigate(`/login?redirect=${encodeURIComponent("/pricing?activate=forever")}`);
-      return;
-    }
-
-    await activateForeverPlan();
-  };
-
   const plans = [
     {
       name: "Start",
@@ -153,27 +113,27 @@ const PricingPage = () => {
       ],
       cta: isFocusActive
         ? "Текущий тариф"
-        : isForeverActive
-          ? "Недоступен при Forever"
+        : isLifetimeActive
+          ? "Включён в пожизненный тариф"
           : (paymentsEnabled ? "Оформить Focus" : "Оплата подключается"),
       highlight: true,
-      disabled: !paymentsEnabled || isFocusActive || isForeverActive,
+      disabled: !paymentsEnabled || isFocusActive || isLifetimeActive,
       active: isFocusActive,
       expiresAt: currentPlan?.planExpiresAt,
     },
     {
-      name: "Forever",
-      price: "0 ₽",
+      name: isFounderActive ? "Founder" : "Forever",
+      price: isFounderActive ? "0 ₽" : "Скоро",
       period: "навсегда",
       features: [
         "100 AI-запросов в день",
         "Вечный доступ",
-        "Для первых пользователей",
+        isFounderActive ? "Для первых пользователей" : "Единоразовая оплата",
         "Все будущие функции",
       ],
-      cta: isForeverActive ? "Текущий тариф" : (paymentsEnabled ? "Оформить Forever" : "Оплата подключается"),
-      disabled: !paymentsEnabled || isForeverActive,
-      active: isForeverActive,
+      cta: isLifetimeActive ? "Текущий тариф" : "Скоро будет доступен",
+      disabled: true,
+      active: isLifetimeActive,
       accent: true,
     },
   ];
@@ -227,7 +187,7 @@ const PricingPage = () => {
                     Активен до {new Date(plan.expiresAt).toLocaleDateString("ru-RU")}
                   </p>
                 )}
-                {plan.name === "Forever" && plan.active && (
+                {(plan.name === "Founder" || plan.name === "Forever") && plan.active && (
                   <p className="mt-2 text-sm text-indigo-400">
                     Активен бессрочно
                   </p>
@@ -242,13 +202,11 @@ const PricingPage = () => {
                 ))}
               </ul>
               <button
-                disabled={plan.disabled || ((plan.name === "Focus" || plan.name === "Forever") && isLoading)}
+                disabled={plan.disabled || (plan.name === "Focus" && isLoading)}
                 onClick={
                   plan.name === "Focus"
                     ? handleFocusClick
-                    : plan.name === "Forever"
-                      ? handleForeverClick
-                      : undefined
+                    : undefined
                 }
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${
                   plan.highlight || (plan.accent && !plan.disabled)
@@ -258,7 +216,7 @@ const PricingPage = () => {
                       : "bg-slate-800 text-slate-300"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                {(plan.name === "Focus" || plan.name === "Forever") && isLoading ? "Загрузка..." : plan.cta}
+                {plan.name === "Focus" && isLoading ? "Загрузка..." : plan.cta}
               </button>
             </div>
           ))}

@@ -12,6 +12,8 @@ export const createAiProviderError = ({
   status = 503,
   retryable = false,
   provider = null,
+  operation = null,
+  providerCode = null,
   cause,
 }) => {
   const error = new Error(message);
@@ -19,6 +21,8 @@ export const createAiProviderError = ({
   error.status = status;
   error.retryable = retryable;
   error.provider = provider;
+  error.operation = operation;
+  error.providerCode = providerCode;
   error.cause = cause;
   return error;
 };
@@ -28,7 +32,13 @@ const getTimeoutMs = () => {
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
 };
 
-const requestJson = async ({ url, init, provider, timeoutMs = getTimeoutMs() }) => {
+const requestJson = async ({
+  url,
+  init,
+  provider,
+  operation,
+  timeoutMs = getTimeoutMs(),
+}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -48,6 +58,11 @@ const requestJson = async ({ url, init, provider, timeoutMs = getTimeoutMs() }) 
         status: response.status,
         retryable,
         provider,
+        operation,
+        providerCode:
+          typeof payload?.code === "string" || typeof payload?.code === "number"
+            ? String(payload.code).slice(0, 100)
+            : null,
       });
     }
 
@@ -62,6 +77,7 @@ const requestJson = async ({ url, init, provider, timeoutMs = getTimeoutMs() }) 
         status: 503,
         retryable: true,
         provider,
+        operation,
         cause: error,
       });
     }
@@ -72,6 +88,7 @@ const requestJson = async ({ url, init, provider, timeoutMs = getTimeoutMs() }) 
       status: 503,
       retryable: true,
       provider,
+      operation,
       cause: error,
     });
   } finally {
@@ -152,6 +169,7 @@ const callDeepSeek = async ({ messages, generationConfig }) => {
   const payload = await requestJson({
     url: `${baseUrl}/chat/completions`,
     provider: "deepseek",
+    operation: "completion",
     init: {
       method: "POST",
       headers: {
@@ -208,6 +226,7 @@ const getGigaChatAccessToken = async ({ forceRefresh = false } = {}) => {
   const payload = await requestJson({
     url: authUrl,
     provider: "gigachat",
+    operation: "oauth",
     init: {
       method: "POST",
       headers: {
@@ -249,6 +268,7 @@ const requestGigaChatCompletion = async ({ messages, generationConfig, token }) 
   const payload = await requestJson({
     url: `${baseUrl}/v1/chat/completions`,
     provider: "gigachat",
+    operation: "completion",
     init: {
       method: "POST",
       headers: {
@@ -307,6 +327,7 @@ const callAiProxy = async (request) => {
   const payload = await requestJson({
     url: `${baseUrl}/v1/chat/completions`,
     provider: "proxy",
+    operation: "completion",
     init: {
       method: "POST",
       headers: {
@@ -353,6 +374,8 @@ const runDirectProviders = async (request, contextLabel) => {
       logger.info("ai.provider.fallback_failed", {
         context: contextLabel,
         provider: fallbackError?.provider || "gigachat",
+        operation: fallbackError?.operation || "unknown",
+        providerCode: fallbackError?.providerCode || null,
         code: fallbackError?.code || "AI_PROVIDER_UNKNOWN_ERROR",
         status: fallbackError?.status || 503,
         retryable: Boolean(fallbackError?.retryable),

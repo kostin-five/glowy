@@ -186,7 +186,7 @@ test("preserves the GigaChat failure details when all providers fail", async () 
     if (requestUrl.includes("deepseek")) {
       return jsonResponse({ error: "unavailable" }, 503);
     }
-    return jsonResponse({ error: "invalid credentials" }, 401);
+    return jsonResponse({ code: "AUTH_401", error: "invalid credentials" }, 401);
   };
 
   await assert.rejects(
@@ -195,6 +195,8 @@ test("preserves the GigaChat failure details when all providers fail", async () 
       error.code === "AI_PROVIDERS_UNAVAILABLE" &&
       error.cause?.code === "AI_PROVIDER_REQUEST_REJECTED" &&
       error.cause?.provider === "gigachat" &&
+      error.cause?.operation === "oauth" &&
+      error.cause?.providerCode === "AUTH_401" &&
       error.cause?.status === 401
   );
 });

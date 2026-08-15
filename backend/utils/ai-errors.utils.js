@@ -1,4 +1,4 @@
-import { isGeminiOverloadedError } from "../services/ai/ai-provider.service.js";
+import { isRetryableAiProviderError } from "../services/ai/ai-provider.service.js";
 
 export const getMindHubAiErrorResponse = () => ({
   error:
@@ -6,7 +6,7 @@ export const getMindHubAiErrorResponse = () => ({
 });
 
 export const getMindHubErrorResponse = (error) => {
-  if (isGeminiOverloadedError(error)) {
+  if (isRetryableAiProviderError(error)) {
     return {
       status: 503,
       body: {
@@ -16,51 +16,15 @@ export const getMindHubErrorResponse = (error) => {
     };
   }
 
-  if (error?.code === "GEMINI_QUOTA_EXCEEDED") {
-    return {
-      status: 503,
-      body: {
-        error: "ИИ временно недоступен из-за лимита провайдера. Попробуй позже.",
-        retryable: false,
-      },
-    };
-  }
-
-  if (error?.code === "GEMINI_UNSUPPORTED_LOCATION") {
-    return {
-      status: 503,
-      body: {
-        error: "ИИ временно недоступен в твоем регионе. Попробуй еще раз чуть позже.",
-        retryable: false,
-      },
-    };
-  }
-
   if (
-    [
-      "GEMINI_EMPTY_RESPONSE",
-      "AI_PROXY_TIMEOUT",
-      "AI_PROXY_UNAVAILABLE",
-    ].includes(error?.code)
-  ) {
-    return {
-      status: 503,
-      body: {
-        ...getMindHubAiErrorResponse(),
-        retryable: true,
-      },
-    };
-  }
-
-  if (
-    ["UNAUTHORIZED_PROXY_REQUEST", "AI_PROXY_CONFIG_MISSING"].includes(
+    ["AI_PROVIDER_CONFIG_MISSING", "AI_PROVIDER_AUTH_FAILED"].includes(
       error?.code
     )
   ) {
     return {
-      status: 502,
+      status: 503,
       body: {
-        ...getMindHubAiErrorResponse(),
+        error: "ИИ временно недоступен. Попробуй чуть позже.",
         retryable: false,
       },
     };
@@ -70,23 +34,23 @@ export const getMindHubErrorResponse = (error) => {
     status: 503,
     body: {
       ...getMindHubAiErrorResponse(),
-      retryable: true,
+      retryable: false,
     },
   };
 };
 
 export const EXPECTED_AI_UNAVAILABLE_CODES = new Set([
-  "GEMINI_UNSUPPORTED_LOCATION",
-  "GEMINI_QUOTA_EXCEEDED",
-  "GEMINI_EMPTY_RESPONSE",
-  "AI_PROXY_CONFIG_MISSING",
-  "AI_PROXY_TIMEOUT",
-  "UNAUTHORIZED_PROXY_REQUEST",
-  "AI_PROXY_UNAVAILABLE",
+  "AI_PROVIDER_CONFIG_MISSING",
+  "AI_PROVIDER_AUTH_FAILED",
+  "AI_PROVIDER_REQUEST_REJECTED",
+  "AI_PROVIDER_EMPTY_RESPONSE",
+  "AI_PROVIDER_TIMEOUT",
+  "AI_PROVIDER_NETWORK_ERROR",
+  "AI_PROVIDER_TEMPORARILY_UNAVAILABLE",
+  "AI_PROVIDERS_UNAVAILABLE",
 ]);
 
 export const isExpectedAiUnavailableError = (error) =>
-  isGeminiOverloadedError(error) ||
   EXPECTED_AI_UNAVAILABLE_CODES.has(error?.code);
 
 export const buildGracefulMindHubUnavailablePayload = (error, extra = {}) => {

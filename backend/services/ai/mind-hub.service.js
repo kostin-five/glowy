@@ -174,7 +174,7 @@ export const getCoachReply = async (message, messages) => {
   const reply = text.trim();
 
   if (!reply) {
-    throw new Error("Gemini returned empty coach reply");
+    throw new Error("AI provider returned empty coach reply");
   }
 
   return reply;

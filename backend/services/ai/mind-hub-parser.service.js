@@ -60,7 +60,7 @@ export const parseJsonLoose = (value) => {
       return JSON.parse(cleaned.slice(objectStart, objectEnd + 1));
     }
 
-    throw new Error("Gemini returned non-JSON mind hub response");
+    throw new Error("AI provider returned non-JSON mind hub response");
   }
 };
 

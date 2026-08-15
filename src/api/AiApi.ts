@@ -18,7 +18,7 @@ export type MindHubLimit = {
 };
 
 export type AiUsage = {
-  plan: "demo" | "start" | "focus" | "forever";
+  plan: "demo" | "start" | "focus" | "founder" | "forever";
   used: number;
   limit: number;
   remaining: number;

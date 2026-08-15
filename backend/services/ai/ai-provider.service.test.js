@@ -178,3 +178,23 @@ test("reuses a valid GigaChat access token across fallback requests", async () =
 
   assert.equal(authCalls, 1);
 });
+
+test("preserves the GigaChat failure details when all providers fail", async () => {
+  configureDirectProviders();
+  global.fetch = async (url) => {
+    const requestUrl = String(url);
+    if (requestUrl.includes("deepseek")) {
+      return jsonResponse({ error: "unavailable" }, 503);
+    }
+    return jsonResponse({ error: "invalid credentials" }, 401);
+  };
+
+  await assert.rejects(
+    generateContentWithAiProvider("hello", "provider test"),
+    (error) =>
+      error.code === "AI_PROVIDERS_UNAVAILABLE" &&
+      error.cause?.code === "AI_PROVIDER_REQUEST_REJECTED" &&
+      error.cause?.provider === "gigachat" &&
+      error.cause?.status === 401
+  );
+});

@@ -350,6 +350,14 @@ const runDirectProviders = async (request, contextLabel) => {
     try {
       return await callGigaChat(request);
     } catch (fallbackError) {
+      logger.info("ai.provider.fallback_failed", {
+        context: contextLabel,
+        provider: fallbackError?.provider || "gigachat",
+        code: fallbackError?.code || "AI_PROVIDER_UNKNOWN_ERROR",
+        status: fallbackError?.status || 503,
+        retryable: Boolean(fallbackError?.retryable),
+      });
+
       throw createAiProviderError({
         code: "AI_PROVIDERS_UNAVAILABLE",
         message: "All configured AI providers are unavailable.",

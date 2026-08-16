@@ -7,9 +7,9 @@ test.describe("public pricing", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Тарифы и лимиты" }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "Forever" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Founder" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Скоро будет доступен" }),
+      page.getByRole("button", { name: "Оформление отключено" }),
     ).toBeDisabled();
     await expect(page.getByRole("button", { name: /Оформить Founder/i })).toHaveCount(0);
   });

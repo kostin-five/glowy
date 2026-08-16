@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { useName } from "../../store/useAuthStore";
+import { useAvatarId, useName } from "../../store/useAuthStore";
 import { useUserLevel } from "../../store/useTaskStore";
-import { User } from "lucide-react";
+import { ProfileAvatar } from "../profile/AvatarPicker";
 
 const Header = () => {
   const name = useName();
   const currentLevel = useUserLevel();
+  const avatarId = useAvatarId();
 
   return (
     <header className="sticky top-0 z-50 flex w-full shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95 lg:hidden">
@@ -31,7 +32,7 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 px-2.5 py-1 dark:border-slate-700/50 dark:bg-slate-800/60">
-          <User size={14} className="text-slate-600 dark:text-slate-400" />
+          <ProfileAvatar avatarId={avatarId} size="sm" />
           <span className="max-w-20 truncate text-xs font-medium text-slate-700 dark:text-slate-200">
             {name}
           </span>

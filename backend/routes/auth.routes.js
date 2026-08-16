@@ -109,6 +109,8 @@ router.post(
         email: newUser.email,
         xp: newUser.xp,
         level: newUser.level,
+        avatarId: newUser.avatarId,
+        aiTone: newUser.aiTone,
       });
     } catch (e) {
       logger.error("auth.register.failed", { req, error: e, statusCode: 400 });
@@ -144,6 +146,8 @@ router.post("/login", loginLimiter, async (req, res) => {
       email: user.email,
       xp: user.xp,
       level: user.level,
+      avatarId: user.avatarId,
+      aiTone: user.aiTone,
     });
   } catch (e) {
     logger.error("auth.login.failed", { req, error: e, statusCode: 400 });
@@ -166,6 +170,8 @@ router.get("/me", authMiddleware, async (req, res) => {
         email: true,
         xp: true,
         level: true,
+        avatarId: true,
+        aiTone: true,
       },
     });
 

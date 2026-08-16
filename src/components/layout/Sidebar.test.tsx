@@ -8,10 +8,13 @@ import Sidebar from "./Sidebar";
 
 vi.mock("../../store/useAuthStore", () => ({
   useName: () => "Тест",
+  useAvatarId: () => "aurora",
 }));
 
 vi.mock("../../store/useSettingsStore", () => ({
   useIsDarkMode: () => false,
+  useIsSidebarCollapsed: () => false,
+  useToggleSidebarCollapsed: () => vi.fn(),
 }));
 
 vi.mock("../../hooks/useLogout", () => ({

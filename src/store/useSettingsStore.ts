@@ -3,7 +3,14 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type TaskViewMode = "list" | "grid";
 export type ThemeMode = "light" | "dark" | "system";
-export type StartRoute = "/dashboard" | "/tasks";
+export type StartRoute = "/dashboard" | "/tasks" | "/ai";
+export type OnboardingHintId =
+  | "taskCreation"
+  | "progressNavigation"
+  | "habitTracking"
+  | "achievementDetails"
+  | "analyticsPeriod"
+  | "settingsNavigation";
 
 interface SettingsStore {
   isDarkMode: boolean;
@@ -11,12 +18,17 @@ interface SettingsStore {
   taskViewMode: TaskViewMode;
   startRoute: StartRoute;
   dailyEnergyLimit: number;
+  shownOnboardingHints: OnboardingHintId[];
+  isSidebarCollapsed: boolean;
   toggleDarkMode: () => void;
   setDarkMode: (isDarkMode: boolean) => void;
   setThemeMode: (themeMode: ThemeMode) => void;
   setTaskViewMode: (taskViewMode: TaskViewMode) => void;
   setStartRoute: (startRoute: StartRoute) => void;
   setDailyEnergyLimit: (dailyEnergyLimit: number) => void;
+  markOnboardingHintShown: (hintId: OnboardingHintId) => void;
+  resetOnboardingHints: () => void;
+  toggleSidebarCollapsed: () => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -27,6 +39,8 @@ export const useSettingsStore = create<SettingsStore>()(
       taskViewMode: "list",
       startRoute: "/dashboard",
       dailyEnergyLimit: 100,
+      shownOnboardingHints: [],
+      isSidebarCollapsed: false,
       toggleDarkMode: () =>
         set((state) => ({
           isDarkMode: !state.isDarkMode,
@@ -46,6 +60,15 @@ export const useSettingsStore = create<SettingsStore>()(
         set(() => ({
           dailyEnergyLimit: Math.min(100, Math.max(0, dailyEnergyLimit)),
         })),
+      markOnboardingHintShown: (hintId: OnboardingHintId) =>
+        set((state) => ({
+          shownOnboardingHints: state.shownOnboardingHints.includes(hintId)
+            ? state.shownOnboardingHints
+            : [...state.shownOnboardingHints, hintId],
+        })),
+      resetOnboardingHints: () => set({ shownOnboardingHints: [] }),
+      toggleSidebarCollapsed: () =>
+        set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     }),
     {
       name: "glowy-settings",
@@ -62,6 +85,11 @@ export const useSettingsStore = create<SettingsStore>()(
           startRoute: persisted?.startRoute ?? currentState.startRoute,
           dailyEnergyLimit:
             persisted?.dailyEnergyLimit ?? currentState.dailyEnergyLimit,
+          shownOnboardingHints: Array.isArray(persisted?.shownOnboardingHints)
+            ? persisted.shownOnboardingHints
+            : currentState.shownOnboardingHints,
+          isSidebarCollapsed:
+            persisted?.isSidebarCollapsed ?? currentState.isSidebarCollapsed,
         };
       },
     }
@@ -89,3 +117,15 @@ export const useDailyEnergyLimit = () =>
   useSettingsStore((state) => state.dailyEnergyLimit);
 export const useSetDailyEnergyLimit = () =>
   useSettingsStore((state) => state.setDailyEnergyLimit);
+export const useWasOnboardingHintShown = (hintId: OnboardingHintId) =>
+  useSettingsStore((state) =>
+    state.shownOnboardingHints.includes(hintId)
+  );
+export const useMarkOnboardingHintShown = () =>
+  useSettingsStore((state) => state.markOnboardingHintShown);
+export const useResetOnboardingHints = () =>
+  useSettingsStore((state) => state.resetOnboardingHints);
+export const useIsSidebarCollapsed = () =>
+  useSettingsStore((state) => state.isSidebarCollapsed);
+export const useToggleSidebarCollapsed = () =>
+  useSettingsStore((state) => state.toggleSidebarCollapsed);

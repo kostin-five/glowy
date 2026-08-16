@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { logger } from "../../lib/logger.js";
+import { recordSuccessfulAiUsageSafely } from "../analytics/ai-usage-accounting.service.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const TOKEN_EXPIRY_SAFETY_MS = 60_000;
@@ -393,7 +394,7 @@ const runDirectProviders = async (request, contextLabel) => {
   }
 };
 
-const runProviderRequest = async (request, contextLabel) => {
+const runProviderRequest = async (request, contextLabel, accountingContext) => {
   const startedAt = Date.now();
   const result =
     (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
@@ -410,13 +411,20 @@ const runProviderRequest = async (request, contextLabel) => {
     totalTokens: result.usage?.totalTokens || 0,
   });
 
+  await recordSuccessfulAiUsageSafely(accountingContext, result);
+
   return result;
 };
 
-export const generateContentWithAiProvider = async (prompt, contextLabel) =>
+export const generateContentWithAiProvider = async (
+  prompt,
+  contextLabel,
+  accountingContext
+) =>
   runProviderRequest(
     { messages: buildMessages({ prompt }), generationConfig: {} },
-    contextLabel
+    contextLabel,
+    accountingContext
   );
 
 export const chatWithAiProvider = async ({
@@ -425,13 +433,15 @@ export const chatWithAiProvider = async ({
   systemInstruction,
   generationConfig,
   contextLabel,
+  accountingContext,
 }) =>
   runProviderRequest(
     {
       messages: buildMessages({ message, history, systemInstruction }),
       generationConfig: generationConfig || {},
     },
-    contextLabel
+    contextLabel,
+    accountingContext
   );
 
 export const isRetryableAiProviderError = (error) => Boolean(error?.retryable);

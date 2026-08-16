@@ -26,7 +26,9 @@ export const parseMindHubDrafts = async (
   today,
   activeTasksContext = [],
   currentEnergy = null,
-  messages = []
+  messages = [],
+  aiTone = "calm",
+  accountingContext
 ) => {
   const activeTasksString = activeTasksContext.length
     ? `
@@ -77,6 +79,7 @@ ${activeTasksContext
 ИСТОРИЯ ДИАЛОГА ДЛЯ КОНТЕКСТА:
 ${conversationString}`
     : "";
+  const toneContext = `\n\nСТИЛЬ ОБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ:\n${buildToneInstruction(aiTone)}`;
   const courseworkPlan = parseCourseworkPlan(message, today);
 
   if (courseworkPlan) {
@@ -89,9 +92,10 @@ ${conversationString}`
       today,
       activeTasksString,
       userEnergyString,
-      conversationContext
+      `${conversationContext}${toneContext}`
     ),
-    "Mind Hub parse"
+    "Mind Hub parse",
+    accountingContext
   );
   const parsedPayload = parseJsonLoose(responseText);
 
@@ -160,16 +164,33 @@ const normalizeChatMessages = (messages, currentMessage) => {
   return history;
 };
 
-export const getCoachReply = async (message, messages) => {
+export const buildToneInstruction = (aiTone = "calm") => {
+  if (aiTone === "strict") {
+    return "Говори строго и очень прямо: обозначай следующий конкретный шаг и мягко пресекай уход от действия. Никогда не унижай, не стыди, не угрожай и не оценивай личность пользователя.";
+  }
+  if (aiTone === "moderate") {
+    return "Говори спокойно, но прямо: меньше утешений, больше ясности и одного конкретного следующего шага. Не дави и не оценивай личность пользователя.";
+  }
+
+  return "Говори мягко и поддерживающе: признай состояние пользователя и предложи реалистичный небольшой шаг без давления.";
+};
+
+export const getCoachReply = async (
+  message,
+  messages,
+  aiTone = "calm",
+  accountingContext
+) => {
   const { text } = await chatWithAiProvider({
     message,
     history: normalizeChatMessages(messages, message),
-    systemInstruction: COACH_SYSTEM_INSTRUCTION,
+    systemInstruction: `${COACH_SYSTEM_INSTRUCTION}\n\n${buildToneInstruction(aiTone)}`,
     generationConfig: {
       temperature: 0.9,
       topP: 0.95,
     },
     contextLabel: "Mind Hub chat",
+    accountingContext,
   });
   const reply = text.trim();
 
@@ -182,9 +203,13 @@ export const getCoachReply = async (message, messages) => {
 
 export const buildTaskAnalysisPrompt = (
   tasksString,
-  currentEnergy
+  currentEnergy,
+  aiTone = "calm"
 ) => `Ты — Glowy, эмпатичный ИИ-ассистент и наставник по личной продуктивности. Glowy — мужской персонаж: говори о себе только в мужском роде (например, "рад", "подготовил", "предложил"), никогда не используй женский род.
 Твоя главная цель — помочь пользователю выполнить задачи на день, не доведя его до выгорания.
+
+ВЫБРАННЫЙ СТИЛЬ ОБЩЕНИЯ:
+${buildToneInstruction(aiTone)}
 
 ТЕКУЩИЙ КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ:
 - Текущий ручной уровень энергии пользователя: ${currentEnergy}%.

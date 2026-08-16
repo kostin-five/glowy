@@ -9,8 +9,11 @@ import {
   SlidersHorizontal,
   Sun,
   Trash2,
-  User,
   Tag,
+  RotateCcw,
+  MessageCircle,
+  UserRound,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Modal from "../components/ui/Modal";
@@ -22,6 +25,8 @@ import {
   useStartRoute,
   useSetStartRoute,
   type ThemeMode,
+  useResetOnboardingHints,
+  type StartRoute,
 } from "../store/useSettingsStore";
 import {
   GUEST_REQUEST_LIMIT,
@@ -32,6 +37,9 @@ import {
 } from "../store/useAuthStore";
 import { useLogout } from "../hooks/useLogout";
 import { clearLocalAuthSession } from "../api/authSession";
+import { ProfileAvatar } from "../components/profile/AvatarPicker";
+import ProfilePreferencesPanel from "../components/profile/ProfilePreferencesPanel";
+import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 
 const themeOptions: Array<{
   value: ThemeMode;
@@ -44,12 +52,21 @@ const themeOptions: Array<{
 ];
 
 const startRouteOptions: Array<{
-  value: "/dashboard" | "/tasks";
+  value: StartRoute;
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
   { value: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
   { value: "/tasks", label: "Задачи", icon: CheckSquare },
+  { value: "/ai", label: "Чат", icon: MessageCircle },
+];
+
+const settingsSections = [
+  { id: "profile", label: "Профиль", icon: UserRound },
+  { id: "subscription", label: "Тариф", icon: Tag },
+  { id: "interface", label: "Интерфейс", icon: SlidersHorizontal },
+  { id: "system", label: "Система", icon: RotateCcw },
+  { id: "account", label: "Аккаунт", icon: ShieldCheck },
 ];
 
 const planLabels = {
@@ -82,6 +99,8 @@ const SettingsPage = () => {
   const setThemeMode = useSetThemeMode();
   const startRoute = useStartRoute();
   const setStartRoute = useSetStartRoute();
+  const resetOnboardingHints = useResetOnboardingHints();
+  const avatarId = useAuthStore((state) => state.avatarId);
 
   const showSettingsSavedToast = () => {
     if (savedToastTimerRef.current) {
@@ -143,7 +162,7 @@ const SettingsPage = () => {
     showSettingsSavedToast();
   };
 
-  const handleStartRouteChange = (route: "/dashboard" | "/tasks") => {
+  const handleStartRouteChange = (route: StartRoute) => {
     setStartRoute(route);
     showSettingsSavedToast();
   };
@@ -175,8 +194,13 @@ const SettingsPage = () => {
     window.location.reload();
   };
 
+  const handleResetOnboardingHints = () => {
+    resetOnboardingHints();
+    showSettingsSavedToast();
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 md:px-8">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8">
       <div>
         <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100 md:text-4xl">
           Настройки
@@ -187,12 +211,34 @@ const SettingsPage = () => {
         </p>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <div className="grid items-start gap-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
+        <nav
+          aria-label="Разделы настроек"
+          className="sticky top-4 z-10 flex gap-2 rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 lg:flex-col"
+        >
+          <div className="flex gap-2 overflow-x-auto lg:flex-col">
+            {settingsSections.map(({ id, label, icon: Icon }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+            >
+              <Icon size={17} />
+              {label}
+            </a>
+            ))}
+          </div>
+          <FirstUsePopover id="settingsNavigation">
+            Настройки разделены по темам. Выбери раздел, чтобы быстро перейти к нужным параметрам.
+          </FirstUsePopover>
+        </nav>
+
+        <div className="flex min-w-0 flex-col gap-8">
+
+      <section id="profile" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
-              <User size={22} />
-            </div>
+            <ProfileAvatar avatarId={avatarId} size="lg" />
             <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Профиль
@@ -220,9 +266,13 @@ const SettingsPage = () => {
             Выйти из аккаунта
           </button>
         </div>
+        <ProfilePreferencesPanel
+          isGuest={isGuest}
+          onSaved={showSettingsSavedToast}
+        />
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="subscription" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <Tag size={22} />
@@ -277,7 +327,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="interface" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <SlidersHorizontal size={22} />
@@ -332,7 +382,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60 sm:grid-cols-2">
+        <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-950/60 sm:grid-cols-3">
           {startRouteOptions.map(({ value, label, icon: Icon }) => {
             const isActive = startRoute === value;
 
@@ -356,37 +406,59 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
+      <section id="system" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+        <div>
             <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-100">
               Система
             </h2>
             <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
-              Очисти локальный кэш интерфейса без выхода из аккаунта.
+              Верни вводную подсказку или очисти локальный кэш интерфейса без
+              выхода из аккаунта.
             </p>
-            <a
-              href="mailto:contact@example.test"
-              className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400 dark:text-indigo-300"
-            >
-              <Mail size={17} />
-              contact@example.test
-            </a>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleClearLocalCache}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:border-red-400/30 dark:hover:bg-red-500/10 dark:hover:text-red-300"
-          >
-            <Trash2 size={17} />
-            Очистить локальный кэш
-          </button>
         </div>
+
+        <div className="mt-5 divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Подсказка при создании задачи</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Покажем одноразовую вводную подсказку снова.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetOnboardingHints}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
+            >
+              <RotateCcw size={17} />
+              Показать снова
+            </button>
+          </div>
+          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Локальный кэш интерфейса</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Сбросит локальные настройки, не удаляя задачи и аккаунт.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearLocalCache}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:border-rose-400/30 dark:hover:text-rose-300"
+            >
+              <Trash2 size={17} />
+              Очистить кэш
+            </button>
+          </div>
+        </div>
+
+        <a
+          href="mailto:contact@example.test"
+          className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400 dark:text-indigo-300"
+        >
+          <Mail size={17} />
+          contact@example.test
+        </a>
       </section>
 
       {!isGuest && (
-        <section className="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none md:p-6">
+        <section id="account" className="scroll-mt-4 rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-display text-xl font-bold text-rose-700 dark:text-rose-200">
@@ -408,6 +480,8 @@ const SettingsPage = () => {
           </div>
         </section>
       )}
+        </div>
+      </div>
 
       {showSavedToast && (
         <div

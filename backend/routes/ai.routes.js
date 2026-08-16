@@ -168,8 +168,9 @@ router.post("/analyze", async (req, res) => {
     const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
     const { text } = await generateContentWithAiProvider(
-      buildTaskAnalysisPrompt(tasksString, currentEnergy),
-      "Task analysis"
+      buildTaskAnalysisPrompt(tasksString, currentEnergy, user?.aiTone),
+      "Task analysis",
+      { userId: req.user.id }
     );
 
     res.json({ message: text });
@@ -224,7 +225,7 @@ router.post("/mind-hub", async (req, res) => {
     });
     const userEnergy = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { currentEnergy: true },
+      select: { currentEnergy: true, aiTone: true },
     });
     const effectiveCurrentEnergy =
       typeof userEnergy?.currentEnergy === "number"
@@ -241,7 +242,12 @@ router.post("/mind-hub", async (req, res) => {
 
     if (hubMode === "chat") {
       try {
-        const reply = await getCoachReply(message, messages);
+        const reply = await getCoachReply(
+          message,
+          messages,
+          userEnergy?.aiTone,
+          { userId: req.user.id }
+        );
         const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
 
         if (!aiLimit.allowed) {
@@ -278,7 +284,9 @@ router.post("/mind-hub", async (req, res) => {
       today,
       activeTasks,
       effectiveCurrentEnergy,
-      messages
+      messages,
+      userEnergy?.aiTone,
+      { userId: req.user.id }
     );
     const isExplicitNewRequest =
       /ещ[её]\s+(одну|раз)|новую|добавь\s+ещ[её]|на\s+(завтра|послезавтра|другую дату)/i.test(

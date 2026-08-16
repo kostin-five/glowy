@@ -2,6 +2,7 @@ import axios from "axios";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_BASE_URL } from "../api/config";
+import type { AiTone, AvatarId } from "../types";
 
 export const GUEST_REQUEST_LIMIT = 3;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -25,6 +26,8 @@ interface AuthStore {
   isGuest: boolean;
   name: string;
   email: string | null;
+  avatarId: AvatarId;
+  aiTone: AiTone;
   token: string | null;
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
@@ -39,6 +42,7 @@ interface AuthStore {
   resetGuestRequestsIfNeeded: () => void;
   markGuestRequestsLimitReached: () => void;
   currentEnergy: number;
+  setProfilePreferences: (avatarId: AvatarId, aiTone: AiTone) => void;
   updateCurrentEnergy: (energy: number) => Promise<void>;
 }
 
@@ -50,6 +54,8 @@ export const useAuthStore = create<AuthStore>()(
       isChecking: true,
       name: "",
       email: null,
+      avatarId: "orbit-indigo",
+      aiTone: "calm",
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
@@ -84,6 +90,8 @@ export const useAuthStore = create<AuthStore>()(
           isChecking: false,
           name: "Демо",
           email: "demo",
+          avatarId: "orbit-indigo",
+          aiTone: "calm",
           token: `demo-token-${Date.now()}`,
           currentEnergy: 100,
         }));
@@ -96,6 +104,8 @@ export const useAuthStore = create<AuthStore>()(
           isChecking: false,
           name: "",
           email: null,
+          avatarId: "orbit-indigo",
+          aiTone: "calm",
           token: null,
         }));
       },
@@ -113,6 +123,8 @@ export const useAuthStore = create<AuthStore>()(
             isGuest: false,
             name: user.name,
             email: user.email,
+            avatarId: user.avatarId || "orbit-indigo",
+            aiTone: user.aiTone || "calm",
             isChecking: false,
           });
         } catch {
@@ -123,6 +135,8 @@ export const useAuthStore = create<AuthStore>()(
             isGuest: false,
             name: "",
             email: null,
+            avatarId: "orbit-indigo",
+            aiTone: "calm",
             token: null,
             isChecking: false,
           });
@@ -167,6 +181,7 @@ export const useAuthStore = create<AuthStore>()(
             get().guestRequestsResetDate || new Date().toISOString(),
         })),
       currentEnergy: 100,
+      setProfilePreferences: (avatarId, aiTone) => set({ avatarId, aiTone }),
 
       updateCurrentEnergy: async (energy: number) => {
         try {
@@ -197,7 +212,7 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         const state = persistedState as Partial<AuthStore> & {
           login?: string | null;
@@ -219,6 +234,8 @@ export const useIsAuthenticated = () =>
 export const useIsGuest = () => useAuthStore((state) => state.isGuest);
 export const useName = () => useAuthStore((state) => state.name);
 export const useEmail = () => useAuthStore((state) => state.email);
+export const useAvatarId = () => useAuthStore((state) => state.avatarId);
+export const useAiTone = () => useAuthStore((state) => state.aiTone);
 export const useToLogin = () => useAuthStore((state) => state.toLogin);
 export const useRestoreAuthSession = () =>
   useAuthStore((state) => state.restoreAuthSession);

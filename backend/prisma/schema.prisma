@@ -7,40 +7,121 @@ datasource db {
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
-  userId      Int       @map("user_id")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title       String
-  date        String
-  priority    String
-  energyLevel String    @map("energy_level")
-  category    String
-  completed   Boolean   @default(false)
-  xpAwarded   Boolean   @default(false) @map("xp_awarded")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  subtasks    SubTask[]
+  id               Int       @id @default(autoincrement())
+  userId           Int       @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  date             String
+  priority         String
+  energyLevel      String    @map("energy_level")
+  category         String
+  completed        Boolean   @default(false)
+  completedOn      String?   @map("completed_on") @db.VarChar(10)
+  estimatedMinutes Int?      @map("estimated_minutes")
+  actualMinutes    Int?      @map("actual_minutes")
+  xpAwarded        Boolean   @default(false) @map("xp_awarded")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  subtasks         SubTask[]
 
   @@map("tasks")
 }
 
 model User {
-  id                 Int       @id @default(autoincrement())
+  id                 Int            @id @default(autoincrement())
   name               String
-  email              String    @unique
+  email              String         @unique
   password           String
-  currentEnergy      Int       @default(100) @map("current_energy")
-  aiRequestsCount    Int       @default(0) @map("ai_requests_count")
-  aiRequestsResetAt  DateTime? @map("ai_requests_reset_at")
-  xp                 Int       @default(0)
-  level              Int       @default(1)
-  plan               String    @default("start")
-  subscriptionStatus String    @default("inactive") @map("subscription_status")
-  planExpiresAt      DateTime? @map("plan_expires_at")
+  currentEnergy      Int            @default(100) @map("current_energy")
+  aiRequestsCount    Int            @default(0) @map("ai_requests_count")
+  aiRequestsResetAt  DateTime?      @map("ai_requests_reset_at")
+  xp                 Int            @default(0)
+  level              Int            @default(1)
+  plan               String         @default("start")
+  subscriptionStatus String         @default("inactive") @map("subscription_status")
+  planExpiresAt      DateTime?      @map("plan_expires_at")
+  avatarId           String?        @map("avatar_id") @db.VarChar(40)
+  aiTone             String         @default("calm") @map("ai_tone")
+  focusBetaEnabled   Boolean        @default(false) @map("focus_beta_enabled")
   tasks              Task[]
   payments           Payment[]
+  habits             Habit[]
+  streakRescues      StreakRescue[]
+  achievements       Achievement[]
+  aiUsageDaily       AiUsageDaily[]
 
   @@map("users")
+}
+
+model Habit {
+  id        Int          @id @default(autoincrement())
+  userId    Int          @map("user_id")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String       @db.VarChar(120)
+  archived  Boolean      @default(false)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  checks    HabitCheck[]
+
+  @@index([userId, archived])
+  @@map("habits")
+}
+
+model HabitCheck {
+  id          Int      @id @default(autoincrement())
+  habitId     Int      @map("habit_id")
+  habit       Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  completedOn String   @map("completed_on") @db.VarChar(10)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([habitId, completedOn])
+  @@index([completedOn])
+  @@map("habit_checks")
+}
+
+model StreakRescue {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  protectedOn String   @map("protected_on") @db.VarChar(10)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, protectedOn])
+  @@map("streak_rescues")
+}
+
+model Achievement {
+  id       Int      @id @default(autoincrement())
+  userId   Int      @map("user_id")
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key      String   @db.VarChar(60)
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  @@unique([userId, key])
+  @@map("achievements")
+}
+
+model AiUsageDaily {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @map("user_id")
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageDate             String   @map("usage_date") @db.VarChar(10)
+  plan                  String
+  provider              String
+  model                 String
+  requests              Int      @default(0)
+  tokenizedRequests     Int      @default(0) @map("tokenized_requests")
+  pricedRequests        Int      @default(0) @map("priced_requests")
+  promptTokens          Int      @default(0) @map("prompt_tokens")
+  completionTokens      Int      @default(0) @map("completion_tokens")
+  totalTokens           Int      @default(0) @map("total_tokens")
+  estimatedCostMicrousd BigInt   @default(0) @map("estimated_cost_microusd")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, usageDate, plan, provider, model])
+  @@index([usageDate, plan])
+  @@map("ai_usage_daily")
 }
 
 model Payment {

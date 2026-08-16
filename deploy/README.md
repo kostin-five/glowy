@@ -75,12 +75,21 @@ GIGACHAT_SCOPE=GIGACHAT_API_PERS
 GIGACHAT_MODEL=GigaChat
 GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
 GIGACHAT_BASE_URL=https://api.giga.chat
+AI_COST_DEEPSEEK_INPUT_PER_MILLION_USD=
+AI_COST_DEEPSEEK_OUTPUT_PER_MILLION_USD=
+AI_COST_GIGACHAT_INPUT_PER_MILLION_USD=
+AI_COST_GIGACHAT_OUTPUT_PER_MILLION_USD=
 PAID_FOREVER_ENABLED=false
 FOREVER_PRICE_RUB=
 CORS_ORIGINS=https://glowy-ai.ru,https://www.glowy-ai.ru,https://dev.glowy-ai.ru,http://localhost:5173,http://localhost:4173
 ```
 
 Не хранить секреты в git.
+
+Глубокий анализ аналитики доступен только активным Focus/Founder-пользователям
+и запускается ими вручную. Стоимости за миллион токенов задаются по актуальным
+тарифам провайдеров; пустое значение
+означает, что стоимость запроса остаётся неизвестной, а не равной нулю.
 
 ## 8. Подготовить Prisma для первого запуска
 

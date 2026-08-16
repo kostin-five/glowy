@@ -18,7 +18,7 @@ Glowy помогает пользователю:
 
 ## Текущий релиз
 
-Текущий продуктовый трек: `v2.2.1`.
+Текущий продуктовый трек в разработке: `v2.3.0`–`v2.5.0`.
 
 Ключевые изменения:
 
@@ -29,6 +29,12 @@ Glowy помогает пользователю:
 - Тарифы Start, Focus и бесплатный пожизненный Founder для первых пользователей.
 - Focus checkout через ЮKassa.
 - Founder доступен первым пользователям бесплатно и бессрочно.
+- Профиль хранит подготовленный аватар, стиль общения Glowy и добровольное
+  участие в beta-функциях Focus.
+- «Мой прогресс» объединяет уровни, стрик задач, спасательные круги, привычки и
+  достижения; оценка и фактическое время задачи остаются необязательными.
+- Аналитика недели/месяца рассчитывается backend по завершённым задачам; глубокий
+  AI-разбор доступен только Focus/Founder и запускается пользователем вручную.
 
 ## Технологии
 
@@ -106,6 +112,11 @@ GIGACHAT_MODEL=GigaChat-2-Max
 GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
 GIGACHAT_BASE_URL=https://api.giga.chat
 
+AI_COST_DEEPSEEK_INPUT_PER_MILLION_USD=
+AI_COST_DEEPSEEK_OUTPUT_PER_MILLION_USD=
+AI_COST_GIGACHAT_INPUT_PER_MILLION_USD=
+AI_COST_GIGACHAT_OUTPUT_PER_MILLION_USD=
+
 PAID_FOREVER_ENABLED=false
 FOREVER_PRICE_RUB=
 ```
@@ -175,6 +186,12 @@ npm run migrate:deploy
 - перед migration operations делать backup базы в Timeweb;
 - использовать `prisma migrate resolve --applied <migration>` только для миграций, которые уже фактически отражены в реальной схеме.
 
+Миграция `20260816110000_add_personal_progress_analytics` только добавляет поля
+профиля/задач и таблицы прогресса/AI-агрегатов. Её нужно сначала проверить на
+dev-базе, а в Timeweb применять только после свежего backup и отдельного
+подтверждения владельца. Подготовка файла в репозитории не означает, что
+миграция уже применена.
+
 ## Deploy
 
 Frontend деплоится через Timeweb.
@@ -221,6 +238,10 @@ Founder:
 - [Kodik review notes](docs/README_KODIK_REVIEW.md)
 - [v2.0.0 release notes](docs/releases/v2.0.0-product-release.md)
 - [v2.2.1 release notes](docs/releases/v2.2.1-ai-providers-and-founder.md)
+- [v2.3.0 release notes](docs/releases/v2.3.0-profile-and-personalization.md)
+- [v2.4.0 release notes](docs/releases/v2.4.0-personal-progress.md)
+- [v2.5.0 release notes](docs/releases/v2.5.0-analytics-and-focus.md)
+- [AI unit economics](docs/ai-unit-economics.md)
 - [Payments live checklist](docs/payments-live-checklist.md)
 - [VPS deploy notes](deploy/README.md)
 

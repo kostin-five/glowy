@@ -59,6 +59,9 @@ export const buildAiLimitPayload = (count, resetAt, limit) => ({
   resetAt: resetAt.toISOString(),
 });
 
+const normalizeRequestCost = (cost) =>
+  Number.isInteger(cost) && cost > 0 ? cost : 1;
+
 export const getAuthenticatedAiUsage = async (userId) => {
   const now = new Date();
   const rawUser = await prisma.user.findUnique({
@@ -96,7 +99,7 @@ export const getAuthenticatedAiUsage = async (userId) => {
   };
 };
 
-export const getAuthenticatedAiRequestLimit = async (userId) => {
+export const getAuthenticatedAiRequestLimit = async (userId, requestCost = 1) => {
   const now = new Date();
   const rawUser = await prisma.user.findUnique({
     where: { id: userId },
@@ -122,8 +125,9 @@ export const getAuthenticatedAiRequestLimit = async (userId) => {
     : user.aiRequestsResetAt;
 
   const limit = getEffectiveAiLimit(user);
+  const cost = normalizeRequestCost(requestCost);
 
-  if (currentCount >= limit) {
+  if (currentCount + cost > limit) {
     return {
       allowed: false,
       limit: buildAiLimitPayload(currentCount, resetAt, limit),
@@ -138,8 +142,9 @@ export const getAuthenticatedAiRequestLimit = async (userId) => {
   };
 };
 
-export const consumeAuthenticatedAiRequest = async (userId) => {
-  const currentLimit = await getAuthenticatedAiRequestLimit(userId);
+export const consumeAuthenticatedAiRequest = async (userId, requestCost = 1) => {
+  const cost = normalizeRequestCost(requestCost);
+  const currentLimit = await getAuthenticatedAiRequestLimit(userId, cost);
 
   if (!currentLimit.allowed) {
     return currentLimit;
@@ -148,7 +153,7 @@ export const consumeAuthenticatedAiRequest = async (userId) => {
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: {
-      aiRequestsCount: currentLimit.count + 1,
+      aiRequestsCount: currentLimit.count + cost,
       aiRequestsResetAt: currentLimit.resetAt,
     },
     select: {

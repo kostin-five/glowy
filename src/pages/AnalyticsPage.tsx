@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -7,319 +9,364 @@ import {
   Legend,
   Pie,
   PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Sparkles } from "lucide-react";
-import { useTasks } from "../store/useTaskStore";
-import type { Task } from "../types";
-import { parseTaskDateToLocalDay } from "../utils/taskDateGroups";
-
-type WeekOffset = 0 | 1 | 2 | 3;
-type TaskWithTimestamps = Task & {
-  createdAt?: string;
-  updatedAt?: string;
-};
-
-const weekOptions: Array<{ offset: WeekOffset; label: string }> = [
-  { offset: 0, label: "Текущая неделя" },
-  { offset: 1, label: "Прошлая" },
-  { offset: 2, label: "2 недели назад" },
-  { offset: 3, label: "3 недели назад" },
-];
-
-const weekDayLabels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-const monthNames = [
-  "января",
-  "февраля",
-  "марта",
-  "апреля",
-  "мая",
-  "июня",
-  "июля",
-  "августа",
-  "сентября",
-  "октября",
-  "ноября",
-  "декабря",
-];
-
-const getWeekStart = (offset: WeekOffset): Date => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const day = today.getDay();
-  const distanceFromMonday = day === 0 ? 6 : day - 1;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - distanceFromMonday - offset * 7);
-
-  return monday;
-};
-
-const parseAnalyticsDate = (task: TaskWithTimestamps): Date | null => {
-  const timestamp = task.updatedAt || task.createdAt;
-
-  if (timestamp) {
-    const parsed = new Date(timestamp);
-    if (!Number.isNaN(parsed.getTime())) {
-      parsed.setHours(0, 0, 0, 0);
-      return parsed;
-    }
-  }
-
-  return parseTaskDateToLocalDay(task.date);
-};
+import { Clock3, Flame, ListChecks, LoaderCircle, Sparkles } from "lucide-react";
+import {
+  AnalyticsApi,
+  type AnalyticsPeriodKind,
+} from "../api/AnalyticsApi";
+import { formatLocalDateOnly } from "../utils/localDate";
+import { useIsGuest } from "../store/useAuthStore";
+import type { AnalyticsSnapshot } from "../types";
+import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 
 const tooltipStyles = {
   backgroundColor: "#0f172a",
-  borderColor: "#1e293b",
-  borderRadius: "12px",
+  borderColor: "#334155",
+  borderRadius: "8px",
   color: "#f8fafc",
 };
 
-const AnalyticsPage = () => {
-  const tasks = useTasks() as TaskWithTimestamps[];
-  const [selectedWeekOffset, setSelectedWeekOffset] = useState<WeekOffset>(0);
-  const activeTasks = useMemo(
-    () => tasks.filter((task) => !task.completed),
-    [tasks]
-  );
+const formatMinutes = (minutes: number) => {
+  if (minutes < 60) return `${minutes} мин`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
+};
 
+const formatChartDate = (date: string, kind: AnalyticsPeriodKind) => {
+  const parsed = new Date(`${date}T00:00:00`);
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    ...(kind === "week" ? { weekday: "short" as const } : {}),
+  }).format(parsed);
+};
+
+const readApiError = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error) && typeof error.response?.data?.error === "string") {
+    return error.response.data.error;
+  }
+  return fallback;
+};
+
+const MetricCard = ({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof ListChecks;
+  label: string;
+  value: string;
+  detail: string;
+}) => (
+  <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+      <Icon size={17} />
+      <span className="text-xs font-semibold uppercase">{label}</span>
+    </div>
+    <p className="mt-3 text-2xl font-bold text-slate-950 dark:text-slate-100">
+      {value}
+    </p>
+    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
+  </div>
+);
+
+const AnalyticsPage = () => {
+  const isGuest = useIsGuest();
+  const [period, setPeriod] = useState<AnalyticsPeriodKind>("week");
+  const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!isGuest);
+  const [insight, setInsight] = useState<string | null>(null);
+  const [isInsightLoading, setIsInsightLoading] = useState(false);
+  const anchor = formatLocalDateOnly();
+
+  useEffect(() => {
+    if (isGuest) return;
+
+    let active = true;
+    AnalyticsApi.getSnapshot(period, anchor)
+      .then((data) => {
+        if (!active) return;
+        setSnapshot(data);
+        setError(null);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        setError(readApiError(requestError, "Не удалось загрузить аналитику."));
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [anchor, isGuest, period]);
+
+  const chartData = useMemo(
+    () =>
+      snapshot?.dailyCompleted.map((item) => ({
+        ...item,
+        label: formatChartDate(item.date, period),
+      })) || [],
+    [period, snapshot]
+  );
   const energyData = useMemo(
     () =>
-      [
-        {
-          name: "Высокая",
-          value: activeTasks.filter((task) => task.energyLevel === "high").length,
-          color: "#ef4444",
-        },
-        {
-          name: "Средняя",
-          value: activeTasks.filter((task) => task.energyLevel === "med").length,
-          color: "#eab308",
-        },
-        {
-          name: "Низкая",
-          value: activeTasks.filter((task) => task.energyLevel === "low").length,
-          color: "#3b82f6",
-        },
-      ].filter((item) => item.value > 0),
-    [activeTasks]
+      snapshot
+        ? [
+            { name: "Низкая", value: snapshot.energyDistribution.low, color: "#3b82f6" },
+            { name: "Средняя", value: snapshot.energyDistribution.med, color: "#eab308" },
+            { name: "Высокая", value: snapshot.energyDistribution.high, color: "#ef4444" },
+          ].filter((item) => item.value > 0)
+        : [],
+    [snapshot]
   );
 
-  const categoryData = useMemo(() => {
-    const categoryMap = activeTasks.reduce<Record<string, number>>((acc, task) => {
-      const category = (task.category || "Без категории").trim() || "Без категории";
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    }, {});
+  const changePeriod = (nextPeriod: AnalyticsPeriodKind) => {
+    if (nextPeriod === period) return;
+    setPeriod(nextPeriod);
+    setInsight(null);
+    setError(null);
+    setIsLoading(true);
+  };
 
-    return Object.entries(categoryMap)
-      .map(([category, value]) => ({
-        category,
-        value,
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 8);
-  }, [activeTasks]);
+  const requestInsight = async () => {
+    if (!snapshot?.canRequestAiInsight || isInsightLoading) return;
+    setIsInsightLoading(true);
+    setError(null);
+    try {
+      const result = await AnalyticsApi.requestInsight(period, anchor);
+      setInsight(result.insight);
+    } catch (requestError) {
+      setError(
+        readApiError(requestError, "Glowy не смог подготовить вывод. Попробуй позже.")
+      );
+    } finally {
+      setIsInsightLoading(false);
+    }
+  };
 
-  const weeklyCompletedData = useMemo(() => {
-    const weekStart = getWeekStart(selectedWeekOffset);
-
-    return weekDayLabels.map((day, index) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + index);
-
-      const value = tasks.filter((task) => {
-        if (!task.completed) return false;
-
-        const completedDate = parseAnalyticsDate(task);
-        if (!completedDate) return false;
-
-        return completedDate.getTime() === date.getTime();
-      }).length;
-
-      return {
-        day,
-        dateLabel: `${date.getDate()} ${monthNames[date.getMonth()]}`,
-        value,
-      };
-    });
-  }, [selectedWeekOffset, tasks]);
-
-  const hasWeeklyProgress = weeklyCompletedData.some((item) => item.value > 0);
-
-  return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-28 sm:px-4 md:gap-6 md:px-8 lg:pb-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-2xl font-bold leading-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
+  if (isGuest) {
+    return (
+      <section className="mx-auto w-full max-w-4xl px-4 pb-28 md:px-8 lg:pb-8">
+        <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100">
           Твоя аналитика
         </h1>
-        <p className="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-          Картина нагрузки строится по активным задачам, а движение недели — по выполненным.
-        </p>
-      </div>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none md:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
-              Выполненные задачи за неделю
-            </h2>
-            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
-              Переключай последние четыре недели и смотри, где был реальный прогресс.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900/60 sm:grid-cols-4">
-            {weekOptions.map((option) => {
-              const isActive = selectedWeekOffset === option.offset;
-
-              return (
-                <button
-                  key={option.offset}
-                  type="button"
-                  onClick={() => setSelectedWeekOffset(option.offset)}
-                  className={`h-9 rounded-lg px-2 text-xs font-semibold transition-colors ${
-                    isActive
-                      ? "bg-indigo-500/10 text-indigo-500 shadow-sm"
-                      : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-4 h-64 w-full outline-none [&_*]:outline-none [&_.recharts-active-bar]:hidden [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none sm:h-72">
-          {hasWeeklyProgress ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={weeklyCompletedData}
-                margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
-                accessibilityLayer={false}
-              >
-                <CartesianGrid stroke="#1e293b" vertical={false} />
-                <XAxis dataKey="day" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={false}
-                  contentStyle={tooltipStyles}
-                  itemStyle={{ color: "#e2e8f0" }}
-                  labelFormatter={(_, payload) => {
-                    const item = payload?.[0]?.payload as
-                      | { day?: string; dateLabel?: string }
-                      | undefined;
-
-                    return item?.day && item?.dateLabel
-                      ? `${item.day}, ${item.dateLabel}`
-                      : "";
-                  }}
-                />
-                <Bar
-                  dataKey="value"
-                  name="Выполнено"
-                  radius={[8, 8, 0, 0]}
-                  fill="#818cf8"
-                  activeBar={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-              В выбранной неделе пока нет выполненных задач
-            </div>
-          )}
+        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/70">
+          <p className="font-semibold text-slate-900 dark:text-slate-100">
+            Аналитика сохраняется в аккаунте
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            Войди, чтобы видеть стрик, время и динамику выполненных задач между устройствами.
+          </p>
+          <Link className="mt-4 inline-flex text-sm font-bold text-indigo-500" to="/login">
+            Войти в аккаунт
+          </Link>
         </div>
       </section>
+    );
+  }
 
-      <section className="grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-2">
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none md:p-6">
-          <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
-            Распределение активных задач по энергии
-          </h2>
-          <div className="mt-3 h-64 w-full sm:h-72 md:mt-4">
-            {energyData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={energyData}
-                    cx="50%"
-                    cy="48%"
-                    innerRadius="34%"
-                    outerRadius="50%"
-                    paddingAngle={2}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {energyData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyles} itemStyle={{ color: "#e2e8f0" }} />
-                  <Legend verticalAlign="bottom" height={40} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                Нет активных задач для распределения энергии
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none md:p-6">
-          <h2 className="font-display text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
-            Баланс активных задач по сферам жизни
-          </h2>
-          <div className="mt-3 h-64 w-full sm:h-72 md:mt-4">
-            {categoryData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={categoryData}>
-                  <PolarGrid stroke="#334155" />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                  <PolarRadiusAxis allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                  <Radar
-                    dataKey="value"
-                    name="Активные задачи"
-                    stroke="#818cf8"
-                    fill="#818cf8"
-                    fillOpacity={0.5}
-                  />
-                  <Tooltip contentStyle={tooltipStyles} itemStyle={{ color: "#e2e8f0" }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                Нет активных категорий для баланса
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-3 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 text-indigo-900 dark:text-indigo-100 md:flex-row md:items-center md:gap-4 md:p-5">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
-          <Sparkles size={20} />
-        </div>
+  return (
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-28 sm:px-4 md:px-8 lg:pb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-sm font-bold sm:text-base">
-            AI-анализ недели скоро появится
-          </h2>
-          <p className="mt-1 text-sm text-indigo-900/70 dark:text-indigo-100/70">
-            Здесь Glowy будет помогать замечать перегруз, прогресс и повторяющиеся задачи.
+          <h1 className="font-display text-2xl font-bold text-slate-950 dark:text-slate-100 sm:text-3xl">
+            Твоя аналитика
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+            Короткая картина ритма по реально выполненным задачам.
           </p>
         </div>
-      </section>
+        <div className="relative grid grid-cols-2 rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+          {(["week", "month"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => changePeriod(value)}
+              className={`h-9 px-4 text-sm font-semibold transition-colors ${
+                period === value
+                  ? "rounded-md bg-indigo-500 text-white"
+                  : "text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              {value === "week" ? "Неделя" : "Месяц"}
+            </button>
+          ))}
+          <FirstUsePopover id="analyticsPeriod" align="right">
+            Переключай неделю и месяц. Глубокий AI-разбор запускается отдельно и не строится без твоего действия.
+          </FirstUsePopover>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {error}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div
+          className="flex min-h-56 flex-col items-center justify-center rounded-lg border border-dashed border-indigo-300/70 bg-white px-6 text-center dark:border-indigo-500/30 dark:bg-slate-900/60"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+            <LoaderCircle className="animate-spin" size={24} />
+          </span>
+          <p className="mt-4 font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+            Собираю картину периода
+          </p>
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">
+            Считаю выполненные задачи, время и ритм без лишнего шума.
+          </p>
+        </div>
+      ) : snapshot ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <MetricCard
+              icon={ListChecks}
+              label="Выполнено"
+              value={String(snapshot.completedTasks)}
+              detail={period === "week" ? "за эту неделю" : "за этот месяц"}
+            />
+            <MetricCard
+              icon={Flame}
+              label="Стрик побед"
+              value={`${snapshot.taskStreak} дн.`}
+              detail="по дням с выполненными задачами"
+            />
+            <MetricCard
+              icon={Clock3}
+              label="Фактически"
+              value={formatMinutes(snapshot.time.actualMinutes)}
+              detail={`указано в ${snapshot.time.tasksWithActual} задачах`}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70 md:p-6">
+              <h2 className="font-display text-base font-bold text-slate-950 dark:text-slate-100">
+                Выполненные задачи
+              </h2>
+              <div className="mt-4 h-64">
+                {snapshot.hasActivity ? (
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    minWidth={0}
+                    minHeight={0}
+                    initialDimension={{ width: 320, height: 256 }}
+                  >
+                    <BarChart data={chartData} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+                      <CartesianGrid stroke="#334155" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={tooltipStyles} cursor={false} />
+                      <Bar dataKey="completedTasks" name="Выполнено" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-300 px-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    Здесь появится динамика после первой выполненной задачи.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70 md:p-6">
+              <h2 className="font-display text-base font-bold text-slate-950 dark:text-slate-100">
+                Энергия выполненных задач
+              </h2>
+              <div className="mt-4 h-64">
+                {energyData.length ? (
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    minWidth={0}
+                    minHeight={0}
+                    initialDimension={{ width: 320, height: 256 }}
+                  >
+                    <PieChart>
+                      <Pie data={energyData} dataKey="value" innerRadius="36%" outerRadius="58%" stroke="none">
+                        {energyData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyles} />
+                      <Legend verticalAlign="bottom" height={36} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-center text-sm text-slate-500 dark:text-slate-400">
+                    Пока нечего распределять.
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70 md:p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Плановое время</p>
+                <p className="mt-2 text-xl font-bold text-slate-950 dark:text-slate-100">{formatMinutes(snapshot.time.estimatedMinutes)}</p>
+                <p className="mt-1 text-xs text-slate-500">в {snapshot.time.tasksWithEstimate} задачах</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Фактическое время</p>
+                <p className="mt-2 text-xl font-bold text-slate-950 dark:text-slate-100">{formatMinutes(snapshot.time.actualMinutes)}</p>
+                <p className="mt-1 text-xs text-slate-500">в {snapshot.time.tasksWithActual} задачах</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4 md:p-5">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 shrink-0 text-indigo-500" size={20} />
+              <div className="min-w-0 flex-1">
+                <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
+                {insight ? (
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{insight}</p>
+                ) : !snapshot.canUseFocusFeatures ? (
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Founder.</p>
+                ) : !snapshot.hasActivity ? (
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Выполни хотя бы одну задачу за период, чтобы получить разбор.</p>
+                ) : (
+                  <div className="mt-2">
+                    <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
+                      Glowy использует только сводные показатели периода, без названий задач и текста заметок.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={requestInsight}
+                      disabled={isInsightLoading}
+                      className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                    >
+                      {isInsightLoading
+                        ? "Готовлю глубокий разбор..."
+                        : period === "month"
+                          ? "Разобрать месяц · 10 запросов"
+                          : "Разобрать неделю · 5 запросов"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          Аналитика пока недоступна.
+        </div>
+      )}
     </section>
   );
 };

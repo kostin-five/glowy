@@ -28,6 +28,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import FirstUsePopover from "../onboarding/FirstUsePopover";
 
 interface ICreateModal {
   isOpen: boolean;
@@ -179,6 +180,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     category: "",
     completed: false,
     energyLevel: "med",
+    estimatedMinutes: null,
     subtasks: [],
   });
 
@@ -214,6 +216,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
       category: "",
       completed: false,
       energyLevel: "med",
+      estimatedMinutes: null,
       subtasks: [],
     });
     setLocalSubTasks([]);
@@ -346,13 +349,19 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
         className="flex w-full flex-col gap-4"
         onSubmit={sendTask}
       >
-        <input
-          className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          type="text"
-          placeholder="Введите задачу"
-          value={values.title}
-          onChange={(e) => setValues({ ...values, title: e.target.value })}
-        />
+        <div className="relative">
+          <input
+            className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            type="text"
+            placeholder="Введите задачу"
+            value={values.title}
+            onChange={(e) => setValues({ ...values, title: e.target.value })}
+          />
+          <FirstUsePopover id="taskCreation">
+            Начни с названия. Остальные поля можно заполнить только когда они
+            действительно помогают спланировать задачу.
+          </FirstUsePopover>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -412,6 +421,28 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               </button>
             ))}
           </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+            Планируемое время, мин
+          </label>
+          <input
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            type="number"
+            min="1"
+            max="1440"
+            inputMode="numeric"
+            placeholder="Необязательно"
+            value={values.estimatedMinutes ?? ""}
+            onChange={(event) =>
+              setValues({
+                ...values,
+                estimatedMinutes: event.target.value
+                  ? Number(event.target.value)
+                  : null,
+              })
+            }
+          />
         </div>
         <div className="relative">
           <input

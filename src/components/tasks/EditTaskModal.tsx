@@ -435,6 +435,52 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
             ))}
           </div>
         </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+              План, мин
+            </label>
+            <input
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              type="number"
+              min="1"
+              max="1440"
+              inputMode="numeric"
+              placeholder="Необязательно"
+              value={values.estimatedMinutes ?? ""}
+              onChange={(event) =>
+                setValues({
+                  ...values,
+                  estimatedMinutes: event.target.value
+                    ? Number(event.target.value)
+                    : null,
+                })
+              }
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+              Фактически, мин
+            </label>
+            <input
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              type="number"
+              min="1"
+              max="1440"
+              inputMode="numeric"
+              placeholder="После выполнения"
+              value={values.actualMinutes ?? ""}
+              onChange={(event) =>
+                setValues({
+                  ...values,
+                  actualMinutes: event.target.value
+                    ? Number(event.target.value)
+                    : null,
+                })
+              }
+            />
+          </div>
+        </div>
         <div className="relative">
           <input
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"

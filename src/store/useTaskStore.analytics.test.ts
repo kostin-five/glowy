@@ -5,10 +5,11 @@ import type { TaskDraft } from "../types";
 
 const postTask = vi.fn();
 const getTasks = vi.fn();
+const putTask = vi.fn();
 const trackProductEventOnce = vi.fn();
 
 vi.mock("../api/TaskApi", () => ({
-  TaskApi: { getTasks, postTask },
+  TaskApi: { getTasks, postTask, putTask },
 }));
 
 vi.mock("../utils/analytics", () => ({ trackProductEventOnce }));
@@ -29,6 +30,7 @@ const draft: TaskDraft = {
 afterEach(() => {
   postTask.mockReset();
   getTasks.mockReset();
+  putTask.mockReset();
   trackProductEventOnce.mockReset();
   useAuthStore.setState({ isAuthenticated: false, isGuest: false, token: null });
   useTaskStore.setState({ tasks: [] });
@@ -67,7 +69,10 @@ describe("task activation analytics", () => {
           ...draft,
           id: 1,
           completed: false,
+          completedOn: null,
           xpAwarded: false,
+          actualMinutes: null,
+          estimatedMinutes: draft.estimatedMinutes ?? null,
           subtasks: [],
         },
       ],
@@ -82,5 +87,56 @@ describe("task activation analytics", () => {
     await useTaskStore.getState().fetchTasks();
 
     expect(useTaskStore.getState().tasks).toHaveLength(1);
+  });
+
+  it("normalizes old tasks that do not have time fields", async () => {
+    useAuthStore.setState({ isAuthenticated: true, isGuest: false });
+    getTasks.mockResolvedValueOnce([
+      {
+        ...draft,
+        id: 2,
+        xpAwarded: false,
+      },
+    ]);
+
+    await useTaskStore.getState().fetchTasks();
+
+    expect(useTaskStore.getState().tasks[0]).toMatchObject({
+      completedOn: null,
+      estimatedMinutes: null,
+      actualMinutes: null,
+    });
+  });
+
+  it("undoes completion through the existing update flow", async () => {
+    useAuthStore.setState({ isAuthenticated: true, isGuest: false });
+    const completedTask = {
+      ...draft,
+      id: 3,
+      completed: true,
+      completedOn: "2026-08-09",
+      xpAwarded: true,
+      estimatedMinutes: 60,
+      actualMinutes: 45,
+      subtasks: [],
+    };
+    useTaskStore.setState({ tasks: [completedTask] });
+    putTask.mockResolvedValueOnce({
+      task: { ...completedTask, completed: false, completedOn: null },
+      xpReward: 0,
+      userProgress: null,
+    });
+
+    await useTaskStore.getState().toggleTask(completedTask.id);
+
+    expect(putTask).toHaveBeenCalledWith(
+      completedTask.id,
+      expect.objectContaining({ completed: false, completedOn: null })
+    );
+    expect(useTaskStore.getState().tasks[0]).toMatchObject({
+      completed: false,
+      completedOn: null,
+      actualMinutes: 45,
+    });
   });
 });

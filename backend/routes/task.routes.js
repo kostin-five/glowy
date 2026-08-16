@@ -3,13 +3,14 @@ import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import {
+  addDaysToDateOnly,
+  isDateOnly,
+  normalizeOptionalMinutes,
+  parsePositiveId,
+} from "../utils/validation.utils.js";
 
 const router = express.Router();
-
-const parseId = (value) => {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-};
 
 router.use(authMiddleware);
 
@@ -62,6 +63,24 @@ const buildUserProgress = (user) => ({
   level: user.level,
 });
 
+const dateValidator = (value) => {
+  if (!value || isDateOnly(value)) return true;
+  throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD");
+};
+
+const minutesValidator = (value) => {
+  if (normalizeOptionalMinutes(value).valid) return true;
+  throw new Error("Время должно быть целым числом от 1 до 1440 минут");
+};
+
+export const isAcceptableCompletionDate = (value, now = new Date()) => {
+  if (!isDateOnly(value)) return false;
+
+  // A local calendar day may already be tomorrow relative to UTC.
+  const latestLocalDate = addDaysToDateOnly(now.toISOString().slice(0, 10), 1);
+  return value <= latestLocalDate;
+};
+
 router.get("/", async (req, res) => {
   try {
     const tasks = await prisma.task.findMany({
@@ -82,38 +101,9 @@ router.post(
     body("energyLevel").optional().isIn(["low", "med", "high"]).withMessage("Недопустимый уровень энергии"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
-    body("date").optional().custom((value) => {
-      if (!value) return true;
-      
-      let date;
-      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
-      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
-
-      if (isoRegex.test(value)) {
-        date = new Date(value);
-      } else if (ruRegex.test(value)) {
-        const [day, month, year] = value.split(".");
-        date = new Date(`${year}-${month}-${day}`);
-      } else {
-        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
-      }
-
-      if (isNaN(date.getTime())) {
-        throw new Error("Указана несуществующая дата");
-      }
-
-      // Дополнительная проверка на реальность даты (например, 31 февраля)
-      const [y, m, d] = date.toISOString().split("T")[0].split("-");
-      if (isoRegex.test(value)) {
-        const [vy, vm, vd] = value.split("-");
-        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
-      } else {
-        const [vd, vm, vy] = value.split(".");
-        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
-      }
-
-      return true;
-    }),
+    body("date").optional().custom(dateValidator),
+    body("estimatedMinutes").optional({ nullable: true }).custom(minutesValidator),
+    body("actualMinutes").optional({ nullable: true }).custom(minutesValidator),
   ],
   async (req, res) => {
     try {
@@ -121,7 +111,18 @@ router.post(
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      const { title, energyLevel, priority, date, category, subtasks } = req.body;
+      const {
+        title,
+        energyLevel,
+        priority,
+        date,
+        category,
+        subtasks,
+        estimatedMinutes,
+        actualMinutes,
+      } = req.body;
+      const normalizedEstimate = normalizeOptionalMinutes(estimatedMinutes).value;
+      const normalizedActual = normalizeOptionalMinutes(actualMinutes).value;
     const subtasksToCreate = Array.isArray(subtasks)
       ? subtasks
           .map((sub, index) => ({
@@ -140,6 +141,9 @@ router.post(
         date,
         priority,
         completed: false,
+        completedOn: null,
+        estimatedMinutes: normalizedEstimate ?? null,
+        actualMinutes: normalizedActual ?? null,
         userId: req.user.id,
         subtasks: subtasksToCreate.length
           ? {
@@ -166,41 +170,14 @@ router.put(
     body("completed").optional().isBoolean().withMessage("Должно быть логическим значением"),
     body("priority").optional().isString().isLength({ max: 50 }),
     body("category").optional().isString().isLength({ max: 100 }),
-    body("date").optional().custom((value) => {
-      if (!value) return true;
-
-      let date;
-      const isoRegex = /^\d{4}-\d{2}-\d{2}$/;
-      const ruRegex = /^\d{2}\.\d{2}\.\d{4}$/;
-
-      if (isoRegex.test(value)) {
-        date = new Date(value);
-      } else if (ruRegex.test(value)) {
-        const [day, month, year] = value.split(".");
-        date = new Date(`${year}-${month}-${day}`);
-      } else {
-        throw new Error("Некорректный формат даты. Используйте YYYY-MM-DD или DD.MM.YYYY");
-      }
-
-      if (isNaN(date.getTime())) {
-        throw new Error("Указана несуществующая дата");
-      }
-
-      const [y, m, d] = date.toISOString().split("T")[0].split("-");
-      if (isoRegex.test(value)) {
-        const [vy, vm, vd] = value.split("-");
-        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
-      } else {
-        const [vd, vm, vy] = value.split(".");
-        if (y !== vy || m !== vm || d !== vd) throw new Error("Указана несуществующая дата");
-      }
-
-      return true;
-    }),
+    body("date").optional().custom(dateValidator),
+    body("completedOn").optional({ nullable: true }).custom(dateValidator),
+    body("estimatedMinutes").optional({ nullable: true }).custom(minutesValidator),
+    body("actualMinutes").optional({ nullable: true }).custom(minutesValidator),
   ],
   async (req, res) => {
     try {
-      const taskId = parseId(req.params.id);
+      const taskId = parsePositiveId(req.params.id);
       if (!taskId) {
         return res.status(400).json({ error: "Некорректный ID задачи" });
       }
@@ -209,14 +186,42 @@ router.put(
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      const { title, energyLevel, priority, date, category, completed, subtasks } =
-      req.body;
+      const {
+        title,
+        energyLevel,
+        priority,
+        date,
+        category,
+        completed,
+        completedOn,
+        estimatedMinutes,
+        actualMinutes,
+        subtasks,
+      } = req.body;
     const uniqueTask = await prisma.task.findUnique({
       where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
       return res.status(403).json({ error: "Нет доступа к этой задаче" });
     }
+
+    const isCompleting = completed === true && !uniqueTask.completed;
+    if (isCompleting && !isAcceptableCompletionDate(completedOn)) {
+      return res.status(400).json({
+        error: "При выполнении задачи укажите текущую дату в формате YYYY-MM-DD",
+      });
+    }
+
+    const normalizedEstimate = normalizeOptionalMinutes(estimatedMinutes).value;
+    const normalizedActual = normalizeOptionalMinutes(actualMinutes).value;
+    const nextCompletedOn =
+      completed === false
+        ? null
+        : isCompleting
+          ? completedOn
+          : completedOn === undefined
+            ? uniqueTask.completedOn
+            : completedOn;
 
     const orderedSubtasks = Array.isArray(subtasks)
       ? subtasks
@@ -234,7 +239,10 @@ router.put(
         completed === true && !uniqueTask.completed && !uniqueTask.xpAwarded;
 
       if (shouldAwardXp) {
-        xpReward = getXpReward(energyLevel, priority);
+        xpReward = getXpReward(
+          energyLevel ?? uniqueTask.energyLevel,
+          priority ?? uniqueTask.priority
+        );
         const user = await tx.user.findUnique({
           where: { id: req.user.id },
           select: { xp: true },
@@ -263,6 +271,11 @@ router.put(
           date,
           category,
           completed,
+          completedOn: nextCompletedOn,
+          estimatedMinutes:
+            estimatedMinutes === undefined ? undefined : normalizedEstimate,
+          actualMinutes:
+            actualMinutes === undefined ? undefined : normalizedActual,
           xpAwarded: uniqueTask.xpAwarded || shouldAwardXp,
         },
       });
@@ -304,7 +317,7 @@ router.put(
 
 router.delete("/:id", async (req, res) => {
   try {
-    const taskId = parseId(req.params.id);
+    const taskId = parsePositiveId(req.params.id);
     if (!taskId) {
       return res.status(400).json({ error: "Некорректный ID задачи" });
     }

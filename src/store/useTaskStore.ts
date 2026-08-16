@@ -19,6 +19,7 @@ import { getLevelByXp, getXpReward } from "../utils/xp";
 import { normalizeTaskDate } from "../utils/taskDateGroups";
 import axios from "axios";
 import { trackProductEventOnce } from "../utils/analytics";
+import { formatLocalDateOnly } from "../utils/localDate";
 
 interface TaskStore {
   tasks: Task[];
@@ -88,7 +89,10 @@ const normalizeTask = (task: Task): Task => ({
   ...task,
   date: normalizeTaskDate(task.date),
   category: task.category || "",
+  completedOn: task.completedOn ?? null,
   xpAwarded: task.xpAwarded ?? false,
+  estimatedMinutes: task.estimatedMinutes ?? null,
+  actualMinutes: task.actualMinutes ?? null,
   subtasks: sortSubTasks(task.subtasks ?? []),
 });
 
@@ -132,8 +136,11 @@ const buildLocalTask = (draft: TaskDraft): Task => {
     priority: draft.priority,
     category: draft.category || "",
     completed: draft.completed ?? false,
+    completedOn: draft.completed ? formatLocalDateOnly() : null,
     xpAwarded: false,
     energyLevel: draft.energyLevel,
+    estimatedMinutes: draft.estimatedMinutes ?? null,
+    actualMinutes: null,
     subtasks: (draft.subtasks ?? []).map((subtask, index) => ({
       id: taskId + index + 1,
       taskId,
@@ -294,6 +301,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       const updatedTask = normalizeTask({
         ...taskToToggle,
         completed: nextCompleted,
+        completedOn: nextCompleted ? formatLocalDateOnly() : null,
         xpAwarded: taskToToggle.xpAwarded || shouldAwardXp,
       });
 
@@ -307,13 +315,25 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return updatedTask;
     }
 
+    const taskToToggle = get().tasks.find((t) => t.id === id);
+    if (!taskToToggle) return;
+
     try {
-      const taskToToggle = get().tasks.find((t) => t.id === id);
-      if (!taskToToggle) return;
       const nextCompleted = !taskToToggle.completed;
+      const optimisticTask = normalizeTask({
+        ...taskToToggle,
+        completed: nextCompleted,
+        completedOn: nextCompleted ? formatLocalDateOnly() : null,
+      });
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === id ? optimisticTask : task
+        ),
+      }));
       const result = await TaskApi.putTask(id, {
         ...taskToToggle,
         completed: nextCompleted,
+        completedOn: nextCompleted ? formatLocalDateOnly() : null,
       });
       const { task: responseTask, userProgress } =
         parseTaskUpdateResponse(result);
@@ -344,6 +364,11 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
       return updatedTask;
     } catch (e) {
+      set((state) => ({
+        tasks: state.tasks.map((task) =>
+          task.id === id ? taskToToggle : task
+        ),
+      }));
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
       } else if (e instanceof Error) {

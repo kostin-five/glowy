@@ -80,4 +80,28 @@ describe("product analytics", () => {
       {}
     );
   });
+
+  it.each(["habit_created", "rescue_used", "task_time_recorded"] as const)(
+    "records %s without user-authored text",
+    (event) => {
+      localStorage.setItem(ANALYTICS_CONSENT_KEY, "accepted");
+      window.ym = metrika;
+      window.__YANDEX_METRIKA_INITIALIZED__ = true;
+
+      expect(
+        trackProductEvent(event, {
+          title: "Личное название",
+          habitTitle: "Личная привычка",
+          taskTitle: "Личная задача",
+        })
+      ).toBe(true);
+
+      expect(metrika).toHaveBeenLastCalledWith(
+        expect.any(Number),
+        "reachGoal",
+        event,
+        {}
+      );
+    }
+  );
 });

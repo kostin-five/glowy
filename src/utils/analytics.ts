@@ -10,6 +10,9 @@ const allowedEvents = [
   "first_ai_request",
   "ai_draft_confirmed",
   "focus_checkout_started",
+  "habit_created",
+  "rescue_used",
+  "task_time_recorded",
 ] as const;
 
 const allowedParameterKeys = [

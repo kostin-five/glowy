@@ -8,6 +8,7 @@ import subTaskRoutes from "./routes/subtask.routes.js";
 import userEnergyRoutes from "./routes/user.routes.js";
 import chatRouter from "./routes/chat.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import progressRoutes from "./routes/progress.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 
@@ -106,6 +107,7 @@ export const createApp = ({ testRoute = false } = {}) => {
   app.use("/api/user", userEnergyRoutes);
   app.use("/api/chat", chatRouter);
   app.use("/api/payments", paymentRoutes);
+  app.use("/api/progress", progressRoutes);
   app.use(errorMiddleware);
 
   return app;

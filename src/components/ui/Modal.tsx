@@ -11,9 +11,10 @@ interface ICreateModal {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: "md" | "2xl";
 }
 
-const Modal = ({ isOpen, onClose, title, children }: ICreateModal) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = "md" }: ICreateModal) => {
   const stopDragPropagation = (event: React.SyntheticEvent) => {
     event.stopPropagation();
   };
@@ -54,7 +55,7 @@ const Modal = ({ isOpen, onClose, title, children }: ICreateModal) => {
             >
               <DialogPanel
                 className={
-                  "w-full max-w-md transform flex flex-col max-h-[90vh] rounded-2xl border border-slate-200 bg-white p-6 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900"
+                  `w-full ${maxWidth === "2xl" ? "max-w-2xl" : "max-w-md"} transform flex flex-col max-h-[90vh] rounded-2xl border border-slate-200 bg-white p-6 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900`
                 }
               >
                 <h2 className="mb-6 shrink-0 font-display text-2xl font-bold text-slate-900 dark:text-slate-100">

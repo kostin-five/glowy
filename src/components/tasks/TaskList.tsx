@@ -6,12 +6,14 @@ import {
   useSetTasks,
   useTasks,
   useToggleTask,
+  useUpdateTask,
   useSortField,
   useSortDirection,
 } from "../../store/useTaskStore";
 import type { SubTask, Task } from "../../types";
 import { groupTasks, formatTaskDateForUI } from "../../utils/taskDateGroups";
 import TaskItem from "./TaskItem";
+import ActualTimePrompt from "./ActualTimePrompt";
 import { useProcessedTasks } from "../../hooks/useProcessedTasks";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -39,6 +41,7 @@ import {
   useTaskViewMode,
   type TaskViewMode,
 } from "../../store/useSettingsStore";
+import { trackProductEvent } from "../../utils/analytics";
 
 interface TaskListProps {
   onlyActive?: boolean;
@@ -203,6 +206,7 @@ const TaskList = ({
   setIsBulkSelectMode,
 }: TaskListProps) => {
   const toggle = useToggleTask();
+  const updateTask = useUpdateTask();
   const tasks = useTasks();
   const setTasks = useSetTasks();
   const removeTaskLocally = useRemoveTaskLocally();
@@ -216,6 +220,16 @@ const TaskList = ({
   const [isTrashDropEnabled, setIsTrashDropEnabled] = useState(false);
   const [pendingDeletion, setPendingDeletion] =
     useState<PendingTaskDeletion | null>(null);
+  const [actualTimeTask, setActualTimeTask] = useState<Task | null>(null);
+
+  const saveActualTime = async (minutes: number) => {
+    if (!actualTimeTask) return;
+    const updatedTask = await updateTask(actualTimeTask.id, {
+      actualMinutes: minutes,
+    });
+    if (!updatedTask) return;
+    trackProductEvent("task_time_recorded");
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsTrashDropEnabled(window.innerWidth < 1024);
@@ -472,6 +486,7 @@ const TaskList = ({
                           isSelectionMode={isBulkSelectMode}
                           isSelected={selectedIds.has(task.id)}
                           onToggleSelected={() => toggleSelection(task.id)}
+                          onRequestActualTime={setActualTimeTask}
                         />
                       ))}
 
@@ -487,6 +502,7 @@ const TaskList = ({
                       isSelectionMode={isBulkSelectMode}
                       isSelected={selectedIds.has(task.id)}
                       onToggleSelected={() => toggleSelection(task.id)}
+                      onRequestActualTime={setActualTimeTask}
                     />
                   ))
 
@@ -584,6 +600,13 @@ const TaskList = ({
           </motion.div>
         )}
       </AnimatePresence>
+      <ActualTimePrompt
+        key={actualTimeTask?.id ?? "closed"}
+        isOpen={Boolean(actualTimeTask)}
+        estimatedMinutes={actualTimeTask?.estimatedMinutes ?? null}
+        onClose={() => setActualTimeTask(null)}
+        onSave={saveActualTime}
+      />
     </>
   );
 };

@@ -53,13 +53,15 @@ const TaskItem = ({
   isSelectionMode,
   isSelected,
   onToggleSelected,
+  onRequestActualTime,
 }: {
   task: Task;
-  toggle: (id: number) => void;
+  toggle: (id: number) => Promise<Task | undefined>;
   onRequestDelete: (task: Task) => void;
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelected?: (taskId: number) => void;
+  onRequestActualTime: (task: Task) => void;
 }) => {
   const storeTask = useTaskStore((state) =>
     state.tasks.find((t) => t.id === initialTask.id)
@@ -93,14 +95,20 @@ const TaskItem = ({
 
   const isPrimaryCheckboxChecked = isSelectionMode ? isSelected : task.completed;
 
-  const handlePrimaryCheckboxClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePrimaryCheckboxClick = async (
+    e: React.MouseEvent<HTMLButtonElement>
+  ) => {
     e.stopPropagation();
     if (isSelectionMode) {
       onToggleSelected?.(task.id);
       return;
     }
 
-    toggle(task.id);
+    const wasCompleted = task.completed;
+    const updatedTask = await toggle(task.id);
+    if (!wasCompleted && updatedTask?.completed && !updatedTask.actualMinutes) {
+      onRequestActualTime(updatedTask);
+    }
   };
 
   const focusSubTaskInput = () => {

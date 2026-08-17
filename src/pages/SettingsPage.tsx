@@ -67,7 +67,9 @@ const settingsSections = [
   { id: "interface", label: "Интерфейс", icon: SlidersHorizontal },
   { id: "system", label: "Система", icon: RotateCcw },
   { id: "account", label: "Аккаунт", icon: ShieldCheck },
-];
+] as const;
+
+type SettingsSectionId = (typeof settingsSections)[number]["id"];
 
 const planLabels = {
   demo: "Демо-доступ",
@@ -78,6 +80,8 @@ const planLabels = {
 } as const;
 
 const SettingsPage = () => {
+  const [activeSection, setActiveSection] =
+    useState<SettingsSectionId>("profile");
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [aiUsage, setAiUsage] = useState<{
     plan: "demo" | "start" | "focus" | "founder" | "forever";
@@ -121,6 +125,47 @@ const SettingsPage = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let frameId: number | null = null;
+
+    const updateActiveSection = () => {
+      frameId = null;
+      const existingSections = settingsSections
+        .map(({ id }) => document.getElementById(id))
+        .filter((section): section is HTMLElement => Boolean(section));
+
+      if (existingSections.length === 0) return;
+
+      const isAtPageBottom =
+        window.scrollY + window.innerHeight >=
+        document.documentElement.scrollHeight - 8;
+      const activeElement = isAtPageBottom
+        ? existingSections.at(-1)
+        : [...existingSections]
+            .reverse()
+            .find((section) => section.getBoundingClientRect().top <= 120) ??
+          existingSections[0];
+
+      if (!activeElement) return;
+      setActiveSection(activeElement.id as SettingsSectionId);
+    };
+
+    const handleScroll = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
+  }, [isGuest]);
 
   useEffect(() => {
     let isMounted = true;
@@ -199,6 +244,20 @@ const SettingsPage = () => {
     showSettingsSavedToast();
   };
 
+  const handleSectionNavigation = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    sectionId: SettingsSectionId
+  ) => {
+    event.preventDefault();
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    setActiveSection(sectionId);
+    window.history.replaceState(null, "", `#${sectionId}`);
+    const top = section.getBoundingClientRect().top + window.scrollY - 104;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8">
       <div>
@@ -221,7 +280,13 @@ const SettingsPage = () => {
             <a
               key={id}
               href={`#${id}`}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+              onClick={(event) => handleSectionNavigation(event, id)}
+              aria-current={activeSection === id ? "location" : undefined}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition-all ${
+                activeSection === id
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+              }`}
             >
               <Icon size={17} />
               {label}
@@ -235,7 +300,7 @@ const SettingsPage = () => {
 
         <div className="flex min-w-0 flex-col gap-8">
 
-      <section id="profile" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="profile" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <ProfileAvatar avatarId={avatarId} size="lg" />
@@ -272,7 +337,7 @@ const SettingsPage = () => {
         />
       </section>
 
-      <section id="subscription" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="subscription" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <Tag size={22} />
@@ -327,7 +392,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section id="interface" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="interface" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <SlidersHorizontal size={22} />
@@ -406,7 +471,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section id="system" className="scroll-mt-4 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="system" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
         <div>
             <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-100">
               Система
@@ -458,7 +523,7 @@ const SettingsPage = () => {
       </section>
 
       {!isGuest && (
-        <section id="account" className="scroll-mt-4 rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none md:p-6">
+        <section id="account" className="scroll-mt-28 rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-display text-xl font-bold text-rose-700 dark:text-rose-200">

@@ -93,6 +93,7 @@ const SettingsPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const pageRootRef = useRef<HTMLDivElement>(null);
   const savedToastTimerRef = useRef<number | null>(null);
   const name = useName();
   const email = useEmail();
@@ -127,6 +128,9 @@ const SettingsPage = () => {
   }, []);
 
   useEffect(() => {
+    const scrollContainer = pageRootRef.current?.closest("main");
+    if (!scrollContainer) return;
+
     let frameId: number | null = null;
 
     const updateActiveSection = () => {
@@ -138,13 +142,17 @@ const SettingsPage = () => {
       if (existingSections.length === 0) return;
 
       const isAtPageBottom =
-        window.scrollY + window.innerHeight >=
-        document.documentElement.scrollHeight - 8;
+        scrollContainer.scrollTop + scrollContainer.clientHeight >=
+        scrollContainer.scrollHeight - 8;
+      const containerTop = scrollContainer.getBoundingClientRect().top;
       const activeElement = isAtPageBottom
         ? existingSections.at(-1)
         : [...existingSections]
             .reverse()
-            .find((section) => section.getBoundingClientRect().top <= 120) ??
+            .find(
+              (section) =>
+                section.getBoundingClientRect().top - containerTop <= 104
+            ) ??
           existingSections[0];
 
       if (!activeElement) return;
@@ -157,11 +165,11 @@ const SettingsPage = () => {
     };
 
     updateActiveSection();
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      scrollContainer.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
       if (frameId !== null) window.cancelAnimationFrame(frameId);
     };
@@ -250,16 +258,22 @@ const SettingsPage = () => {
   ) => {
     event.preventDefault();
     const section = document.getElementById(sectionId);
-    if (!section) return;
+    const scrollContainer = pageRootRef.current?.closest("main");
+    if (!section || !scrollContainer) return;
 
     setActiveSection(sectionId);
     window.history.replaceState(null, "", `#${sectionId}`);
-    const top = section.getBoundingClientRect().top + window.scrollY - 104;
-    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    const containerTop = scrollContainer.getBoundingClientRect().top;
+    const sectionTop = section.getBoundingClientRect().top;
+    const top = scrollContainer.scrollTop + sectionTop - containerTop - 104;
+    scrollContainer.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8">
+    <div
+      ref={pageRootRef}
+      className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8"
+    >
       <div>
         <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100 md:text-4xl">
           Настройки

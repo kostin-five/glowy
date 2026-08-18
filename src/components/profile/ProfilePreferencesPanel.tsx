@@ -102,7 +102,7 @@ const ProfilePreferencesPanel = ({
   }
 
   return (
-    <div className="mt-6 space-y-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+    <div className="mt-6 min-w-0 space-y-6 border-t border-slate-200 pt-6 dark:border-slate-800">
       <AvatarPicker
         value={preferences.avatarId}
         onChange={(avatarId) => updatePreference({ avatarId })}
@@ -142,15 +142,15 @@ const ProfilePreferencesPanel = ({
       </fieldset>
 
       {!isGuest && !preferences.canUseFocusFeatures && (
-        <div className="flex flex-col gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-col gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
             <Lock className="mt-0.5 shrink-0 text-indigo-400" size={19} />
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Персональный тон Glowy</p>
               <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Спокойный тон остаётся базовым. Умеренный и требовательный доступны в Focus и Founder.</p>
             </div>
           </div>
-          <Link to="/pricing" className="inline-flex shrink-0 justify-center rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-500">Тарифы</Link>
+          <Link to="/pricing" className="inline-flex w-full shrink-0 justify-center rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-500 sm:w-auto">Тарифы</Link>
         </div>
       )}
 

@@ -272,7 +272,7 @@ const SettingsPage = () => {
   return (
     <div
       ref={pageRootRef}
-      className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 md:px-8"
+      className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-6 overflow-x-clip px-3 sm:px-4 md:gap-8 md:px-8"
     >
       <div>
         <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100 md:text-4xl">
@@ -287,7 +287,7 @@ const SettingsPage = () => {
       <div className="grid items-start gap-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <nav
           aria-label="Разделы настроек"
-          className="sticky top-4 z-10 flex gap-2 rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 lg:flex-col"
+          className="sticky top-4 z-10 hidden gap-2 rounded-2xl border border-slate-200 bg-white/90 p-2 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 lg:flex lg:flex-col"
         >
           <div className="flex gap-2 overflow-x-auto lg:flex-col">
             {settingsSections.map(({ id, label, icon: Icon }) => (
@@ -314,7 +314,7 @@ const SettingsPage = () => {
 
         <div className="flex min-w-0 flex-col gap-8">
 
-      <section id="profile" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="profile" className="min-w-0 scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <ProfileAvatar avatarId={avatarId} size="lg" />
@@ -325,7 +325,7 @@ const SettingsPage = () => {
               <h2 className="mt-1 truncate font-display text-xl font-bold text-slate-950 dark:text-slate-100">
                 {name || "Пользователь"}
               </h2>
-              <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-400">
+              <p className="mt-1 break-all text-sm text-slate-600 dark:text-slate-400">
                 {email || "Почта не указана"}
               </p>
               {isGuest && (
@@ -339,7 +339,7 @@ const SettingsPage = () => {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+            className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-2xl border border-red-300/70 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15 sm:w-auto"
           >
             <LogOut size={17} />
             Выйти из аккаунта
@@ -351,7 +351,7 @@ const SettingsPage = () => {
         />
       </section>
 
-      <section id="subscription" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="subscription" className="min-w-0 scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <Tag size={22} />
@@ -406,7 +406,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section id="interface" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="interface" className="min-w-0 scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <SlidersHorizontal size={22} />
@@ -446,7 +446,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">
         <div className="mb-5 flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-500 dark:text-indigo-300">
             <LayoutDashboard size={22} />
@@ -485,7 +485,7 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      <section id="system" className="scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none md:p-6">
+      <section id="system" className="min-w-0 scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">
         <div>
             <h2 className="font-display text-xl font-bold text-slate-950 dark:text-slate-100">
               Система
@@ -537,7 +537,7 @@ const SettingsPage = () => {
       </section>
 
       {!isGuest && (
-        <section id="account" className="scroll-mt-28 rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none md:p-6">
+        <section id="account" className="min-w-0 scroll-mt-28 rounded-3xl border border-rose-200 bg-rose-50/80 p-4 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none sm:p-5 md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-display text-xl font-bold text-rose-700 dark:text-rose-200">

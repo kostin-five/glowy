@@ -166,7 +166,7 @@ or user text in logs.
 - [X] T044 Update v2.8.0 implementation status without claiming deployment in `docs/product-roadmap.md`
 - [X] T045 Run Prisma validation, backend tests, frontend typecheck/lint/tests/build and record results in `specs/008-telegram-bot-mvp/quickstart.md`
 - [X] T046 Verify `src/pages/LandingPage.tsx` is unchanged and inspect the final diff for secrets, production operations and unrelated edits
-- [ ] T047 Create focused thematic commits for specification, backend foundation, user flow and documentation on `codex/v2.8.0-telegram-bot`
+- [X] T047 Create focused thematic commits for specification, backend foundation, user flow and documentation on `codex/v2.8.0-telegram-bot`
 
 ---
 
@@ -201,4 +201,3 @@ The branch may contain an additive migration and configuration documentation. Ap
 migration to production, creating/changing BotFather state, setting dev/production webhook, writing
 Timeweb/Render env or pushing deployment requires separate explicit user approval. A fresh Timeweb
 backup must be confirmed before any production schema migration.
-

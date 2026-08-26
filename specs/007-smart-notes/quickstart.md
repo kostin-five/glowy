@@ -55,3 +55,11 @@ Timeweb backup for production.
 - Backend tests: 58/58 passed, including ownership, draft-only AI and atomic confirmation.
 - Manual database-backed flow: not run because the approved migration file was
   deliberately not applied to any database.
+
+## Production migration — 2026-08-26
+
+После подтверждения backup владельцем migration
+`20260826190000_add_smart_notes` применена командой `prisma migrate deploy`.
+Повторная read-only проверка показала `Database schema is up to date`, локальный
+backend health вернул 200. Авторизованный пользовательский сценарий остаётся
+ручной post-migration проверкой.

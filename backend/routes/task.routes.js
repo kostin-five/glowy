@@ -18,6 +18,11 @@ const taskInclude = {
   subtasks: {
     orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
   },
+  noteLinks: {
+    include: {
+      note: { select: { id: true, title: true, archived: true } },
+    },
+  },
 };
 
 const LEVEL_THRESHOLDS = [

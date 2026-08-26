@@ -34,6 +34,7 @@ const BottomNav = () => {
   const isMoreActive =
     activePanel === "more" ||
     location.pathname === "/analytics" ||
+    location.pathname.startsWith("/notes") ||
     location.pathname === "/settings";
 
   const renderLink = ({

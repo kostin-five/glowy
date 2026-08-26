@@ -42,6 +42,7 @@ import {
 } from "./offline/taskOfflineSync";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const NotesPage = lazy(() => import("./pages/NotesPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const GlowyAiPage = lazy(() => import("./pages/GlowyAiPage"));
@@ -381,6 +382,14 @@ function App() {
           element={
             <ProtectedLayoutRoute lazy={false}>
               <TaskPage />
+            </ProtectedLayoutRoute>
+          }
+        />
+        <Route
+          path="/notes/:noteId?"
+          element={
+            <ProtectedLayoutRoute>
+              <NotesPage />
             </ProtectedLayoutRoute>
           }
         />

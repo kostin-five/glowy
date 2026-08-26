@@ -40,6 +40,18 @@ export const schemaTask = z.object({
   estimatedMinutes: z.number().int().min(1).max(1440).nullable().default(null),
   actualMinutes: z.number().int().min(1).max(1440).nullable().default(null),
   subtasks: z.array(schemaSubTask).default([]),
+  noteLinks: z
+    .array(
+      z.object({
+        id: z.number(),
+        note: z.object({
+          id: z.number(),
+          title: z.string(),
+          archived: z.boolean(),
+        }),
+      })
+    )
+    .optional(),
 });
 
 export const schemaTaskDraft = schemaTask
@@ -50,6 +62,7 @@ export const schemaTaskDraft = schemaTask
     actualMinutes: true,
     subtasks: true,
     xpAwarded: true,
+    noteLinks: true,
   })
   .extend({
     id: z.number().optional(),
@@ -181,6 +194,25 @@ export const schemaAnalyticsInsight = z.object({
   }),
 });
 
+export const schemaNoteTaskLink = z.object({
+  id: z.number(),
+  task: z.object({
+    id: z.number(),
+    title: z.string(),
+    completed: z.boolean(),
+  }),
+});
+
+export const schemaNote = z.object({
+  id: z.number(),
+  title: z.string(),
+  content: z.string(),
+  archived: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  taskLinks: z.array(schemaNoteTaskLink).default([]),
+});
+
 export type LoginData = z.infer<typeof schemaLoginData>;
 export type Task = z.infer<typeof schemaTask>;
 export type TaskDraft = z.infer<typeof schemaTaskDraft>;
@@ -197,6 +229,8 @@ export type Achievement = z.infer<typeof schemaAchievement>;
 export type ProgressOverview = z.infer<typeof schemaProgressOverview>;
 export type AnalyticsSnapshot = z.infer<typeof schemaAnalyticsSnapshot>;
 export type AnalyticsInsight = z.infer<typeof schemaAnalyticsInsight>;
+export type Note = z.infer<typeof schemaNote>;
+export type NoteTaskLink = z.infer<typeof schemaNoteTaskLink>;
 
 export type TaskDateGroup<T> = {
   key: string;

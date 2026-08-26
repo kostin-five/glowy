@@ -5,6 +5,7 @@ import {
   LogOut,
   LayoutDashboard,
   MessageCircle,
+  NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -31,6 +32,7 @@ const SidebarContent = ({
   const menuItems = [
     { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
+    { to: "/notes", label: "Заметки", icon: NotebookPen },
     { to: "/ai", label: "Чат", icon: MessageCircle },
     { to: "/stairs", label: "Мой прогресс", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },

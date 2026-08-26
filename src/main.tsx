@@ -18,7 +18,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { ensureDevServiceWorkerControl } from './offline/ensureDevServiceWorkerControl'
+import { ensureServiceWorkerControl } from './offline/ensureServiceWorkerControl'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -26,4 +26,4 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-void ensureDevServiceWorkerControl()
+void ensureServiceWorkerControl()

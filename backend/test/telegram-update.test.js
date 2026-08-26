@@ -66,4 +66,3 @@ test("cleanup expires stale payloads and pending drafts", async () => {
   assert.equal(calls[0][1].data.payload, null);
   assert.equal(calls[1][1].data.status, "EXPIRED");
 });
-

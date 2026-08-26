@@ -26,4 +26,3 @@ The endpoint performs no AI, task mutation or Telegram API response before `200`
 - Revalidates connection and ownership at action time.
 - Clears successful payload; clears expired/terminal failed payload no later than 30 minutes.
 - Is not started from `createApp()` or backend HTTP tests; `server.js` controls lifecycle.
-

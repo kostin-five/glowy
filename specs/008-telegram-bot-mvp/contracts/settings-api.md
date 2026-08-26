@@ -38,4 +38,3 @@ and is never logged or persisted.
 
 Deletes the active connection, pending drafts and unused codes owned by the current user. Returns
 `{ "ok": true }`; repeating the call is safe.
-

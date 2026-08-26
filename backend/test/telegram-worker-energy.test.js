@@ -52,4 +52,3 @@ test("foreign unlinked callback cannot update energy", async () => {
   await worker.processUpdate(callbackUpdate("tg:energy:100"), "11");
   assert.equal(touched, false);
 });
-

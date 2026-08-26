@@ -21,4 +21,3 @@ test("telegram schema stays additive and uses existing user/task relations", () 
   assert.match(migration, /do not apply to shared databases/i);
   assert.doesNotMatch(migration, /DROP\s+(TABLE|COLUMN)|TRUNCATE|DELETE\s+FROM/i);
 });
-

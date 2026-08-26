@@ -63,4 +63,3 @@ const run = async () => {
 run().catch((error) => {
   fail(error instanceof Error ? error.message : "Telegram webhook command failed");
 });
-

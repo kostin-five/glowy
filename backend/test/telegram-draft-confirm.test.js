@@ -98,4 +98,3 @@ test("cancel updates only an owned, live pending draft", async () => {
   assert.equal(receivedWhere.connectionId, 5);
   assert.match(recorder.calls[1][1].text, /Задача не создана/);
 });
-

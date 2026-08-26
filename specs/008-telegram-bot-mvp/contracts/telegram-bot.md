@@ -37,4 +37,3 @@ none. A callback belonging to another user receives a generic rejection without 
 - Provider/network failure produces a calm retry-later message and no persistent task.
 - Telegram send failure is retryable, but a confirmed task is not recreated; the terminal draft
   remains the idempotency source.
-

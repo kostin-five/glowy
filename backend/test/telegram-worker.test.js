@@ -80,4 +80,3 @@ test("help is Russian and group chats receive no Glowy data", async () => {
   assert.match(recorder.calls[0][1].text, /Задача сохраняется только/);
   assert.match(recorder.calls[1][1].text, /только в личном чате/);
 });
-

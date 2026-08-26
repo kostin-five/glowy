@@ -75,4 +75,3 @@ test("bare add waits for the next text for a bounded time", async () => {
   assert.equal(updateData.pendingCommand, "ADD");
   assert.equal(updateData.pendingCommandExpiresAt.toISOString(), "2026-08-26T12:10:00.000Z");
 });
-

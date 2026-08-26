@@ -90,4 +90,3 @@ payload хранится 7 дней. Pending drafts истекают через 
 
 **Alternatives considered**: полный webhook в логах раскрывает сообщения; отсутствие durable
 payload ломает recovery; бессрочное хранение не соответствует минимизации данных.
-

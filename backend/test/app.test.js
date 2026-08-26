@@ -3,7 +3,12 @@ import test from "node:test";
 import request from "supertest";
 import { createApp } from "../app.js";
 
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+];
 
 test("health-check returns service status and a request identifier", async () => {
   const app = createApp();

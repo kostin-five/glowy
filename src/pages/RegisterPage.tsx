@@ -44,7 +44,7 @@ const RegisterPage = () => {
 
     try {
       const data = await AuthApi.registerRequest({ name, email, password });
-      toLogin(data.name || name, data.email || email);
+      toLogin(data.id, data.name || name, data.email || email);
       trackProductEventOnce("signup_completed");
       navigate(redirect || startRoute);
     } catch (e) {

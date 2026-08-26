@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Sidebar from "../components/layout/Sidebar";
 import Header from "../components/layout/Header";
 import BottomNav from "../components/layout/BottomNav";
+import OfflineSyncStatus from "../components/OfflineSyncStatus";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {!isFullScreenAi && <Header />}
+        <OfflineSyncStatus />
         <main
           className={
             isFullScreenAi

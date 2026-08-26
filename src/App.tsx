@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
 import TaskPage from "./pages/TaskPage";
+import SuccessStairsPage from "./pages/SuccessStairsPage";
 
 import {
   useIsAuthenticated,
@@ -17,7 +18,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useFetchProgress, useFetchTasks } from "./store/useTaskStore";
+import {
+  useFetchProgress,
+  useFetchTasks,
+  useTaskStore,
+} from "./store/useTaskStore";
 import RouteLoader from "./components/ui/RouteLoader";
 import AppErrorBoundary from "./components/ui/AppErrorBoundary";
 import CookieConsent from "./components/CookieConsent";
@@ -31,10 +36,14 @@ import {
   hasLegacyAuthToken,
   redirectToLogin,
 } from "./api/authSession";
+import {
+  getActiveOfflineOwnerKey,
+  initializeTaskOfflineSync,
+  syncOfflineTasks,
+} from "./offline/taskOfflineSync";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const SuccessStairsPage = lazy(() => import("./pages/SuccessStairsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const GlowyAiPage = lazy(() => import("./pages/GlowyAiPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -121,6 +130,7 @@ function App() {
   );
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
+  const userId = useAuthStore((state) => state.userId);
   const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const themeMode = useThemeMode();
@@ -199,11 +209,49 @@ function App() {
 
   useEffect(() => {
     if (hasLegacyToken) return;
-    if (!isAuthenticated || isGuest) return;
 
-    fetchTasks();
-    fetchProgress();
-  }, [fetchProgress, fetchTasks, hasLegacyToken, isAuthenticated, isGuest]);
+    const adapter = {
+      getTasks: () => useTaskStore.getState().tasks,
+      setTasks: (tasks: ReturnType<typeof useTaskStore.getState>["tasks"]) =>
+        useTaskStore.getState().setTasks(tasks),
+    };
+
+    if (isGuest) {
+      if (getActiveOfflineOwnerKey()) {
+        void initializeTaskOfflineSync(null, adapter);
+      }
+      return;
+    }
+
+    if (!isAuthenticated || userId === null) {
+      void initializeTaskOfflineSync(null, adapter);
+      return;
+    }
+
+    let active = true;
+    void initializeTaskOfflineSync(`user:${userId}`, adapter).then(() => {
+      if (!active || !navigator.onLine) return;
+      void fetchTasks();
+      void fetchProgress();
+    });
+
+    const handleOnline = () => {
+      void syncOfflineTasks().then(() => fetchProgress());
+    };
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      active = false;
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [
+    fetchProgress,
+    fetchTasks,
+    hasLegacyToken,
+    isAuthenticated,
+    isGuest,
+    userId,
+  ]);
 
   if (!isHydrated || hasLegacyToken) {
     return <RouteLoader className="fixed inset-0 min-h-dvh" />;

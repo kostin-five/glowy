@@ -18,16 +18,45 @@ const devOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:4173",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:4173",
 ];
 
-const getAllowedOrigins = (isProd) =>
-  process.env.CORS_ORIGINS
+const addLocalhostAliases = (origins) => {
+  const aliases = origins.flatMap((origin) => {
+    try {
+      const url = new URL(origin);
+      if (url.hostname === "localhost") {
+        url.hostname = "127.0.0.1";
+        return [origin, url.origin];
+      }
+      if (url.hostname === "127.0.0.1") {
+        url.hostname = "localhost";
+        return [origin, url.origin];
+      }
+    } catch {
+      return [origin];
+    }
+    return [origin];
+  });
+
+  return [...new Set(aliases)];
+};
+
+const getAllowedOrigins = (isProd) => {
+  const configuredOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",")
         .map((origin) => origin.trim())
         .filter(Boolean)
     : isProd
       ? prodOrigins
       : [...prodOrigins, ...devOrigins];
+
+  return isProd
+    ? configuredOrigins
+    : addLocalhostAliases(configuredOrigins);
+};
 
 export const createApp = ({ testRoute = false } = {}) => {
   const app = express();

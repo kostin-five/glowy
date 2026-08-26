@@ -14,6 +14,10 @@ const { useAuthStore } = await import("./useAuthStore");
 
 afterEach(() => {
   mocks.meRequest.mockReset();
+  Object.defineProperty(navigator, "onLine", {
+    configurable: true,
+    value: true,
+  });
   useAuthStore.getState().toLogout();
 });
 
@@ -27,7 +31,7 @@ describe("authentication session checks", () => {
     );
 
     const pendingCheck = useAuthStore.getState().checkAuth();
-    useAuthStore.getState().toLogin("Тест", "test@example.com");
+    useAuthStore.getState().toLogin(1, "Тест", "test@example.com");
     rejectSessionCheck(new Error("Unauthorized"));
     await pendingCheck;
 
@@ -37,6 +41,26 @@ describe("authentication session checks", () => {
       isChecking: false,
       name: "Тест",
       email: "test@example.com",
+    });
+  });
+
+  it("restores a cached signed-in session without requesting the API offline", async () => {
+    useAuthStore.getState().toLogin(7, "Офлайн", "offline@example.com");
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+
+    await useAuthStore.getState().checkAuth();
+
+    expect(mocks.meRequest).not.toHaveBeenCalled();
+    expect(useAuthStore.getState()).toMatchObject({
+      isAuthenticated: true,
+      isGuest: false,
+      userId: 7,
+      isChecking: false,
+      name: "Офлайн",
+      email: "offline@example.com",
     });
   });
 });

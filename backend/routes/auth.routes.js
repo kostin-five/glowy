@@ -105,6 +105,7 @@ router.post(
       const token = generateAccessToken(newUser.id);
       setAuthCookie(res, token);
       res.status(201).json({
+        id: newUser.id,
         name: newUser.name,
         email: newUser.email,
         xp: newUser.xp,
@@ -142,6 +143,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     const token = generateAccessToken(user.id);
     setAuthCookie(res, token);
     res.status(200).json({
+      id: user.id,
       name: user.name,
       email: user.email,
       xp: user.xp,

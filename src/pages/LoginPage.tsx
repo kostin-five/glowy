@@ -36,7 +36,7 @@ const LoginPage = () => {
 
     try {
       const data = await AuthApi.loginRequest({ email, password });
-      toLogin(data.name, data.email || email);
+      toLogin(data.id, data.name, data.email || email);
       navigate(redirect || startRoute);
     } catch (e) {
       if (axios.isAxiosError(e)) {

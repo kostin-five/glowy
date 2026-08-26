@@ -68,12 +68,37 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ["**/*.{html,js,css}"],
         globIgnores: [
           "**/apple-splash-*.jpg",
-          "**/charts-*.js",
           "**/*.woff",
           "**/*.woff2",
+        ],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "glowy-pages",
+              networkTimeoutSeconds: 3,
+            },
+          },
+          {
+            urlPattern: ({ request }) =>
+              ["script", "style", "font", "image"].includes(
+                request.destination
+              ),
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "glowy-static",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+            },
+          },
         ],
       },
       manifest: {

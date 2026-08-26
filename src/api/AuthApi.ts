@@ -1,7 +1,15 @@
 import axios from "axios";
-import type { Auth, LoginData } from "../types";
+import type { AiTone, Auth, AvatarId, LoginData } from "../types";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
+
+type AuthUserResponse = {
+  id: number;
+  name: string;
+  email: string;
+  avatarId?: AvatarId;
+  aiTone?: AiTone;
+};
 
 const authInstance = axios.create({
 
@@ -22,7 +30,7 @@ export const AuthApi = {
       ...data,
       login: data.email,
     });
-    return response.data;
+    return response.data as AuthUserResponse;
   },
 
   async loginRequest(data: LoginData) {
@@ -30,16 +38,16 @@ export const AuthApi = {
       ...data,
       login: data.email,
     });
-    return response.data;
+    return response.data as AuthUserResponse;
   },
 
   async logoutRequest() {
     const response = await authInstance.post("/logout");
-    return response.data;
+    return response.data as { message?: string };
   },
 
   async meRequest() {
     const response = await silentAuthInstance.get("/me");
-    return response.data;
+    return response.data as AuthUserResponse;
   },
 };

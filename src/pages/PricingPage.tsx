@@ -5,6 +5,7 @@ import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
 import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
+import useNetworkStatus from "../hooks/useNetworkStatus";
 
 type CurrentPlan = {
   plan?: string;
@@ -18,6 +19,7 @@ const PricingPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
+  const isOnline = useNetworkStatus();
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
   const hasActivatedFounderRef = useRef(false);
@@ -45,6 +47,11 @@ const PricingPage = () => {
   const isStartActive = !isFocusActive && !isLifetimeActive;
 
   const activateFounderPlan = useCallback(async () => {
+    if (!isOnline) {
+      alert("Для оформления тарифа нужно подключение к интернету.");
+      return;
+    }
+
     try {
       setIsLoading(true);
       const data = await PaymentApi.activateFounderPlan();
@@ -56,7 +63,7 @@ const PricingPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, setSearchParams, startRoute]);
+  }, [isOnline, navigate, setSearchParams, startRoute]);
 
   useEffect(() => {
     if (
@@ -64,20 +71,26 @@ const PricingPage = () => {
       hasActivatedFounderRef.current ||
       !isAuthenticated ||
       isGuest ||
-      isFounderActive
+      isFounderActive ||
+      !isOnline
     ) {
       return;
     }
 
     hasActivatedFounderRef.current = true;
     activateFounderPlan();
-  }, [activateFounderPlan, isAuthenticated, isFounderActive, isGuest, searchParams]);
+  }, [activateFounderPlan, isAuthenticated, isFounderActive, isGuest, isOnline, searchParams]);
 
   const handleFocusClick = async () => {
     if (!paymentsEnabled || isFocusActive || isLifetimeActive) return;
 
     if (!isAuthenticated || isGuest) {
       navigate("/login?redirect=/pricing");
+      return;
+    }
+
+    if (!isOnline) {
+      alert("Для оформления тарифа нужно подключение к интернету.");
       return;
     }
 

@@ -11,8 +11,7 @@ import type {
   UserProgress,
 } from "../types";
 import type { StateCreator } from "zustand";
-import { TaskApi, type TaskUpdateResponse } from "../api/TaskApi";
-import { SubTaskApi } from "../api/SubTaskApi";
+import { TaskApi } from "../api/TaskApi";
 import { UserApi } from "../api/UserApi";
 import { useAuthStore } from "./useAuthStore";
 import { getLevelByXp, getXpReward } from "../utils/xp";
@@ -20,6 +19,15 @@ import { normalizeTaskDate } from "../utils/taskDateGroups";
 import axios from "axios";
 import { trackProductEventOnce } from "../utils/analytics";
 import { formatLocalDateOnly } from "../utils/localDate";
+import {
+  createOfflineEntityId,
+  enqueueTaskOperation,
+} from "../offline/taskOfflineQueue";
+import {
+  getActiveOfflineOwnerKey,
+  persistActiveTaskSnapshot,
+  syncOfflineTasks,
+} from "../offline/taskOfflineSync";
 
 interface TaskStore {
   tasks: Task[];
@@ -96,25 +104,6 @@ const normalizeTask = (task: Task): Task => ({
   subtasks: sortSubTasks(task.subtasks ?? []),
 });
 
-const applyProgress = (progress: UserProgress | null | undefined) =>
-  progress
-    ? {
-        currentXP: progress.xp,
-        userLevel: progress.level,
-      }
-    : {};
-
-const parseTaskUpdateResponse = (response: Task | TaskUpdateResponse) =>
-  "task" in response
-    ? {
-        task: response.task,
-        userProgress: response.userProgress,
-      }
-    : {
-        task: response,
-        userProgress: null,
-      };
-
 const applyOptimisticXpReward = (currentXP: number, task: Task) => {
   const nextXP = currentXP + getXpReward(task.energyLevel, task.priority);
 
@@ -125,6 +114,17 @@ const applyOptimisticXpReward = (currentXP: number, task: Task) => {
 };
 
 const isGuestSession = () => useAuthStore.getState().isGuest;
+
+const persistAndQueue = async (
+  tasks: Task[],
+  operation: Parameters<typeof enqueueTaskOperation>[1]
+) => {
+  const ownerKey = getActiveOfflineOwnerKey();
+  if (!ownerKey) throw new Error("Offline-хранилище аккаунта ещё не готово");
+  await persistActiveTaskSnapshot(tasks);
+  await enqueueTaskOperation(ownerKey, operation);
+  void syncOfflineTasks();
+};
 
 const buildLocalTask = (draft: TaskDraft): Task => {
   const taskId = draft.id ?? Date.now();
@@ -142,7 +142,7 @@ const buildLocalTask = (draft: TaskDraft): Task => {
     estimatedMinutes: draft.estimatedMinutes ?? null,
     actualMinutes: null,
     subtasks: (draft.subtasks ?? []).map((subtask, index) => ({
-      id: taskId + index + 1,
+      id: taskId < 0 ? createOfflineEntityId() : taskId + index + 1,
       taskId,
       title: subtask.title,
       completed: subtask.completed ?? false,
@@ -201,16 +201,11 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   confirmTaskDeletion: async (id: number) => {
     if (isGuestSession()) return;
-
-    try {
-      await TaskApi.deleteTask(id);
-    } catch (e) {
-      if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
-      } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
-      }
-    }
+    await persistAndQueue(get().tasks, {
+      kind: "task.delete",
+      entityId: id,
+      payload: {},
+    });
   },
 
   setFilterStatus: (filterStatus: FilterStatus) =>
@@ -236,32 +231,15 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return result;
     }
 
-    try {
-      const result = normalizeTask(await TaskApi.postTask(newTask));
-      set((state) => {
-        const clientId = "id" in newTask ? newTask.id : undefined;
-        const hasClientTask =
-          typeof clientId === "number" &&
-          state.tasks.some((task) => task.id === clientId);
-
-        return {
-          tasks: hasClientTask
-            ? state.tasks.map((task) => (task.id === clientId ? result : task))
-            : [...state.tasks, result],
-        };
-      });
-      trackProductEventOnce("first_task_created");
-      return result;
-    } catch (e) {
-      if (axios.isAxiosError(e)) {
-        const message = e.response?.data?.error || e.message;
-        console.error("Ошибка сервера:", message);
-        throw new Error(message, { cause: e });
-      } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
-        throw e;
-      }
-    }
+    const result = buildLocalTask({ ...newTask, id: createOfflineEntityId() });
+    set((state) => ({ tasks: [...state.tasks, result] }));
+    await persistAndQueue(get().tasks, {
+      kind: "task.create",
+      entityId: result.id,
+      payload: newTask,
+    });
+    trackProductEventOnce("first_task_created");
+    return result;
   },
 
   deleteTask: async (id: number) => {
@@ -272,23 +250,12 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return;
     }
 
-    try {
-      const deletedTask = await TaskApi.deleteTask(id);
-      set((state) => {
-        const updatedTasks = state.tasks.filter((task) => task.id !== id);
-
-        return {
-          tasks: updatedTasks,
-        };
-      });
-      return deletedTask;
-    } catch (e) {
-      if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
-      } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
-      }
-    }
+    set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) }));
+    await persistAndQueue(get().tasks, {
+      kind: "task.delete",
+      entityId: id,
+      payload: {},
+    });
   },
 
   toggleTask: async (id: number) => {
@@ -318,63 +285,29 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     const taskToToggle = get().tasks.find((t) => t.id === id);
     if (!taskToToggle) return;
 
-    try {
-      const nextCompleted = !taskToToggle.completed;
-      const optimisticTask = normalizeTask({
-        ...taskToToggle,
+    const nextCompleted = !taskToToggle.completed;
+    const shouldAwardXp = nextCompleted && !taskToToggle.xpAwarded;
+    const updatedTask = normalizeTask({
+      ...taskToToggle,
+      completed: nextCompleted,
+      completedOn: nextCompleted ? formatLocalDateOnly() : null,
+      xpAwarded: taskToToggle.xpAwarded || shouldAwardXp,
+    });
+    set((state) => ({
+      tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
+      ...(shouldAwardXp
+        ? applyOptimisticXpReward(state.currentXP, taskToToggle)
+        : {}),
+    }));
+    await persistAndQueue(get().tasks, {
+      kind: "task.update",
+      entityId: id,
+      payload: {
         completed: nextCompleted,
-        completedOn: nextCompleted ? formatLocalDateOnly() : null,
-      });
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === id ? optimisticTask : task
-        ),
-      }));
-      const result = await TaskApi.putTask(id, {
-        ...taskToToggle,
-        completed: nextCompleted,
-        completedOn: nextCompleted ? formatLocalDateOnly() : null,
-      });
-      const { task: responseTask, userProgress } =
-        parseTaskUpdateResponse(result);
-      const shouldAwardOptimisticXp =
-        nextCompleted && !taskToToggle.xpAwarded && !userProgress;
-      const nextXpAwarded = Boolean(
-        responseTask.xpAwarded ||
-          taskToToggle.xpAwarded ||
-          shouldAwardOptimisticXp
-      );
-      const updatedTask = normalizeTask({
-        ...responseTask,
-        xpAwarded: nextXpAwarded,
-      });
-      set((state) => {
-        const updatedTasks = state.tasks.map((t) =>
-          t.id === id ? updatedTask : t
-        );
-        return {
-          tasks: updatedTasks,
-          ...(userProgress
-            ? applyProgress(userProgress)
-            : shouldAwardOptimisticXp
-            ? applyOptimisticXpReward(state.currentXP, taskToToggle)
-            : {}),
-        };
-      });
-
-      return updatedTask;
-    } catch (e) {
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === id ? taskToToggle : task
-        ),
-      }));
-      if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
-      } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
-      }
-    }
+        completedOn: updatedTask.completedOn,
+      },
+    });
+    return updatedTask;
   },
 
   updateTask: async (id: number, updatedData: Partial<Task>) => {
@@ -397,41 +330,24 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return updatedTask;
     }
 
-    try {
-      const taskToUpdate = get().tasks.find((t) => t.id === id);
-      if (!taskToUpdate) return;
-      const payload = {
-        ...taskToUpdate,
-        ...updatedData,
-        subtasks: applySubTaskPositions(
-          updatedData.subtasks ?? taskToUpdate.subtasks ?? []
-        ),
-      };
-      const result = await TaskApi.putTask(id, payload);
-      const { task: responseTask, userProgress } =
-        parseTaskUpdateResponse(result);
-      const updatedTask = normalizeTask({
-        ...responseTask,
-        subtasks: applySubTaskPositions(
-          updatedData.subtasks ?? responseTask.subtasks ?? []
-        ),
-      });
-      set((state) => {
-        return {
-          tasks: state.tasks.map(
-            (t: Task): Task => (t.id === id ? updatedTask : t)
-          ),
-          ...applyProgress(userProgress),
-        };
-      });
-      return updatedTask;
-    } catch (e) {
-      if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
-      } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
-      }
-    }
+    const taskToUpdate = get().tasks.find((task) => task.id === id);
+    if (!taskToUpdate) return;
+    const updatedTask = normalizeTask({
+      ...taskToUpdate,
+      ...updatedData,
+      subtasks: applySubTaskPositions(
+        updatedData.subtasks ?? taskToUpdate.subtasks ?? []
+      ),
+    });
+    set((state) => ({
+      tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
+    }));
+    await persistAndQueue(get().tasks, {
+      kind: "task.update",
+      entityId: id,
+      payload: updatedData,
+    });
+    return updatedTask;
   },
 
   fetchTasks: async () => {
@@ -442,9 +358,15 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
     const hasCachedTasks = get().tasks.length > 0;
     set({ isLoading: !hasCachedTasks });
+    if (!navigator.onLine) {
+      set({ isLoading: false });
+      return;
+    }
     try {
+      await syncOfflineTasks();
       const response = await TaskApi.getTasks();
       set({ tasks: response.map(normalizeTask) });
+      await persistActiveTaskSnapshot(response.map(normalizeTask));
     } catch (e) {
       if (axios.isAxiosError(e)) {
         console.error("Ошибка сервера:", e.response?.data?.error || e.message);
@@ -499,25 +421,37 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return newSub;
     }
 
-    try {
-      const taskToUpdate = get().tasks.find((task) => task.id === taskId);
-      if (!taskToUpdate) return;
+    const taskToUpdate = get().tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
 
-      const newSub = await SubTaskApi.createSubTask(taskId, title);
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === taskId
-            ? {
-                ...task,
-                subtasks: sortSubTasks([...(task.subtasks || []), newSub]),
-              }
-            : task
-        ),
-      }));
-      return newSub;
-    } catch (e) {
-      console.error("Ошибка при добавлении подзадачи:", e);
-    }
+    const newSub: SubTask = {
+      id: createOfflineEntityId(),
+      taskId,
+      title,
+      completed: false,
+      position: taskToUpdate.subtasks?.length ?? 0,
+    };
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              subtasks: sortSubTasks([...(task.subtasks || []), newSub]),
+            }
+          : task
+      ),
+    }));
+    await persistAndQueue(get().tasks, {
+      kind: "subtask.create",
+      entityId: newSub.id,
+      taskId,
+      payload: {
+        title: newSub.title,
+        completed: newSub.completed,
+        position: newSub.position,
+      },
+    });
+    return newSub;
   },
 
   toggleSubTask: async (
@@ -548,27 +482,31 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return updatedSub;
     }
 
-    try {
-      const updatedSub = await SubTaskApi.toggleSubTask(subTaskId, completed);
-
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === taskId || task.id === updatedSub.taskId
-            ? {
-                ...task,
-                subtasks: sortSubTasks(
-                  task.subtasks?.map((sub) =>
-                    sub.id === subTaskId ? updatedSub : sub
-                  )
-                ),
-              }
-            : task
-        ),
-      }));
-      return updatedSub;
-    } catch (e) {
-      console.error("Ошибка при изменении статуса подзадачи:", e);
-    }
+    let updatedSub: SubTask | undefined;
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              subtasks: sortSubTasks(
+                task.subtasks?.map((sub) => {
+                  if (sub.id !== subTaskId) return sub;
+                  updatedSub = { ...sub, completed };
+                  return updatedSub;
+                })
+              ),
+            }
+          : task
+      ),
+    }));
+    if (!updatedSub) return;
+    await persistAndQueue(get().tasks, {
+      kind: "subtask.update",
+      entityId: subTaskId,
+      taskId,
+      payload: { completed },
+    });
+    return updatedSub;
   },
 
   updateSubTask: async (taskId, subTaskId, data) => {
@@ -604,28 +542,31 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return updatedSub;
     }
 
-    try {
-      const updatedSub = await SubTaskApi.updateSubTask(subTaskId, payload);
-
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === taskId || task.id === updatedSub.taskId
-            ? {
-                ...task,
-                subtasks: sortSubTasks(
-                  task.subtasks?.map((sub) =>
-                    sub.id === subTaskId ? updatedSub : sub
-                  )
-                ),
-              }
-            : task
-        ),
-      }));
-
-      return updatedSub;
-    } catch (e) {
-      console.error("Ошибка при обновлении подзадачи:", e);
-    }
+    let updatedSub: SubTask | undefined;
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              subtasks: sortSubTasks(
+                task.subtasks?.map((sub) => {
+                  if (sub.id !== subTaskId) return sub;
+                  updatedSub = { ...sub, ...payload };
+                  return updatedSub;
+                })
+              ),
+            }
+          : task
+      ),
+    }));
+    if (!updatedSub) return;
+    await persistAndQueue(get().tasks, {
+      kind: "subtask.update",
+      entityId: subTaskId,
+      taskId,
+      payload,
+    });
+    return updatedSub;
   },
 
   deleteSubTask: async (taskId: number, subTaskId: number) => {
@@ -643,22 +584,22 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       return;
     }
 
-    try {
-      await SubTaskApi.deleteSubTask(subTaskId);
-
-      set((state) => ({
-        tasks: state.tasks.map((task) =>
-          task.id === taskId
-            ? {
-                ...task,
-                subtasks: task.subtasks?.filter((sub) => sub.id !== subTaskId),
-              }
-            : task
-        ),
-      }));
-    } catch (e) {
-      console.error("Ошибка при удалении подзадачи:", e);
-    }
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              subtasks: task.subtasks?.filter((sub) => sub.id !== subTaskId),
+            }
+          : task
+      ),
+    }));
+    await persistAndQueue(get().tasks, {
+      kind: "subtask.delete",
+      entityId: subTaskId,
+      taskId,
+      payload: {},
+    });
   },
 
   completeTasks: async (ids: number[]) => {
@@ -677,17 +618,18 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 export const useTaskStore = create<TaskStore>()(
   persist(taskStore, {
     name: "glowy-tasks",
+    version: 2,
     merge: (persistedState, currentState) => ({
       ...currentState,
       ...(persistedState as Partial<TaskStore>),
       filterStatus: "Активные",
     }),
     partialize: (state) => ({
-      tasks: state.tasks,
+      tasks: isGuestSession() ? state.tasks : [],
       sortField: state.sortField,
       sortDirection: state.sortDirection,
-      userLevel: state.userLevel,
-      currentXP: state.currentXP,
+      userLevel: isGuestSession() ? state.userLevel : 1,
+      currentXP: isGuestSession() ? state.currentXP : 0,
     }),
   })
 );

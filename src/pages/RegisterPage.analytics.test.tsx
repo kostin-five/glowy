@@ -31,6 +31,7 @@ afterEach(() => {
 describe("registration analytics", () => {
   it("records start and completion around a successful registration", async () => {
     mocks.registerRequest.mockResolvedValue({
+      id: 42,
       name: "Тест",
       email: "test@example.com",
     });
@@ -72,6 +73,6 @@ describe("registration analytics", () => {
       2,
       "signup_completed"
     );
-    expect(mocks.toLogin).toHaveBeenCalledWith("Тест", "test@example.com");
+    expect(mocks.toLogin).toHaveBeenCalledWith(42, "Тест", "test@example.com");
   });
 });

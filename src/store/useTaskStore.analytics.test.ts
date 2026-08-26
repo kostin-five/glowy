@@ -7,12 +7,24 @@ const postTask = vi.fn();
 const getTasks = vi.fn();
 const putTask = vi.fn();
 const trackProductEventOnce = vi.fn();
+const enqueueTaskOperation = vi.fn();
+const persistActiveTaskSnapshot = vi.fn();
+const syncOfflineTasks = vi.fn();
 
 vi.mock("../api/TaskApi", () => ({
   TaskApi: { getTasks, postTask, putTask },
 }));
 
 vi.mock("../utils/analytics", () => ({ trackProductEventOnce }));
+vi.mock("../offline/taskOfflineQueue", () => ({
+  createOfflineEntityId: () => -1,
+  enqueueTaskOperation,
+}));
+vi.mock("../offline/taskOfflineSync", () => ({
+  getActiveOfflineOwnerKey: () => "user:1",
+  persistActiveTaskSnapshot,
+  syncOfflineTasks,
+}));
 
 const { useAuthStore } = await import("./useAuthStore");
 const { useTaskStore } = await import("./useTaskStore");
@@ -32,6 +44,9 @@ afterEach(() => {
   getTasks.mockReset();
   putTask.mockReset();
   trackProductEventOnce.mockReset();
+  enqueueTaskOperation.mockReset();
+  persistActiveTaskSnapshot.mockReset();
+  syncOfflineTasks.mockReset();
   useAuthStore.setState({ isAuthenticated: false, isGuest: false, token: null });
   useTaskStore.setState({ tasks: [] });
 });
@@ -129,9 +144,13 @@ describe("task activation analytics", () => {
 
     await useTaskStore.getState().toggleTask(completedTask.id);
 
-    expect(putTask).toHaveBeenCalledWith(
-      completedTask.id,
-      expect.objectContaining({ completed: false, completedOn: null })
+    expect(enqueueTaskOperation).toHaveBeenCalledWith(
+      "user:1",
+      expect.objectContaining({
+        kind: "task.update",
+        entityId: completedTask.id,
+        payload: expect.objectContaining({ completed: false, completedOn: null }),
+      })
     );
     expect(useTaskStore.getState().tasks[0]).toMatchObject({
       completed: false,

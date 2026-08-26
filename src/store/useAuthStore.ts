@@ -24,6 +24,7 @@ const isGuestRequestWindowExpired = (resetDate: string | null) => {
 interface AuthStore {
   isAuthenticated: boolean;
   isGuest: boolean;
+  userId: number | null;
   name: string;
   email: string | null;
   avatarId: AvatarId;
@@ -31,7 +32,12 @@ interface AuthStore {
   token: string | null;
   guestRequestsCount: number;
   guestRequestsResetDate: string | null;
-  toLogin: (name: string, email: string, token?: string | null) => void;
+  toLogin: (
+    userId: number,
+    name: string,
+    email: string,
+    token?: string | null
+  ) => void;
   restoreAuthSession: () => void;
   toDemoLogin: () => void;
   toLogout: () => void;
@@ -51,6 +57,7 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => ({
       isAuthenticated: false,
       isGuest: false,
+      userId: null,
       isChecking: true,
       name: "",
       email: null,
@@ -59,11 +66,17 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
-      toLogin: (name: string, email: string, token: string | null = null) => {
+      toLogin: (
+        userId: number,
+        name: string,
+        email: string,
+        token: string | null = null
+      ) => {
         invalidatePendingAuthChecks();
         set(() => ({
           isAuthenticated: true,
           isGuest: false,
+          userId,
           isChecking: false,
           name: name,
           email: email,
@@ -87,6 +100,7 @@ export const useAuthStore = create<AuthStore>()(
         set(() => ({
           isAuthenticated: true,
           isGuest: true,
+          userId: null,
           isChecking: false,
           name: "Демо",
           email: "demo",
@@ -101,6 +115,7 @@ export const useAuthStore = create<AuthStore>()(
         set(() => ({
           isAuthenticated: false,
           isGuest: false,
+          userId: null,
           isChecking: false,
           name: "",
           email: null,
@@ -111,6 +126,12 @@ export const useAuthStore = create<AuthStore>()(
       },
       checkAuth: async () => {
         const requestSessionVersion = authSessionVersion;
+
+        if (!navigator.onLine && get().userId !== null) {
+          set({ isAuthenticated: true, isGuest: false, isChecking: false });
+          return;
+        }
+
         set({ isChecking: true });
         try {
           // Dynamic import to avoid circular dependency
@@ -121,18 +142,29 @@ export const useAuthStore = create<AuthStore>()(
           set({
             isAuthenticated: true,
             isGuest: false,
+            userId: user.id,
             name: user.name,
             email: user.email,
             avatarId: user.avatarId || "orbit-indigo",
             aiTone: user.aiTone || "calm",
             isChecking: false,
           });
-        } catch {
+        } catch (error) {
           if (requestSessionVersion !== authSessionVersion) return;
+
+          const canUseOfflineSession =
+            get().userId !== null &&
+            (!navigator.onLine ||
+              (axios.isAxiosError(error) && !error.response));
+          if (canUseOfflineSession) {
+            set({ isAuthenticated: true, isGuest: false, isChecking: false });
+            return;
+          }
 
           set({
             isAuthenticated: false,
             isGuest: false,
+            userId: null,
             name: "",
             email: null,
             avatarId: "orbit-indigo",
@@ -212,7 +244,7 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as Partial<AuthStore> & {
           login?: string | null;

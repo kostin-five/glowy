@@ -105,6 +105,19 @@ export const schemaUserPreferencesPatch = z
   })
   .refine((value) => Object.keys(value).length > 0);
 
+export const schemaTelegramConnectionStatus = z.object({
+  available: z.boolean(),
+  botUsername: z.string().nullable(),
+  connected: z.boolean(),
+  connectedAt: z.string().nullable(),
+});
+
+export const schemaTelegramLinkCode = z.object({
+  code: z.string().min(1),
+  expiresAt: z.string(),
+  deepLink: z.string().url(),
+});
+
 export const schemaHabit = z.object({
   id: z.number(),
   title: z.string(),
@@ -224,6 +237,8 @@ export type AvatarId = z.infer<typeof schemaAvatarId>;
 export type AiTone = z.infer<typeof schemaAiTone>;
 export type UserPreferences = z.infer<typeof schemaUserPreferences>;
 export type UserPreferencesPatch = z.infer<typeof schemaUserPreferencesPatch>;
+export type TelegramConnectionStatus = z.infer<typeof schemaTelegramConnectionStatus>;
+export type TelegramLinkCode = z.infer<typeof schemaTelegramLinkCode>;
 export type Habit = z.infer<typeof schemaHabit>;
 export type Achievement = z.infer<typeof schemaAchievement>;
 export type ProgressOverview = z.infer<typeof schemaProgressOverview>;

@@ -18,7 +18,7 @@ Glowy помогает пользователю:
 
 ## Текущий релиз
 
-Текущий продуктовый трек в разработке: `v2.3.0`–`v2.5.0`.
+Текущий продуктовый релиз: `v2.6.0`.
 
 Ключевые изменения:
 
@@ -35,10 +35,12 @@ Glowy помогает пользователю:
   достижения; оценка и фактическое время задачи остаются необязательными.
 - Аналитика недели/месяца рассчитывается backend по завершённым задачам; глубокий
   AI-разбор доступен только Focus/Founder и запускается пользователем вручную.
+- Задачи и подзадачи доступны без интернета: изменения сохраняются на устройстве
+  и автоматически синхронизируются после восстановления соединения.
 
 ## Технологии
 
-- Frontend: React, TypeScript, Vite, Tailwind CSS, Zustand.
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Zustand, IndexedDB.
 - Backend: Node.js, Express, Prisma, PostgreSQL.
 - Auth: HttpOnly cookie session и восстановление сессии через `/auth/me`.
 - AI: прямой DeepSeek с GigaChat fallback; временный proxy mode остаётся только для отката.
@@ -94,7 +96,7 @@ VITE_YANDEX_METRIKA_ID=
 PORT=3001
 DATABASE_URL=postgresql://...
 JWT_SECRET=...
-CORS_ORIGINS=https://glowy-ai.ru,https://www.glowy-ai.ru,https://dev.glowy-ai.ru,http://localhost:5173,http://localhost:4173
+CORS_ORIGINS=https://glowy-ai.ru,https://www.glowy-ai.ru,https://dev.glowy-ai.ru,http://localhost:5173,http://localhost:4173,http://127.0.0.1:5173,http://127.0.0.1:4173
 
 YOOKASSA_SHOP_ID=...
 YOOKASSA_SECRET_KEY=...
@@ -241,6 +243,7 @@ Founder:
 - [v2.3.0 release notes](docs/releases/v2.3.0-profile-and-personalization.md)
 - [v2.4.0 release notes](docs/releases/v2.4.0-personal-progress.md)
 - [v2.5.0 release notes](docs/releases/v2.5.0-analytics-and-focus.md)
+- [v2.6.0 release notes](docs/releases/v2.6.0-offline-mode.md)
 - [AI unit economics](docs/ai-unit-economics.md)
 - [Payments live checklist](docs/payments-live-checklist.md)
 - [VPS deploy notes](deploy/README.md)

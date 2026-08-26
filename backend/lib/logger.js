@@ -26,11 +26,14 @@ export const logger = {
     writeLog("info", event, context);
   },
 
-  error(event, { req, error, statusCode } = {}) {
+  error(event, { req, error, statusCode, errorCode } = {}) {
     writeLog("error", event, {
       ...getRequestContext(req),
       statusCode,
       errorName: error instanceof Error ? error.name : "UnknownError",
+      ...(typeof errorCode === "string" && /^[A-Z0-9_]{1,60}$/.test(errorCode)
+        ? { errorCode }
+        : {}),
     });
   },
 };

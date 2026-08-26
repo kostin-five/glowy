@@ -7,43 +7,44 @@ datasource db {
 }
 
 model Task {
-  id               Int       @id @default(autoincrement())
-  userId           Int       @map("user_id")
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               Int                @id @default(autoincrement())
+  userId           Int                @map("user_id")
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   title            String
   date             String
   priority         String
-  energyLevel      String    @map("energy_level")
+  energyLevel      String             @map("energy_level")
   category         String
-  completed        Boolean   @default(false)
-  completedOn      String?   @map("completed_on") @db.VarChar(10)
-  estimatedMinutes Int?      @map("estimated_minutes")
-  actualMinutes    Int?      @map("actual_minutes")
-  xpAwarded        Boolean   @default(false) @map("xp_awarded")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  completed        Boolean            @default(false)
+  completedOn      String?            @map("completed_on") @db.VarChar(10)
+  estimatedMinutes Int?               @map("estimated_minutes")
+  actualMinutes    Int?               @map("actual_minutes")
+  xpAwarded        Boolean            @default(false) @map("xp_awarded")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
   subtasks         SubTask[]
   noteLinks        NoteTaskLink[]
+  telegramDraft    TelegramTaskDraft?
 
   @@map("tasks")
 }
 
 model User {
-  id                 Int            @id @default(autoincrement())
+  id                 Int                 @id @default(autoincrement())
   name               String
-  email              String         @unique
+  email              String              @unique
   password           String
-  currentEnergy      Int            @default(100) @map("current_energy")
-  aiRequestsCount    Int            @default(0) @map("ai_requests_count")
-  aiRequestsResetAt  DateTime?      @map("ai_requests_reset_at")
-  xp                 Int            @default(0)
-  level              Int            @default(1)
-  plan               String         @default("start")
-  subscriptionStatus String         @default("inactive") @map("subscription_status")
-  planExpiresAt      DateTime?      @map("plan_expires_at")
-  avatarId           String?        @map("avatar_id") @db.VarChar(40)
-  aiTone             String         @default("calm") @map("ai_tone")
-  focusBetaEnabled   Boolean        @default(false) @map("focus_beta_enabled")
+  currentEnergy      Int                 @default(100) @map("current_energy")
+  aiRequestsCount    Int                 @default(0) @map("ai_requests_count")
+  aiRequestsResetAt  DateTime?           @map("ai_requests_reset_at")
+  xp                 Int                 @default(0)
+  level              Int                 @default(1)
+  plan               String              @default("start")
+  subscriptionStatus String              @default("inactive") @map("subscription_status")
+  planExpiresAt      DateTime?           @map("plan_expires_at")
+  avatarId           String?             @map("avatar_id") @db.VarChar(40)
+  aiTone             String              @default("calm") @map("ai_tone")
+  focusBetaEnabled   Boolean             @default(false) @map("focus_beta_enabled")
   tasks              Task[]
   payments           Payment[]
   habits             Habit[]
@@ -51,6 +52,9 @@ model User {
   achievements       Achievement[]
   aiUsageDaily       AiUsageDaily[]
   notes              Note[]
+  telegramConnection TelegramConnection?
+  telegramLinkCodes  TelegramLinkCode[]
+  telegramDrafts     TelegramTaskDraft[]
 
   @@map("users")
 }
@@ -81,6 +85,73 @@ model NoteTaskLink {
   @@unique([noteId, taskId])
   @@index([taskId])
   @@map("note_task_links")
+}
+
+model TelegramConnection {
+  id                      Int                 @id @default(autoincrement())
+  userId                  Int                 @unique @map("user_id")
+  user                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  telegramUserId          String              @unique @map("telegram_user_id") @db.VarChar(32)
+  chatId                  String              @map("chat_id") @db.VarChar(32)
+  pendingCommand          String?             @map("pending_command") @db.VarChar(20)
+  pendingCommandExpiresAt DateTime?           @map("pending_command_expires_at")
+  connectedAt             DateTime            @default(now()) @map("connected_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+  drafts                  TelegramTaskDraft[]
+
+  @@map("telegram_connections")
+}
+
+model TelegramLinkCode {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique @map("code_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId, expiresAt])
+  @@map("telegram_link_codes")
+}
+
+model TelegramTaskDraft {
+  id             String             @id @default(uuid()) @db.Uuid
+  connectionId   Int                @map("connection_id")
+  connection     TelegramConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  userId         Int                @map("user_id")
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String             @db.VarChar(255)
+  date           String             @default("") @db.VarChar(10)
+  priority       String             @default("⚡️ P2") @db.VarChar(50)
+  energyLevel    String             @default("med") @map("energy_level") @db.VarChar(10)
+  category       String             @default("") @db.VarChar(100)
+  status         String             @default("PENDING") @db.VarChar(20)
+  expiresAt      DateTime           @map("expires_at")
+  taskId         Int?               @unique @map("task_id")
+  task           Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  confirmedAt    DateTime?          @map("confirmed_at")
+  sourceUpdateId String?            @unique @map("source_update_id") @db.VarChar(32)
+
+  @@index([userId, status, expiresAt])
+  @@index([connectionId, status])
+  @@map("telegram_task_drafts")
+}
+
+model TelegramWebhookUpdate {
+  updateId      String    @id @map("update_id") @db.VarChar(32)
+  payload       Json?
+  status        String    @default("PENDING") @db.VarChar(20)
+  attempts      Int       @default(0)
+  availableAt   DateTime  @default(now()) @map("available_at")
+  lastErrorCode String?   @map("last_error_code") @db.VarChar(60)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  processedAt   DateTime? @map("processed_at")
+
+  @@index([status, availableAt, createdAt])
+  @@map("telegram_webhook_updates")
 }
 
 model Habit {

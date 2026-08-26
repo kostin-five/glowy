@@ -9,6 +9,10 @@ import {
   isKnownAvatarId,
 } from "../constants/profile.constants.js";
 import { isFocusEntitled } from "../services/feature-entitlements.service.js";
+import {
+  createTelegramLinkService,
+  TelegramLinkError,
+} from "../services/telegram/telegram-link.service.js";
 
 const AUTH_COOKIE_NAME = "glowy_token";
 const AUTH_COOKIE_CLEAR_OPTIONS = {
@@ -61,7 +65,10 @@ const toPreferenceResponse = (user) => {
   };
 };
 
-export const createUserRouter = ({ db = prisma } = {}) => {
+export const createUserRouter = ({
+  db = prisma,
+  telegramLinks = createTelegramLinkService({ db }),
+} = {}) => {
   const router = express.Router();
 
   router.use(authMiddleware);
@@ -149,6 +156,39 @@ export const createUserRouter = ({ db = prisma } = {}) => {
         statusCode: 500,
       });
       return res.status(500).json({ error: "Не удалось сохранить настройки" });
+    }
+  });
+
+  router.get("/telegram", async (req, res) => {
+    try {
+      return res.json(await telegramLinks.getStatus(req.user.id));
+    } catch (error) {
+      logger.error("user.telegram.status_failed", { req, error, statusCode: 500 });
+      return res.status(500).json({ error: "Не удалось загрузить подключение Telegram" });
+    }
+  });
+
+  router.post("/telegram/link-code", async (req, res) => {
+    try {
+      return res.status(201).json(await telegramLinks.createCode(req.user.id));
+    } catch (error) {
+      const status = error instanceof TelegramLinkError ? error.status : 500;
+      logger.error("user.telegram.link_code_failed", { req, error, statusCode: status });
+      return res.status(status).json({
+        error:
+          error instanceof TelegramLinkError
+            ? error.message
+            : "Не удалось создать код подключения",
+      });
+    }
+  });
+
+  router.delete("/telegram", async (req, res) => {
+    try {
+      return res.json(await telegramLinks.unlinkUser(req.user.id));
+    } catch (error) {
+      logger.error("user.telegram.unlink_failed", { req, error, statusCode: 500 });
+      return res.status(500).json({ error: "Не удалось отключить Telegram" });
     }
   });
 

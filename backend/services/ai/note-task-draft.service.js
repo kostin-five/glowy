@@ -4,7 +4,7 @@ import { parseJsonLoose } from "./mind-hub-parser.service.js";
 const priorities = new Set(["🔥 P1", "⚡️ P2", "💤 P3"]);
 const energyLevels = new Set(["low", "med", "high"]);
 
-export const normalizeNoteTaskDraft = (value) => {
+export const normalizeTaskDraftFromText = (value) => {
   const title = typeof value?.title === "string" ? value.title.trim() : "";
   if (!title) throw new Error("AI provider returned an empty note task draft");
 
@@ -22,12 +22,20 @@ export const normalizeNoteTaskDraft = (value) => {
   };
 };
 
-export const generateNoteTaskDraft = async (fragment, accountingContext) => {
-  const prompt = `Ты — Glowy, спокойный помощник по планированию. Преврати фрагмент заметки в один реалистичный следующий шаг. Верни только JSON без Markdown: {"title":"...","date":"","priority":"⚡️ P2","energyLevel":"med","category":"Личное"}. Не добавляй факты, которых нет во фрагменте. Заголовок должен начинаться с глагола и быть не длиннее 255 символов. Фрагмент заметки:\n${fragment}`;
+export const generateTaskDraftFromText = async (
+  sourceText,
+  accountingContext,
+  sourceLabel = "Task draft"
+) => {
+  const prompt = `Ты — Glowy, спокойный помощник по планированию. Преврати текст пользователя в один реалистичный следующий шаг. Верни только JSON без Markdown: {"title":"...","date":"","priority":"⚡️ P2","energyLevel":"med","category":"Личное"}. Не добавляй факты, которых нет в тексте. Заголовок должен начинаться с глагола и быть не длиннее 255 символов. Текст пользователя:\n${sourceText}`;
   const { text } = await generateContentWithAiProvider(
     prompt,
-    "Note task draft",
+    sourceLabel,
     accountingContext
   );
-  return normalizeNoteTaskDraft(parseJsonLoose(text));
+  return normalizeTaskDraftFromText(parseJsonLoose(text));
 };
+
+export const normalizeNoteTaskDraft = normalizeTaskDraftFromText;
+export const generateNoteTaskDraft = (fragment, accountingContext) =>
+  generateTaskDraftFromText(fragment, accountingContext, "Note task draft");

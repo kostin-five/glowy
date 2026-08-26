@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeNoteTaskDraft } from "./note-task-draft.service.js";
+import {
+  normalizeNoteTaskDraft,
+  normalizeTaskDraftFromText,
+} from "./note-task-draft.service.js";
 
 test("normalizes a note fragment result into an unsaved task draft", () => {
   assert.deepEqual(
@@ -31,4 +34,11 @@ test("uses safe defaults and rejects an empty AI title", () => {
     category: "Личное",
   });
   assert.throws(() => normalizeNoteTaskDraft({ title: "   " }), /empty note task draft/);
+});
+
+test("uses the same normalized draft contract outside notes", () => {
+  assert.deepEqual(
+    normalizeTaskDraftFromText({ title: "  Сделать следующий шаг  " }),
+    normalizeNoteTaskDraft({ title: "  Сделать следующий шаг  " })
+  );
 });

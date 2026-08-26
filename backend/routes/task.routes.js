@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { createTaskForUser } from "../services/tasks/task-write.service.js";
 import {
   addDaysToDateOnly,
   isDateOnly,
@@ -116,56 +117,21 @@ router.post(
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-      const {
-        title,
-        energyLevel,
-        priority,
-        date,
-        category,
-        subtasks,
-        estimatedMinutes,
-        actualMinutes,
-      } = req.body;
-      const normalizedEstimate = normalizeOptionalMinutes(estimatedMinutes).value;
-      const normalizedActual = normalizeOptionalMinutes(actualMinutes).value;
-    const subtasksToCreate = Array.isArray(subtasks)
-      ? subtasks
-          .map((sub, index) => ({
-            title: typeof sub.title === "string" ? sub.title.trim() : "",
-            completed: Boolean(sub.completed),
-            position: Number.isInteger(sub.position) ? sub.position : index,
-          }))
-          .filter((sub) => sub.title.length > 0)
-      : [];
-
-    const newTask = await prisma.task.create({
-      data: {
-        title,
-        energyLevel,
-        category,
-        date,
-        priority,
-        completed: false,
-        completedOn: null,
-        estimatedMinutes: normalizedEstimate ?? null,
-        actualMinutes: normalizedActual ?? null,
+      const newTask = await createTaskForUser({
         userId: req.user.id,
-        subtasks: subtasksToCreate.length
-          ? {
-              create: subtasksToCreate,
-            }
-          : undefined,
-      },
+        input: req.body,
+        include: taskInclude,
+      });
 
-      include: taskInclude,
-    });
-
-    res.status(201).json(newTask);
-  } catch (e) {
-    logger.error("tasks.create.failed", { req, error: e, statusCode: 500 });
-    res.status(500).json({ error: "Ошибка при создании" });
+      return res.status(201).json(newTask);
+    } catch (e) {
+      logger.error("tasks.create.failed", { req, error: e, statusCode: e?.status || 500 });
+      return res.status(e?.status || 500).json({
+        error: e?.status === 400 ? e.message : "Ошибка при создании",
+      });
+    }
   }
-});
+);
 
 router.put(
   "/:id",

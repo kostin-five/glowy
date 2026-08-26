@@ -11,6 +11,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import progressRoutes from "./routes/progress.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import notesRoutes from "./routes/notes.routes.js";
+import telegramRoutes from "./routes/telegram.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 
@@ -59,7 +60,7 @@ const getAllowedOrigins = (isProd) => {
     : addLocalhostAliases(configuredOrigins);
 };
 
-export const createApp = ({ testRoute = false } = {}) => {
+export const createApp = ({ testRoute = false, telegramRouter = telegramRoutes } = {}) => {
   const app = express();
   const isProd = process.env.NODE_ENV === "production";
   const allowedOrigins = getAllowedOrigins(isProd);
@@ -107,7 +108,10 @@ export const createApp = ({ testRoute = false } = {}) => {
   });
 
   app.use((req, res, next) => {
-    if (req.method === "POST" && req.path === "/api/payments/yookassa/webhook") {
+    if (
+      req.method === "POST" &&
+      ["/api/payments/yookassa/webhook", "/api/telegram/webhook"].includes(req.path)
+    ) {
       return next();
     }
     return csrfProtection(req, res, next);
@@ -141,6 +145,7 @@ export const createApp = ({ testRoute = false } = {}) => {
   app.use("/api/progress", progressRoutes);
   app.use("/api/analytics", analyticsRoutes);
   app.use("/api/notes", notesRoutes);
+  app.use("/api/telegram", telegramRouter);
   app.use(errorMiddleware);
 
   return app;

@@ -8,6 +8,7 @@ const getTasks = vi.fn();
 const putTask = vi.fn();
 const trackProductEventOnce = vi.fn();
 const enqueueTaskOperation = vi.fn();
+const markTaskOfflineMutation = vi.fn();
 const persistActiveTaskSnapshot = vi.fn();
 const syncOfflineTasks = vi.fn();
 
@@ -22,6 +23,7 @@ vi.mock("../offline/taskOfflineQueue", () => ({
 }));
 vi.mock("../offline/taskOfflineSync", () => ({
   getActiveOfflineOwnerKey: () => "user:1",
+  markTaskOfflineMutation,
   persistActiveTaskSnapshot,
   syncOfflineTasks,
 }));
@@ -45,6 +47,7 @@ afterEach(() => {
   putTask.mockReset();
   trackProductEventOnce.mockReset();
   enqueueTaskOperation.mockReset();
+  markTaskOfflineMutation.mockReset();
   persistActiveTaskSnapshot.mockReset();
   syncOfflineTasks.mockReset();
   useAuthStore.setState({ isAuthenticated: false, isGuest: false, token: null });

@@ -25,6 +25,7 @@ import {
 } from "../offline/taskOfflineQueue";
 import {
   getActiveOfflineOwnerKey,
+  markTaskOfflineMutation,
   persistActiveTaskSnapshot,
   syncOfflineTasks,
 } from "../offline/taskOfflineSync";
@@ -121,8 +122,10 @@ const persistAndQueue = async (
 ) => {
   const ownerKey = getActiveOfflineOwnerKey();
   if (!ownerKey) throw new Error("Offline-хранилище аккаунта ещё не готово");
-  await persistActiveTaskSnapshot(tasks);
+  markTaskOfflineMutation();
   await enqueueTaskOperation(ownerKey, operation);
+  await persistActiveTaskSnapshot(tasks);
+  markTaskOfflineMutation();
   void syncOfflineTasks();
 };
 

@@ -10,6 +10,7 @@ export interface OfflineTaskSnapshot {
   ownerKey: string;
   tasks: Task[];
   updatedAt: string;
+  revision?: string;
 }
 
 export type OfflineTaskOperation =

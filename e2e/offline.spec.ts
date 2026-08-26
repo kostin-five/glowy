@@ -208,6 +208,46 @@ const waitForAppShell = async (page: Page) => {
     .toBe(true);
 };
 
+const readOfflineState = (page: Page) =>
+  page.evaluate(
+    ({ databaseName, snapshotStore, operationStore }) =>
+      new Promise<{
+        snapshots: Array<{ ownerKey: string; titles: string[]; revision: string }>;
+        operations: Array<{ ownerKey: string; kind: string }>;
+      }>((resolve, reject) => {
+        const request = indexedDB.open(databaseName, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction(
+            [snapshotStore, operationStore],
+            "readonly"
+          );
+          const snapshotRequest = transaction.objectStore(snapshotStore).getAll();
+          const operationRequest = transaction.objectStore(operationStore).getAll();
+          transaction.onerror = () => reject(transaction.error);
+          transaction.oncomplete = () => {
+            const snapshots = snapshotRequest.result.map((snapshot) => ({
+              ownerKey: snapshot.ownerKey,
+              titles: snapshot.tasks.map((task: MockTask) => task.title),
+              revision: snapshot.revision,
+            }));
+            const operations = operationRequest.result.map((operation) => ({
+              ownerKey: operation.ownerKey,
+              kind: operation.kind,
+            }));
+            database.close();
+            resolve({ snapshots, operations });
+          };
+        };
+      }),
+    {
+      databaseName: "glowy-offline",
+      snapshotStore: "task-snapshots",
+      operationStore: "task-operations",
+    }
+  );
+
 test("opens My progress after the connection is lost", async ({
   context,
   page,
@@ -249,8 +289,22 @@ test("keeps an offline task through reload and syncs it after reconnect", async 
     .fill("Открыть сохранённые материалы");
   await page.getByRole("button", { name: "Сохранить" }).click();
   await expect(page.getByText(taskTitle)).toBeVisible();
+  await expect(page.getByPlaceholder("Введите задачу")).toHaveCount(0);
+  expect(await readOfflineState(page)).toMatchObject({
+    snapshots: [
+      {
+        ownerKey: "user:1",
+        titles: [taskTitle],
+        revision: expect.any(String),
+      },
+    ],
+    operations: [{ ownerKey: "user:1", kind: "task.create" }],
+  });
 
   await page.reload();
+  expect(await readOfflineState(page)).toMatchObject({
+    snapshots: [{ ownerKey: "user:1", titles: [taskTitle] }],
+  });
   await expect(page.getByText(taskTitle)).toBeVisible();
   expect(server.tasksByUser.get(1) ?? []).toHaveLength(0);
 

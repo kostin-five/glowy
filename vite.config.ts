@@ -54,6 +54,10 @@ export default defineConfig({
     VitePWA({
       strategies: "generateSW",
       registerType: "autoUpdate",
+      devOptions: {
+        enabled: true,
+        navigateFallbackAllowlist: [/^\/(?!api(?:\/|$)).*/],
+      },
       includeAssets: [
         "Glowy.png",
         "Glowy-dark.png",

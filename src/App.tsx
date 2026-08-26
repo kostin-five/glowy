@@ -20,7 +20,6 @@ import {
 } from "react";
 import {
   useFetchProgress,
-  useFetchTasks,
   useTaskStore,
 } from "./store/useTaskStore";
 import RouteLoader from "./components/ui/RouteLoader";
@@ -131,7 +130,6 @@ function App() {
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const userId = useAuthStore((state) => state.userId);
-  const fetchTasks = useFetchTasks();
   const fetchProgress = useFetchProgress();
   const themeMode = useThemeMode();
   const setDarkMode = useSetDarkMode();
@@ -208,7 +206,7 @@ function App() {
   }, [isHydrated, restoreAuthSession]);
 
   useEffect(() => {
-    if (hasLegacyToken) return;
+    if (!isHydrated || hasLegacyToken) return;
 
     const adapter = {
       getTasks: () => useTaskStore.getState().tasks,
@@ -231,7 +229,6 @@ function App() {
     let active = true;
     void initializeTaskOfflineSync(`user:${userId}`, adapter).then(() => {
       if (!active || !navigator.onLine) return;
-      void fetchTasks();
       void fetchProgress();
     });
 
@@ -246,10 +243,10 @@ function App() {
     };
   }, [
     fetchProgress,
-    fetchTasks,
     hasLegacyToken,
     isAuthenticated,
     isGuest,
+    isHydrated,
     userId,
   ]);
 

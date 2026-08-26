@@ -42,6 +42,21 @@ const transactionDone = (transaction: IDBTransaction): Promise<void> =>
     transaction.onabort = () => reject(transaction.error);
   });
 
+const snapshotRevision = (snapshot: OfflineTaskSnapshot | undefined) =>
+  snapshot?.revision ?? snapshot?.updatedAt ?? null;
+
+const createSnapshot = (
+  ownerKey: string,
+  tasks: Task[]
+) => ({
+  ownerKey,
+  tasks,
+  updatedAt: new Date().toISOString(),
+  revision:
+    globalThis.crypto?.randomUUID?.() ??
+    `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+} satisfies OfflineTaskSnapshot);
+
 export const supportsTaskOfflineStorage = () =>
   typeof window !== "undefined" && "indexedDB" in window;
 
@@ -58,17 +73,43 @@ export const readTaskSnapshot = async (
   return snapshot?.tasks ?? null;
 };
 
+export const readTaskSnapshotRevision = async (ownerKey: string) => {
+  if (!supportsTaskOfflineStorage()) return null;
+  const database = await openDatabase();
+  const transaction = database.transaction(SNAPSHOTS, "readonly");
+  const snapshot = await requestResult<OfflineTaskSnapshot | undefined>(
+    transaction.objectStore(SNAPSHOTS).get(ownerKey)
+  );
+  database.close();
+  return snapshotRevision(snapshot);
+};
+
 export const writeTaskSnapshot = async (ownerKey: string, tasks: Task[]) => {
   if (!supportsTaskOfflineStorage()) return;
   const database = await openDatabase();
   const transaction = database.transaction(SNAPSHOTS, "readwrite");
-  transaction.objectStore(SNAPSHOTS).put({
-    ownerKey,
-    tasks,
-    updatedAt: new Date().toISOString(),
-  } satisfies OfflineTaskSnapshot);
+  transaction.objectStore(SNAPSHOTS).put(createSnapshot(ownerKey, tasks));
   await transactionDone(transaction);
   database.close();
+};
+
+export const writeTaskSnapshotIfUnchanged = async (
+  ownerKey: string,
+  tasks: Task[],
+  expectedRevision: string | null
+) => {
+  if (!supportsTaskOfflineStorage()) return true;
+  const database = await openDatabase();
+  const transaction = database.transaction(SNAPSHOTS, "readwrite");
+  const store = transaction.objectStore(SNAPSHOTS);
+  const current = await requestResult<OfflineTaskSnapshot | undefined>(
+    store.get(ownerKey)
+  );
+  const unchanged = snapshotRevision(current) === expectedRevision;
+  if (unchanged) store.put(createSnapshot(ownerKey, tasks));
+  await transactionDone(transaction);
+  database.close();
+  return unchanged;
 };
 
 export const listTaskOperations = async (ownerKey: string) => {

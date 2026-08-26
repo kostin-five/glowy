@@ -6,8 +6,10 @@ import {
   deleteTaskOperation,
   listTaskOperations,
   readTaskSnapshot,
+  readTaskSnapshotRevision,
   replaceTaskOperations,
   writeTaskSnapshot,
+  writeTaskSnapshotIfUnchanged,
 } from "./taskOfflineDb";
 import { compactStoredTaskOperations } from "./taskOfflineQueue";
 import type {
@@ -23,6 +25,8 @@ type TaskAdapter = {
 let activeOwnerKey: string | null = null;
 let adapter: TaskAdapter | null = null;
 let activeSync: { ownerKey: string; promise: Promise<void> } | null = null;
+let rerunRequested = false;
+let mutationRevision = 0;
 let state: OfflineSyncState = {
   phase: "idle",
   pendingCount: 0,
@@ -48,6 +52,11 @@ export const subscribeTaskOfflineSync = (listener: () => void) => {
 export const getTaskOfflineSyncState = () => state;
 
 export const getActiveOfflineOwnerKey = () => activeOwnerKey;
+
+export const markTaskOfflineMutation = () => {
+  mutationRevision += 1;
+  channel?.postMessage({ type: "mutation", ownerKey: activeOwnerKey });
+};
 
 export const persistActiveTaskSnapshot = async (tasks: Task[]) => {
   if (!activeOwnerKey) return;
@@ -133,6 +142,7 @@ const runSync = async () => {
   }
 
   const ownerKey = activeOwnerKey;
+  const revisionAtStart = mutationRevision;
   let operations = await compactStoredTaskOperations(ownerKey);
   emit({
     phase: operations.length ? "syncing" : "idle",
@@ -169,9 +179,28 @@ const runSync = async () => {
     }
 
     if (activeOwnerKey !== ownerKey) return;
+    const snapshotRevisionBeforeRefresh =
+      await readTaskSnapshotRevision(ownerKey);
     const serverTasks = await TaskApi.getTasks();
+    const pendingOperations = await listTaskOperations(ownerKey);
+    if (
+      activeOwnerKey !== ownerKey ||
+      revisionAtStart !== mutationRevision ||
+      pendingOperations.length > 0
+    ) {
+      emit({
+        phase: navigator.onLine ? "syncing" : "offline",
+        pendingCount: pendingOperations.length,
+      });
+      return;
+    }
+    const snapshotUpdated = await writeTaskSnapshotIfUnchanged(
+      ownerKey,
+      serverTasks,
+      snapshotRevisionBeforeRefresh
+    );
+    if (!snapshotUpdated || revisionAtStart !== mutationRevision) return;
     adapter.setTasks(serverTasks);
-    await writeTaskSnapshot(ownerKey, serverTasks);
     emit({ phase: "idle", pendingCount: 0, error: null });
     channel?.postMessage({ type: "snapshot", ownerKey });
   } catch (error) {
@@ -195,7 +224,10 @@ export const syncOfflineTasks = async () => {
   if (!ownerKey) return;
 
   const execute = () => {
-    if (activeSync?.ownerKey === ownerKey) return activeSync.promise;
+    if (activeSync?.ownerKey === ownerKey) {
+      rerunRequested = true;
+      return activeSync.promise;
+    }
 
     const previousSync = activeSync?.promise ?? Promise.resolve();
     const promise = previousSync
@@ -204,7 +236,13 @@ export const syncOfflineTasks = async () => {
         if (activeOwnerKey === ownerKey) await runSync();
       })
       .finally(() => {
-        if (activeSync?.promise === promise) activeSync = null;
+        if (activeSync?.promise !== promise) return;
+
+        activeSync = null;
+        const shouldRerun =
+          rerunRequested && activeOwnerKey === ownerKey && navigator.onLine;
+        rerunRequested = false;
+        if (shouldRerun) void syncOfflineTasks();
       });
     activeSync = { ownerKey, promise };
     return promise;
@@ -248,6 +286,10 @@ export const initializeTaskOfflineSync = async (
 
 channel?.addEventListener("message", async (event) => {
   if (!activeOwnerKey || event.data?.ownerKey !== activeOwnerKey) return;
+  if (event.data.type === "mutation") {
+    mutationRevision += 1;
+    return;
+  }
   if (event.data.type === "state") {
     state = event.data.state;
     listeners.forEach((listener) => listener());

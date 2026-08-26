@@ -18,22 +18,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { cleanupDevServiceWorker } from './offline/cleanupDevServiceWorker'
+import { ensureDevServiceWorkerControl } from './offline/ensureDevServiceWorkerControl'
 
-const renderApp = () => {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
-}
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
 
-const bootstrap = async () => {
-  const reloadingAfterCleanup = await cleanupDevServiceWorker()
-
-  if (!reloadingAfterCleanup) {
-    renderApp()
-  }
-}
-
-void bootstrap()
+void ensureDevServiceWorkerControl()

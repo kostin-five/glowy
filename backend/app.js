@@ -10,6 +10,7 @@ import chatRouter from "./routes/chat.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import progressRoutes from "./routes/progress.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import notesRoutes from "./routes/notes.routes.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { requestIdMiddleware } from "./middleware/request-id.middleware.js";
 
@@ -139,6 +140,7 @@ export const createApp = ({ testRoute = false } = {}) => {
   app.use("/api/payments", paymentRoutes);
   app.use("/api/progress", progressRoutes);
   app.use("/api/analytics", analyticsRoutes);
+  app.use("/api/notes", notesRoutes);
   app.use(errorMiddleware);
 
   return app;

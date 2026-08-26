@@ -5,7 +5,7 @@ import {
   Transition,
   TransitionChild,
 } from "@headlessui/react";
-import { BarChart3, ChevronRight, Settings, X } from "lucide-react";
+import { BarChart3, ChevronRight, NotebookPen, Settings, X } from "lucide-react";
 import { Fragment } from "react/jsx-runtime";
 import { Link } from "react-router-dom";
 
@@ -16,6 +16,7 @@ interface MobileMoreSheetProps {
 
 const MobileMoreSheet = ({ isOpen, onClose }: MobileMoreSheetProps) => {
   const links = [
+    { to: "/notes", label: "Заметки", icon: NotebookPen },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
     { to: "/settings", label: "Настройки", icon: Settings },
   ];

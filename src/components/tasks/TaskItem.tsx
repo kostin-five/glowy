@@ -14,7 +14,9 @@ import {
   Square,
   Pencil,
   Trash2,
+  NotebookPen,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useSortable } from "@dnd-kit/sortable";
 import { formatTaskDateForUI } from "../../utils/taskDateGroups";
 import { CSS } from "@dnd-kit/utilities";
@@ -158,6 +160,7 @@ const TaskItem = ({
 
   return (
     <motion.li
+      id={`task-${task.id}`}
       ref={setNodeRef}
       style={sortableStyle}
       initial={{ opacity: 0 }}
@@ -233,6 +236,21 @@ const TaskItem = ({
                   <ListChecks size={13} />
                   {completedSubs}/{totalSubs}
                 </span>
+              )}
+              {!!task.noteLinks?.length && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {task.noteLinks.map(({ note }) => (
+                    <Link
+                      key={note.id}
+                      to={`/notes/${note.id}`}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      className="inline-flex max-w-52 items-center gap-1 rounded-md border border-violet-200 bg-violet-50/70 px-2 py-1 text-xs font-medium text-violet-700 hover:border-violet-400 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300"
+                    >
+                      <NotebookPen size={12} />
+                      <span className="truncate">{note.title || "Без заголовка"}</span>
+                    </Link>
+                  ))}
+                </div>
               )}
             </div>
           </div>

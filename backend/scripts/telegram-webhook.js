@@ -1,10 +1,12 @@
 import "dotenv/config";
 import { createTelegramApiClient } from "../services/telegram/telegram-api.client.js";
+import { TELEGRAM_BOT_COMMANDS } from "../services/telegram/telegram-command-catalog.js";
 
 const command = process.argv[2];
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
 const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+const miniAppUrl = process.env.TELEGRAM_MINI_APP_URL;
 
 const fail = (message) => {
   console.error(message);
@@ -19,6 +21,12 @@ const validateConfig = () => {
     }
     if (!/^[A-Za-z0-9_-]{16,256}$/.test(webhookSecret || "")) {
       throw new Error("TELEGRAM_WEBHOOK_SECRET must use 16-256 safe characters");
+    }
+    try {
+      const url = new URL(miniAppUrl || "");
+      if (url.protocol !== "https:") throw new Error();
+    } catch {
+      throw new Error("TELEGRAM_MINI_APP_URL must be an HTTPS URL");
     }
   }
 };
@@ -37,7 +45,17 @@ const run = async () => {
       allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false,
     });
-    console.log("Telegram webhook configured. Secrets were not printed.");
+    await api.setChatMenuButton({
+      menu_button: {
+        type: "web_app",
+        text: "Открыть Glowy",
+        web_app: { url: miniAppUrl },
+      },
+    });
+    await api.setMyCommands({
+      commands: TELEGRAM_BOT_COMMANDS,
+    });
+    console.log("Telegram webhook, Mini App menu and commands configured. Secrets were not printed.");
     return;
   }
 

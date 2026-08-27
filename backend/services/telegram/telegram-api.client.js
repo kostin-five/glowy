@@ -64,6 +64,8 @@ export const createTelegramApiClient = ({
     answerCallbackQuery: (payload) => request("answerCallbackQuery", payload),
     editMessageReplyMarkup: (payload) =>
       request("editMessageReplyMarkup", payload),
+    setChatMenuButton: (payload) => request("setChatMenuButton", payload),
+    setMyCommands: (payload) => request("setMyCommands", payload),
     setWebhook: (payload) => request("setWebhook", payload),
     getWebhookInfo: () => request("getWebhookInfo"),
   };

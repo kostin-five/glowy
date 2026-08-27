@@ -21,3 +21,8 @@ test("telegram schema stays additive and uses existing user/task relations", () 
   assert.match(migration, /do not apply to shared databases/i);
   assert.doesNotMatch(migration, /DROP\s+(TABLE|COLUMN)|TRUNCATE|DELETE\s+FROM/i);
 });
+
+test("Mini App redesign reuses the existing additive Telegram schema", () => {
+  assert.equal((schema.match(/model TelegramConnection \{/g) || []).length, 1);
+  assert.doesNotMatch(schema, /model (TelegramUser|MiniAppUser|TelegramSession) \{/);
+});

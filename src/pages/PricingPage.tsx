@@ -6,6 +6,8 @@ import { PaymentApi } from "../api/PaymentApi";
 import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
 import useNetworkStatus from "../hooks/useNetworkStatus";
+import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
+import { openTelegramExternalLink } from "../telegram/telegramExternalLink";
 
 type CurrentPlan = {
   plan?: string;
@@ -24,6 +26,7 @@ const PricingPage = () => {
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
   const hasActivatedFounderRef = useRef(false);
   const paymentsEnabled = import.meta.env.VITE_PAYMENTS_ENABLED === "true";
+  const { isTelegramMiniApp, webApp } = useTelegramMiniApp();
 
 
   useEffect(() => {
@@ -99,7 +102,13 @@ const PricingPage = () => {
       const { confirmationUrl } = await PaymentApi.createFocusPayment();
       if (confirmationUrl) {
         trackProductEventOnce("focus_checkout_started");
-        window.location.href = confirmationUrl;
+        if (isTelegramMiniApp) {
+          if (!openTelegramExternalLink(confirmationUrl, webApp)) {
+            alert("Не удалось безопасно открыть страницу оплаты.");
+          }
+        } else {
+          window.location.href = confirmationUrl;
+        }
       } else {
         alert("Не удалось получить ссылку на оплату. Попробуйте позже.");
       }

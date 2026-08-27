@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import request from "supertest";
+import express from "express";
 import { createApp } from "../app.js";
 
 const allowedOrigins = [
@@ -52,4 +53,17 @@ test("returns a generic response for an unhandled server error", async () => {
     error: "Внутренняя ошибка сервера. Попробуйте ещё раз позже.",
   });
   assert.match(response.headers["x-request-id"], /^[\da-f-]{36}$/i);
+});
+
+test("browser CSRF bypass remains limited to the exact Telegram webhook", async () => {
+  const telegramRouter = express.Router();
+  telegramRouter.post("/webhook", (_req, res) => res.json({ ok: true }));
+  telegramRouter.post("/mini-app/session", (_req, res) => res.json({ ok: true }));
+  const app = createApp({ telegramRouter });
+
+  const webhook = await request(app).post("/api/telegram/webhook").send({});
+  const miniApp = await request(app).post("/api/telegram/mini-app/session").send({});
+
+  assert.equal(webhook.status, 200);
+  assert.equal(miniApp.status, 403);
 });

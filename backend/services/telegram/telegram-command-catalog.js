@@ -1,0 +1,16 @@
+export const TELEGRAM_BOT_COMMANDS = Object.freeze([
+  { command: "app", description: "Открыть Glowy" },
+  { command: "home", description: "Открыть главную" },
+  { command: "today", description: "Задачи на сегодня" },
+  { command: "tasks", description: "Ближайшие задачи" },
+  { command: "add", description: "Добавить задачу" },
+  { command: "done", description: "Завершить задачу" },
+  { command: "energy", description: "Энергия" },
+  { command: "progress", description: "Прогресс" },
+  { command: "ai", description: "Спросить Glowy AI" },
+  { command: "notes", description: "Открыть заметки" },
+  { command: "analytics", description: "Открыть аналитику" },
+  { command: "settings", description: "Открыть настройки" },
+  { command: "unlink", description: "Отключить Telegram" },
+  { command: "help", description: "Помощь" },
+]);

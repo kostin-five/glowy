@@ -80,3 +80,55 @@ test("help is Russian and group chats receive no Glowy data", async () => {
   assert.match(recorder.calls[0][1].text, /Задача сохраняется только/);
   assert.match(recorder.calls[1][1].text, /только в личном чате/);
 });
+
+test("start, help and app expose the configured Mini App button", async () => {
+  const recorder = createApiRecorder();
+  const worker = createWorkerFixture({
+    api: recorder.api,
+    db: { telegramConnection: { findUnique: async () => linkedConnection } },
+  });
+  for (const text of ["/start", "/help", "/app"]) {
+    await worker.processUpdate(messageUpdate({ text }), "10");
+  }
+  for (const [, payload] of recorder.calls) {
+    const webAppButtons = payload.reply_markup?.inline_keyboard
+      ?.flat()
+      .filter((button) => button.web_app);
+    assert.ok(webAppButtons?.length);
+    assert.match(webAppButtons[0].web_app.url, /^https:\/\//);
+  }
+});
+
+test("worker errors never log command text, callback data or provider details", async () => {
+  const lines = [];
+  const originalError = console.error;
+  console.error = (line) => lines.push(String(line));
+  try {
+    const recorder = createApiRecorder();
+    const worker = createWorkerFixture({
+      api: recorder.api,
+      db: {
+        telegramConnection: {
+          findUnique: async () => { throw new Error("provider private detail"); },
+        },
+      },
+      updates: {
+        claimNext: async () => ({
+          updateId: "private-update",
+          attempts: 1,
+          payload: messageUpdate({ text: "/ai private command" }),
+        }),
+        fail: async () => undefined,
+      },
+    });
+
+    await worker.runOnce();
+
+    const output = lines.join("\n");
+    assert.equal(output.includes("private command"), false);
+    assert.equal(output.includes("provider private detail"), false);
+    assert.equal(output.includes("private-update"), false);
+  } finally {
+    console.error = originalError;
+  }
+});

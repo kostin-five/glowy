@@ -83,7 +83,7 @@ const TelegramConnectionPanel = () => {
             Telegram
           </h2>
           <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
-            Подключи бота, чтобы смотреть план дня и добавлять задачи из переписки.
+            Открывай полный Glowy внутри Telegram и используй быстрые команды бота.
           </p>
         </div>
       </div>
@@ -104,16 +104,21 @@ const TelegramConnectionPanel = () => {
         <div className="mt-5 rounded-2xl border border-emerald-300/50 bg-emerald-50 p-4 dark:border-emerald-400/20 dark:bg-emerald-500/10">
           <p className="font-bold text-emerald-800 dark:text-emerald-200">Telegram подключён</p>
           <p className="mt-1 text-sm text-emerald-700/80 dark:text-emerald-100/70">
-            Команды бота работают с твоими текущими задачами Glowy.
+            Mini App и команды работают с этим же аккаунтом, задачами и тарифом Glowy.
           </p>
           {confirmUnlink ? (
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <button type="button" onClick={() => setConfirmUnlink(false)} disabled={working} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200">
-                Оставить подключение
-              </button>
-              <button type="button" onClick={() => void unlink()} disabled={working} className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
-                {working ? "Отключаем..." : "Да, отключить"}
-              </button>
+            <div className="mt-4">
+              <p className="text-xs leading-5 text-slate-600 dark:text-slate-300 sm:basis-full">
+                Аккаунт и данные Glowy сохранятся. Доступ из Telegram прекратится сразу.
+              </p>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={() => setConfirmUnlink(false)} disabled={working} className="min-h-11 rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-600 dark:text-slate-200">
+                  Оставить подключение
+                </button>
+                <button type="button" onClick={() => void unlink()} disabled={working} className="min-h-11 rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+                  {working ? "Отключаем..." : "Да, отключить"}
+                </button>
+              </div>
             </div>
           ) : (
             <button type="button" onClick={() => setConfirmUnlink(true)} className="mt-4 inline-flex items-center gap-2 rounded-xl border border-rose-300 px-4 py-2 text-sm font-bold text-rose-600 dark:border-rose-400/30 dark:text-rose-300">
@@ -140,7 +145,7 @@ const TelegramConnectionPanel = () => {
             <Link2 size={17} /> {working ? "Создаём код..." : "Подключить Telegram"}
           </button>
           <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Бот не получает пароль или сессию сайта. Привязка выполняется коротким одноразовым кодом.
+            Бот не получает пароль или cookie в сообщениях. Одноразовый код — дополнительный способ привязки с сайта.
           </p>
         </div>
       )}

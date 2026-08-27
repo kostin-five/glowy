@@ -1,7 +1,7 @@
-# Specification Quality Checklist: Telegram Bot MVP
+# Specification Quality Checklist: Telegram Mini App
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-08-26
+**Created**: 2026-08-27
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -14,12 +14,12 @@
 ## Requirement Completeness
 
 - [x] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous, except the explicitly marked voice provider
+- [x] Requirements are testable and unambiguous except explicitly marked product decisions
 - [x] Success criteria are measurable
-- [x] Success criteria are technology-agnostic
+- [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded
+- [x] Scope is clearly bounded except explicitly marked product decisions
 - [x] Dependencies and assumptions identified
 
 ## Feature Readiness
@@ -27,9 +27,8 @@
 - [x] All resolved functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification beyond named product dependencies
+- [x] No implementation details leak into specification
 
 ## Notes
 
-- Уточнение закрыто: v2.8.0 не распознаёт голос и не подключает платный STT; бот предлагает
-  продублировать сообщение текстом. Реальное server-side распознавание перенесено в v2.8.1.
+- All product decisions raised by `$speckit-clarify` are resolved in the specification.

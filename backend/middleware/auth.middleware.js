@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { prisma } from "../lib/prisma.js";
 
 const AUTH_COOKIE_NAME = "glowy_token";
 
@@ -21,7 +22,10 @@ const getTokenFromRequest = (req) => {
   return authHeader.split(" ")[1] || null;
 };
 
-export const authMiddleware = (req, res, next) => {
+export const createAuthMiddleware = ({
+  db = prisma,
+  jwtSecret,
+} = {}) => async (req, res, next) => {
   if (req.method === "OPTIONS") {
     return next();
   }
@@ -32,7 +36,22 @@ export const authMiddleware = (req, res, next) => {
       return res.status(401).json({ message: "Пользователь не авторизован" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret || process.env.JWT_SECRET);
+    if (decoded.channel === "telegram-mini-app") {
+      if (!Number.isSafeInteger(decoded.telegramConnectionId)) {
+        return res.status(401).json({ message: "Пользователь не авторизован" });
+      }
+      const connection = await db.telegramConnection.findFirst({
+        where: {
+          id: decoded.telegramConnectionId,
+          userId: decoded.id,
+        },
+        select: { id: true },
+      });
+      if (!connection) {
+        return res.status(401).json({ message: "Пользователь не авторизован" });
+      }
+    }
     req.user = decoded;
 
     next();
@@ -40,3 +59,5 @@ export const authMiddleware = (req, res, next) => {
     return res.status(401).json({ message: "Пользователь не авторизован" });
   }
 };
+
+export const authMiddleware = createAuthMiddleware();

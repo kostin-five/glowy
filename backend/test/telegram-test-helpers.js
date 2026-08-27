@@ -64,6 +64,11 @@ export const createWorkerFixture = ({ db, api, ...overrides }) =>
         energyLevel: "med",
         category: "Личное",
       })),
+    answerAi: overrides.answerAi || (async () => "Спокойный ответ Glowy"),
     createTask: overrides.createTask,
+    completeTask: overrides.completeTask,
+    miniAppUrls:
+      overrides.miniAppUrls ||
+      { build: (target = "home") => `https://dev.glowy-ai.ru/telegram?target=${target}` },
     now: overrides.now || (() => new Date("2026-08-26T12:00:00.000Z")),
   });

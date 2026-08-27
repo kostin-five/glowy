@@ -20,7 +20,11 @@ test("energy shows the linked user's current value", async () => {
   await worker.processUpdate(messageUpdate({ text: "/energy" }), "10");
 
   assert.match(recorder.calls[0][1].text, /60 из 100/);
-  assert.equal(recorder.calls[0][1].reply_markup.inline_keyboard.length, 2);
+  assert.equal(recorder.calls[0][1].reply_markup.inline_keyboard.length, 4);
+  assert.equal(
+    recorder.calls[0][1].reply_markup.inline_keyboard.at(-1)[0].web_app.url,
+    "https://dev.glowy-ai.ru/telegram?target=home"
+  );
 });
 
 test("energy callback updates only the linked owner", async () => {

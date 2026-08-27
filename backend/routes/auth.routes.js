@@ -1,10 +1,22 @@
 import express from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { validationResult, check } from "express-validator";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
+import {
+  createUserWithCredentials,
+  CredentialsError,
+  normalizeAuthEmail,
+  verifyUserCredentials,
+} from "../services/auth/credentials.service.js";
+import {
+  clearAuthCookie,
+  createAuthToken,
+  SAFE_USER_SELECT,
+  setAuthCookie,
+  toSafeUser,
+} from "../services/auth/auth-session.service.js";
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -12,11 +24,8 @@ const loginLimiter = rateLimit({
   message: { error: "Слишком много попыток входа. Пожалуйста, попробуйте позже." },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const ipKey = ipKeyGenerator(req.ip);
-    const email = req.body ? getAuthEmail(req.body) : "unknown";
-    return `${ipKey}:${email}`;
-  },
+  keyGenerator: (req) =>
+    `${ipKeyGenerator(req.ip)}:${normalizeAuthEmail(req.body || {}) || "unknown"}`,
 });
 
 const registerLimiter = rateLimit({
@@ -28,164 +37,92 @@ const registerLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(req.ip),
 });
 
-import { authMiddleware } from "../middleware/auth.middleware.js";
+const registerValidators = [
+  check("name", "Имя пользователя не может быть пустым").notEmpty(),
+  check("email", "Укажите корректную почту").custom((_, { req }) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeAuthEmail(req.body))
+  ),
+  check("password", "Пароль должен быть не короче 8 символов").isLength({
+    min: 8,
+    max: 20,
+  }),
+];
 
-const router = express.Router();
+export const createAuthRouter = ({
+  db = prisma,
+  authenticate = authMiddleware,
+} = {}) => {
+  const router = express.Router();
 
-const getAuthEmail = (body) => {
-  return String(body.email || body.login || "").trim().toLowerCase();
-};
-
-const generateAccessToken = (id) => {
-  const payload = {
-    id,
-  };
-
-  return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: AUTH_TOKEN_EXPIRES_IN,
-  });
-};
-
-const AUTH_COOKIE_NAME = "glowy_token";
-const AUTH_TOKEN_EXPIRES_IN = "30d";
-const AUTH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
-const AUTH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  maxAge: AUTH_COOKIE_MAX_AGE,
-  path: "/",
-};
-
-const AUTH_COOKIE_CLEAR_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
-};
-
-const setAuthCookie = (res, token) => {
-  res.cookie(AUTH_COOKIE_NAME, token, AUTH_COOKIE_OPTIONS);
-};
-
-router.post(
-  "/register",
-  registerLimiter,
-  [
-    check("name", "Имя пользователя не может быть пустым").notEmpty(),
-    check("email", "Укажите корректную почту").custom((_, { req }) => {
-      const email = getAuthEmail(req.body);
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }),
-    check(
-      "password",
-      "Пароль должен быть не короче 8 символов"
-    ).isLength({ min: 8, max: 20 }),
-  ],
-  async (req, res) => {
+  router.post("/register", registerLimiter, registerValidators, async (req, res) => {
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res
-          .status(400)
-          .json({ error: "Некорректные данные" });
+      if (!validationResult(req).isEmpty()) {
+        return res.status(400).json({ error: "Некорректные данные" });
       }
-      const { name, password } = req.body;
-      const email = getAuthEmail(req.body);
-      const candidate = await prisma.user.findUnique({ where: { email } });
-      if (candidate) {
-        return res
-          .status(400)
-          .json({ error: "Пользователь с таким email уже существует" });
+      const user = await createUserWithCredentials({
+        db,
+        input: {
+          name: req.body.name,
+          email: normalizeAuthEmail(req.body),
+          password: req.body.password,
+        },
+      });
+      setAuthCookie(res, createAuthToken(user.id));
+      return res.status(201).json(toSafeUser(user));
+    } catch (error) {
+      const status = error instanceof CredentialsError ? error.status : 400;
+      logger.error("auth.register.failed", { req, error, statusCode: status });
+      return res.status(status).json({
+        error:
+          error instanceof CredentialsError
+            ? error.message
+            : "Не удалось создать аккаунт",
+      });
+    }
+  });
+
+  router.post("/login", loginLimiter, async (req, res) => {
+    try {
+      if (!normalizeAuthEmail(req.body)) {
+        return res.status(400).json({ error: "Укажите почту" });
       }
-      const hashPassword = bcrypt.hashSync(password, 10);
-      const newUser = await prisma.user.create({
-        data: { name, email, password: hashPassword },
+      const user = await verifyUserCredentials({
+        db,
+        email: normalizeAuthEmail(req.body),
+        password: req.body.password,
       });
-      const token = generateAccessToken(newUser.id);
-      setAuthCookie(res, token);
-      res.status(201).json({
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        xp: newUser.xp,
-        level: newUser.level,
-        avatarId: newUser.avatarId,
-        aiTone: newUser.aiTone,
+      setAuthCookie(res, createAuthToken(user.id));
+      return res.status(200).json(toSafeUser(user));
+    } catch (error) {
+      const status = error instanceof CredentialsError ? error.status : 400;
+      logger.error("auth.login.failed", { req, error, statusCode: status });
+      return res.status(status).json({
+        error:
+          error instanceof CredentialsError ? error.message : "Ошибка при входе",
       });
-    } catch (e) {
-      logger.error("auth.register.failed", { req, error: e, statusCode: 400 });
-      res.status(400).json({ error: "Не удалось создать аккаунт" });
     }
-  }
-);
+  });
 
-router.post("/login", loginLimiter, async (req, res) => {
-  try {
-    const { password } = req.body;
-    const email = getAuthEmail(req.body);
+  router.post("/logout", (_req, res) => {
+    clearAuthCookie(res);
+    return res.status(200).json({ message: "Выход выполнен" });
+  });
 
-    if (!email) {
-      return res.status(400).json({ error: "Укажите почту" });
+  router.get("/me", authenticate, async (req, res) => {
+    try {
+      const user = await db.user.findUnique({
+        where: { id: req.user.id },
+        select: SAFE_USER_SELECT,
+      });
+      if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+      return res.json(user);
+    } catch (error) {
+      logger.error("auth.profile.fetch_failed", { req, error, statusCode: 500 });
+      return res.status(500).json({ error: "Ошибка при получении профиля" });
     }
+  });
 
-    const user = await prisma.user.findUnique({ where: { email } });
+  return router;
+};
 
-    if (!user) {
-      return res.status(400).json({ error: "Неверный email или пароль" });
-    }
-
-    const validPassword = bcrypt.compareSync(password, user.password);
-    if (!validPassword) {
-      return res.status(400).json({ error: "Неверный email или пароль" });
-    }
-
-    const token = generateAccessToken(user.id);
-    setAuthCookie(res, token);
-    res.status(200).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      xp: user.xp,
-      level: user.level,
-      avatarId: user.avatarId,
-      aiTone: user.aiTone,
-    });
-  } catch (e) {
-    logger.error("auth.login.failed", { req, error: e, statusCode: 400 });
-    res.status(400).json({ error: "Ошибка при входе" });
-  }
-});
-
-router.post("/logout", (_req, res) => {
-  res.clearCookie(AUTH_COOKIE_NAME, AUTH_COOKIE_CLEAR_OPTIONS);
-  res.status(200).json({ message: "Выход выполнен" });
-});
-
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        xp: true,
-        level: true,
-        avatarId: true,
-        aiTone: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "Пользователь не найден" });
-    }
-
-    res.json(user);
-  } catch (e) {
-    logger.error("auth.profile.fetch_failed", { req, error: e, statusCode: 500 });
-    res.status(500).json({ error: "Ошибка при получении профиля" });
-  }
-});
-
-export default router;
+export default createAuthRouter();

@@ -28,6 +28,35 @@ test("claims one eligible update with a conditional state transition", async () 
   assert.equal(claimed.attempts, 1);
 });
 
+test("reclaims stale processing after a worker restart", async () => {
+  let receivedWhere;
+  const candidate = {
+    updateId: "12",
+    status: "PROCESSING",
+    attempts: 1,
+    updatedAt: new Date("2026-08-26T11:50:00.000Z"),
+    payload: { update_id: 12 },
+  };
+  const service = createTelegramUpdateService({
+    db: {
+      $transaction: async (work) => work({
+        telegramWebhookUpdate: {
+          findFirst: async ({ where }) => { receivedWhere = where; return candidate; },
+          updateMany: async () => ({ count: 1 }),
+        },
+      }),
+    },
+    now: () => now,
+  });
+
+  const claimed = await service.claimNext();
+
+  assert.equal(claimed.status, "PROCESSING");
+  assert.equal(claimed.attempts, 2);
+  assert.equal(receivedWhere.OR[1].status, "PROCESSING");
+  assert.equal(receivedWhere.OR[1].updatedAt.lte.toISOString(), "2026-08-26T11:55:00.000Z");
+});
+
 test("retries transient failures and clears terminal payloads", async () => {
   const writes = [];
   const service = createTelegramUpdateService({

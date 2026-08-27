@@ -5,6 +5,11 @@ import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { createTaskForUser } from "../services/tasks/task-write.service.js";
 import {
+  buildUserProgress,
+  getLevelByXp,
+  getXpReward,
+} from "../services/tasks/task-completion.service.js";
+import {
   addDaysToDateOnly,
   isDateOnly,
   normalizeOptionalMinutes,
@@ -25,49 +30,6 @@ const taskInclude = {
     },
   },
 };
-
-const LEVEL_THRESHOLDS = [
-  0, 50, 100, 250, 500, 1000, 1500, 2000, 3000, 4000, 5000, 7000, 9000, 10000,
-];
-
-const getLevelThreshold = (level) => {
-  if (level <= LEVEL_THRESHOLDS.length) {
-    return LEVEL_THRESHOLDS[level - 1];
-  }
-
-  return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] + (level - 14) * 2500;
-};
-
-const getLevelByXp = (xp) => {
-  let level = 1;
-
-  while (xp >= getLevelThreshold(level + 1)) {
-    level += 1;
-  }
-
-  return level;
-};
-
-const getXpReward = (energyLevel = "low", priority = "") => {
-  const baseRewardByEnergy = {
-    high: 30,
-    med: 20,
-    low: 10,
-  };
-  const priorityMultiplier = priority.includes("P1")
-    ? 1.5
-    : priority.includes("P2")
-    ? 1.2
-    : 1;
-  const baseReward = baseRewardByEnergy[energyLevel] ?? baseRewardByEnergy.low;
-
-  return Math.round(baseReward * priorityMultiplier);
-};
-
-const buildUserProgress = (user) => ({
-  xp: user.xp,
-  level: user.level,
-});
 
 const dateValidator = (value) => {
   if (!value || isDateOnly(value)) return true;

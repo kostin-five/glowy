@@ -74,4 +74,7 @@ test("bare add waits for the next text for a bounded time", async () => {
   await worker.processUpdate(messageUpdate({ text: "/add" }), "10");
   assert.equal(updateData.pendingCommand, "ADD");
   assert.equal(updateData.pendingCommandExpiresAt.toISOString(), "2026-08-26T12:10:00.000Z");
+  const rows = recorder.calls[0][1].reply_markup.inline_keyboard;
+  assert.equal(rows[0][0].callback_data, "tg:flow-cancel:add");
+  assert.equal(new URL(rows[1][0].web_app.url).searchParams.get("target"), "tasks");
 });

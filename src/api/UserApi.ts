@@ -1,6 +1,10 @@
 import axios from "axios";
 import {
   schemaUserPreferences,
+  schemaTelegramConnectionStatus,
+  schemaTelegramLinkCode,
+  type TelegramConnectionStatus,
+  type TelegramLinkCode,
   type UserPreferences,
   type UserPreferencesPatch,
   type UserProgress,
@@ -46,6 +50,21 @@ export const UserApi = {
 
   async deleteAccount(): Promise<{ ok: true }> {
     const response = await api.delete("/account");
+    return response.data;
+  },
+
+  async getTelegramConnection(): Promise<TelegramConnectionStatus> {
+    const response = await api.get("/telegram");
+    return schemaTelegramConnectionStatus.parse(response.data);
+  },
+
+  async createTelegramLinkCode(): Promise<TelegramLinkCode> {
+    const response = await api.post("/telegram/link-code");
+    return schemaTelegramLinkCode.parse(response.data);
+  },
+
+  async unlinkTelegram(): Promise<{ ok: true }> {
+    const response = await api.delete("/telegram");
     return response.data;
   },
 };

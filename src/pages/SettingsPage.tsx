@@ -14,6 +14,7 @@ import {
   MessageCircle,
   UserRound,
   ShieldCheck,
+  Send,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Modal from "../components/ui/Modal";
@@ -40,6 +41,7 @@ import { clearLocalAuthSession } from "../api/authSession";
 import { ProfileAvatar } from "../components/profile/AvatarPicker";
 import ProfilePreferencesPanel from "../components/profile/ProfilePreferencesPanel";
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
+import TelegramConnectionPanel from "../components/settings/TelegramConnectionPanel";
 
 const themeOptions: Array<{
   value: ThemeMode;
@@ -66,6 +68,7 @@ const settingsSections = [
   { id: "subscription", label: "Тариф", icon: Tag },
   { id: "interface", label: "Интерфейс", icon: SlidersHorizontal },
   { id: "system", label: "Система", icon: RotateCcw },
+  { id: "connections", label: "Подключения", icon: Send },
   { id: "account", label: "Аккаунт", icon: ShieldCheck },
 ] as const;
 
@@ -535,6 +538,8 @@ const SettingsPage = () => {
           contact@example.test
         </a>
       </section>
+
+      {!isGuest && <TelegramConnectionPanel />}
 
       {!isGuest && (
         <section id="account" className="min-w-0 scroll-mt-28 rounded-3xl border border-rose-200 bg-rose-50/80 p-4 shadow-sm shadow-slate-200/60 dark:border-rose-400/20 dark:bg-rose-500/10 dark:shadow-none sm:p-5 md:p-6">

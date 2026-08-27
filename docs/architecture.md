@@ -11,6 +11,7 @@ Express backend
                          -> GigaChat API (temporary-failure fallback)
   -> YooKassa API
 YooKassa webhook -> Express backend -> PostgreSQL
+Telegram webhook -> Express backend -> PostgreSQL queue -> Telegram worker -> Bot API
 ```
 
 ### Frontend
@@ -61,6 +62,24 @@ Frontend запускает существующий checkout Focus через b
 Бесплатный пожизненный доступ первых пользователей хранится под совместимым ключом `forever`, но
 отображается как Founder. Новая активация Founder остаётся доступной через существующий endpoint;
 она не создаёт платёж и не требует миграции базы.
+
+### Telegram Bot MVP
+
+Telegram подключается как дополнительный канал к существующему пользователю, а не как новый
+auth-flow. Авторизованный пользователь создаёт в настройках десятиминутный одноразовый код;
+backend хранит только его HMAC. Один пользователь связан максимум с одним Telegram account, и
+связь можно отозвать с сайта или командой бота.
+
+Webhook `/api/telegram/webhook` является единственным исключением browser-CSRF для Telegram,
+проверяет отдельный `X-Telegram-Bot-Api-Secret-Token`, идемпотентно сохраняет update и сразу
+отвечает. Фоновый worker использует эту же PostgreSQL через `backend/lib/prisma.js`; отдельного
+Redis, пула или базы нет. Payload очищается после обработки, а логи не содержат сообщения,
+callback data, Telegram identifiers, token или коды.
+
+`/today` и `/energy` читают существующие User/Task. Текстовый `/add` использует текущий AI provider
+и общий AI-limit, сохраняет только временный черновик и создаёт Task одной транзакцией после
+inline-подтверждения. Повторный callback не создаёт дубль. В v2.8.0 voice не скачивается и не
+распознаётся: бесплатный server-side STT отложен до v2.8.1.
 
 ### Наблюдаемость и тесты
 

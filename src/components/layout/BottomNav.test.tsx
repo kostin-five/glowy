@@ -50,6 +50,9 @@ describe("BottomNav", () => {
       "Мой прогресс",
       "Ещё",
     ]);
+    expect(navigation).toHaveClass(
+      "pb-[max(env(safe-area-inset-bottom),var(--tg-content-safe-area-inset-bottom,0px))]"
+    );
   });
 
   it("opens one quick AI sheet and closes it explicitly", async () => {

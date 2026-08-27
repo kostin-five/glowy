@@ -10,4 +10,21 @@ describe("application routes", () => {
       /path="\/ai"[\s\S]*?<ProtectedLayoutRoute>[\s\S]*?<GlowyAiPage \/>[\s\S]*?<\/ProtectedLayoutRoute>/
     );
   });
+
+  it("maps every Mini App target to an existing protected Glowy route", () => {
+    for (const [path, page] of [
+      ["/dashboard", "DashboardPage"],
+      ["/tasks", "TaskPage"],
+      ["/notes/:noteId?", "NotesPage"],
+      ["/ai", "GlowyAiPage"],
+      ["/stairs", "SuccessStairsPage"],
+      ["/analytics", "AnalyticsPage"],
+      ["/settings", "SettingsPage"],
+    ]) {
+      expect(appSource).toContain(`path="${path}"`);
+      expect(appSource).toContain(`<${page} />`);
+    }
+    expect(appSource).toContain('path="/telegram"');
+    expect(appSource).toContain("<TelegramMiniAppBootstrap />");
+  });
 });

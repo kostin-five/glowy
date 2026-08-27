@@ -67,7 +67,7 @@ const BottomNav = () => {
     <>
       <nav
         aria-label="Основная мобильная навигация"
-        className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+env(safe-area-inset-bottom))] grid-cols-5 items-center border-t border-slate-200 bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/20 lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid h-[calc(4rem+max(env(safe-area-inset-bottom),var(--tg-content-safe-area-inset-bottom,0px)))] grid-cols-5 items-center border-t border-slate-200 bg-white/95 px-1 pb-[max(env(safe-area-inset-bottom),var(--tg-content-safe-area-inset-bottom,0px))] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-black/20 lg:hidden"
       >
         {navItems.map(renderLink)}
 

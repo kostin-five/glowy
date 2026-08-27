@@ -40,6 +40,7 @@ import {
   initializeTaskOfflineSync,
   syncOfflineTasks,
 } from "./offline/taskOfflineSync";
+import { TelegramMiniAppProvider } from "./telegram/TelegramMiniAppProvider";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const NotesPage = lazy(() => import("./pages/NotesPage"));
@@ -61,6 +62,9 @@ const PricingPage = lazy(() => import("./pages/PricingPage"));
 const RequisitesPage = lazy(() => import("./pages/RequisitesPage"));
 const PaymentSuccessPage = lazy(() => import("./pages/PaymentSuccessPage"));
 const PaymentCancelPage = lazy(() => import("./pages/PaymentCancelPage"));
+const TelegramMiniAppBootstrap = lazy(
+  () => import("./components/telegram/TelegramMiniAppBootstrap")
+);
 
 const PublicLazyRoute = ({ children }: { children: ReactNode }) => (
   <AppErrorBoundary>
@@ -256,8 +260,17 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
+    <TelegramMiniAppProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/telegram"
+            element={
+              <PublicLazyRoute>
+                <TelegramMiniAppBootstrap />
+              </PublicLazyRoute>
+            }
+          />
         <Route
           path="/"
           element={
@@ -430,9 +443,10 @@ function App() {
           element={<Navigate to="/stairs" replace />}
         />
         <Route path="*" element={<Navigate to={startRoute} replace />} />
-      </Routes>
-      <CookieConsent />
-    </BrowserRouter>
+        </Routes>
+        <CookieConsent />
+      </BrowserRouter>
+    </TelegramMiniAppProvider>
   );
 }
 

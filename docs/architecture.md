@@ -12,6 +12,7 @@ Express backend
   -> YooKassa API
 YooKassa webhook -> Express backend -> PostgreSQL
 Telegram webhook -> Express backend -> PostgreSQL queue -> Telegram worker -> Bot API
+Telegram Mini App -> existing React routes -> existing Express API
 ```
 
 ### Frontend
@@ -63,12 +64,20 @@ Frontend запускает существующий checkout Focus через b
 отображается как Founder. Новая активация Founder остаётся доступной через существующий endpoint;
 она не создаёт платёж и не требует миграции базы.
 
-### Telegram Bot MVP
+### Telegram Mini App и бот-пульт
 
-Telegram подключается как дополнительный канал к существующему пользователю, а не как новый
-auth-flow. Авторизованный пользователь создаёт в настройках десятиминутный одноразовый код;
-backend хранит только его HMAC. Один пользователь связан максимум с одним Telegram account, и
-связь можно отозвать с сайта или командой бота.
+Маршрут `/telegram` — контролируемый bootstrap над существующим React-приложением. Он проверяет
+наличие Telegram bridge, передаёт raw `initData` только в Telegram auth endpoint и после backend-
+проверки открывает существующие protected routes: главную, задачи, заметки, Glowy AI, прогресс,
+аналитику и настройки. Отдельного Telegram frontend, профиля или хранилища данных нет. Bridge
+адаптирует theme params, viewport, safe areas, native BackButton и внешние HTTPS-переходы.
+
+Backend принимает подписанный запуск не позднее пяти минут после `auth_date`. Несвязанный
+пользователь регистрирует обычный Glowy-аккаунт или входит в существующий прямо внутри Mini App;
+одна `TelegramConnection` создаётся транзакционно. Telegram-bound HttpOnly session живёт не более
+24 часов и на каждом защищённом запросе сверяется с текущей связью. Unlink удаляет связь и сразу
+делает старую сессию недействительной, не удаляя User, задачи или другие данные. Старый
+десятиминутный одноразовый link-code остаётся совместимым дополнительным путём из web-настроек.
 
 Webhook `/api/telegram/webhook` является единственным исключением browser-CSRF для Telegram,
 проверяет отдельный `X-Telegram-Bot-Api-Secret-Token`, идемпотентно сохраняет update и сразу
@@ -76,10 +85,11 @@ Webhook `/api/telegram/webhook` является единственным иск
 Redis, пула или базы нет. Payload очищается после обработки, а логи не содержат сообщения,
 callback data, Telegram identifiers, token или коды.
 
-`/today` и `/energy` читают существующие User/Task. Текстовый `/add` использует текущий AI provider
-и общий AI-limit, сохраняет только временный черновик и создаёт Task одной транзакцией после
-inline-подтверждения. Повторный callback не создаёт дубль. В v2.8.0 voice не скачивается и не
-распознаётся: бесплатный server-side STT отложен до v2.8.1.
+Бот открывает все основные разделы и даёт ограниченный быстрый пульт: `/today`, `/tasks`,
+`/energy`, `/progress`, подтверждаемые `/add` и `/done`, а также `/ai` через существующий provider
+и общий AI-limit. Общий completion-service сохраняет правила владельца и одноразового XP для HTTP
+и Telegram. Повторный callback не создаёт дубль. В v2.8.0 voice не скачивается, не сохраняется и
+не отправляется платному STT: бот явно предлагает текстовый ввод или Mini App.
 
 ### Наблюдаемость и тесты
 

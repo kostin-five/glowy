@@ -88,6 +88,7 @@ Founder доступен первым пользователям бесплат�
 VITE_API_URL=https://api.glowy-ai.ru/api
 VITE_PAYMENTS_ENABLED=true
 VITE_YANDEX_METRIKA_ID=
+VITE_TELEGRAM_BOT_USERNAME=
 ```
 
 ### Backend
@@ -121,7 +122,22 @@ AI_COST_GIGACHAT_OUTPUT_PER_MILLION_USD=
 
 PAID_FOREVER_ENABLED=false
 FOREVER_PRICE_RUB=
+
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_BOT_USERNAME=glowy_bot
+TELEGRAM_WEBHOOK_URL=https://api.example.com/api/telegram/webhook
+TELEGRAM_WEBHOOK_SECRET=...
+TELEGRAM_LINK_CODE_SECRET=...
+TELEGRAM_MINI_APP_URL=https://example.com/telegram
+TELEGRAM_MINI_APP_INIT_MAX_AGE_SECONDS=300
+TELEGRAM_MINI_APP_SESSION_HOURS=24
+TELEGRAM_WORKER_ENABLED=false
 ```
+
+Telegram token и оба secret существуют только на backend. Mini App проверяет подписанный запуск
+не старше пяти минут, а связанная Telegram-сессия действует не более 24 часов. Для локальной
+разработки worker оставляют выключенным; порядок безопасной dev-активации описан в
+`docs/telegram-bot-operations.md`.
 
 Временный rollback через AI proxy:
 

@@ -1,6 +1,8 @@
-# Settings API Contract
+# Telegram Settings API Contract
 
-All routes require the existing authenticated Glowy session and CSRF/origin protections.
+All routes require the existing authenticated Glowy session and CSRF/origin protections. Mini App
+registration/login is the primary connection path; one-use code remains backward-compatible for a
+web user who wants to attach Telegram later.
 
 ## `GET /api/user/telegram`
 
@@ -37,4 +39,5 @@ and is never logged or persisted.
 ## `DELETE /api/user/telegram`
 
 Deletes the active connection, pending drafts and unused codes owned by the current user. Returns
-`{ "ok": true }`; repeating the call is safe.
+`{ "ok": true }`; repeating the call is safe. Any Telegram-bound session becomes unauthorized on
+its next protected request, while the ordinary Glowy account and its data remain.

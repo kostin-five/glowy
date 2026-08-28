@@ -17,9 +17,9 @@
 
 **Purpose**: Preserve the green CI baseline and establish explicit scope boundaries.
 
-- [ ] T001 Record the current unit/build/Playwright baseline and PWA CI fix commit in `specs/009-behavior-modes-progress/quickstart.md`
-- [ ] T002 Verify `backend/prisma/schema.prisma` has no feature diff and record a successful `prisma validate` no-migration guard in `specs/009-behavior-modes-progress/quickstart.md`
-- [ ] T003 Confirm `src/pages/LandingPage.tsx` has no feature diff and keep landing regression coverage in `e2e/landing.smoke.spec.ts`
+- [X] T001 Record the current unit/build/Playwright baseline and PWA CI fix commit in `specs/009-behavior-modes-progress/quickstart.md`
+- [X] T002 Verify `backend/prisma/schema.prisma` has no feature diff and record a successful `prisma validate` no-migration guard in `specs/009-behavior-modes-progress/quickstart.md`
+- [X] T003 Confirm `src/pages/LandingPage.tsx` has no feature diff and keep landing regression coverage in `e2e/landing.smoke.spec.ts`
 
 ---
 
@@ -159,13 +159,13 @@
 
 **Purpose**: Verify compatibility, documentation and release safety across all stories.
 
-- [ ] T045 [P] Update public behavior, XP, calendar and no-migration boundaries in `README.md`, `docs/product-roadmap.md` and `docs/architecture.md`
-- [ ] T046 [P] Add final behavior/XP/rescue/manual device matrix to `specs/009-behavior-modes-progress/quickstart.md`
-- [ ] T047 Run Prisma validate and complete backend test suite from `backend/`
-- [ ] T048 Run frontend typecheck, lint, full Vitest suite and production build from repository root
-- [ ] T049 Run full Playwright suite in CI mode and verify `src/pages/LandingPage.tsx` remains unchanged
+- [X] T045 [P] Update public behavior, XP, calendar and no-migration boundaries in `README.md`, `docs/product-roadmap.md` and `docs/architecture.md`
+- [X] T046 [P] Add final behavior/XP/rescue/manual device matrix to `specs/009-behavior-modes-progress/quickstart.md`
+- [X] T047 Run Prisma validate and complete backend test suite from `backend/`
+- [X] T048 Run frontend typecheck, lint, full Vitest suite and production build from repository root
+- [X] T049 Run full Playwright suite in CI mode and verify `src/pages/LandingPage.tsx` remains unchanged
 - [ ] T050 Perform a manual dev smoke for settings, AI, web/offline task completion, Telegram completion and 320 px calendar; record any unavailable real-environment checks in `specs/009-behavior-modes-progress/quickstart.md`
-- [ ] T051 Run `git diff --check`, inspect secrets/logging boundaries and create focused feature commits
+- [X] T051 Run `git diff --check`, inspect secrets/logging boundaries and create focused feature commits
 
 ---
 

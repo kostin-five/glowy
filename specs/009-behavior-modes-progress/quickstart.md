@@ -18,6 +18,15 @@ CI=1 npx playwright test
 
 Expected: all checks pass; PWA first-install navigation regression stays green; `src/pages/LandingPage.tsx` is unchanged.
 
+### Итоговая автоматическая проверка — 2026-08-28
+
+- PWA/CI regression: `604d064 fix(pwa): avoid first-install navigation reloads`.
+- `backend/prisma/schema.prisma`: feature diff отсутствует; `npx prisma validate` — успешно, migration не требуется.
+- Backend: 133/133 теста прошли.
+- Frontend: typecheck и lint прошли; Vitest — 115/115; production build — успешно.
+- Playwright: 91 тест прошёл, 1 намеренно пропущен; Chromium и mobile Chromium, включая ширины Telegram Mini App 320/360/390/430 px.
+- `src/pages/LandingPage.tsx`: feature diff отсутствует; landing smoke входит в зелёный Playwright-набор.
+
 ## 2. Behavior copy
 
 For the same neutral and missed-task fixture, validate calm support, moderate neutral action and strict factual accountability. None may insult, threaten, shame, discriminate, diagnose or criticize the person's worth.
@@ -57,3 +66,5 @@ Use fixtures spanning month/year boundaries and leap February. Grid has seven co
 Load tasks online, switch modes, complete offline with/without blocker, restore network and verify server XP becomes authoritative once. In Telegram verify `+XP`, `0 XP` and `-XP` messaging without another task's title.
 
 Production migration, env, services and deploy are out of scope. No schema change is expected.
+
+Проверки с реальным DeepSeek, реальным Telegram-ботом и физическим телефоном не выполнялись: они требуют dev-окружения и не должны использовать production-секреты. Их необходимо пройти вручную перед merge/deploy; автоматические тесты используют только синтетические данные.

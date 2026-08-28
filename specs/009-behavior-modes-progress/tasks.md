@@ -30,9 +30,9 @@
 **⚠️ CRITICAL**: Complete before US2 or US4.
 
 - [X] T004 [P] Extend task completion response types with signed XP outcome in `src/api/TaskApi.ts` and `src/types/index.ts`
-- [ ] T005 [P] Extend progress overview types with bounded calendar fields in `src/types/index.ts`
+- [X] T005 [P] Extend progress overview types with bounded calendar fields in `src/types/index.ts`
 - [X] T006 Add behavior-aware completion result state and safe reason mapping to `src/store/useTaskStore.ts`
-- [ ] T007 Add schema compatibility tests for XP outcome and calendar parsing in `src/types/index.test.ts`
+- [X] T007 Add schema compatibility tests for XP outcome and calendar parsing in `src/types/index.test.ts`
 
 **Checkpoint**: Existing responses still parse; additive fields have validated frontend contracts.
 
@@ -95,14 +95,14 @@
 
 ### Tests for User Story 5
 
-- [ ] T025 [P] [US5] Replace arbitrary historical-gap expectations with yesterday-only eligibility cases in `backend/test/progress-service.test.js`
-- [ ] T026 [P] [US5] Add direct API rejection for old/today/future dates and idempotent yesterday cases in `backend/test/progress-routes.test.js`
+- [X] T025 [P] [US5] Replace arbitrary historical-gap expectations with yesterday-only eligibility cases in `backend/test/progress-service.test.js`
+- [X] T026 [P] [US5] Add direct API rejection for old/today/future dates and idempotent yesterday cases in `backend/test/progress-routes.test.js`
 
 ### Implementation for User Story 5
 
-- [ ] T027 [US5] Replace historical gap search with exact yesterday/day-before-yesterday policy in `backend/services/progress/progress.service.js`
-- [ ] T028 [US5] Enforce yesterday-only rescue inside the existing transaction and return safe Russian errors in `backend/routes/progress.routes.js`
-- [ ] T029 [US5] Update rescue explanation and confirmation copy in `src/components/progress/StreakPanel.tsx`
+- [X] T027 [US5] Replace historical gap search with exact yesterday/day-before-yesterday policy in `backend/services/progress/progress.service.js`
+- [X] T028 [US5] Enforce yesterday-only rescue inside the existing transaction and return safe Russian errors in `backend/routes/progress.routes.js`
+- [X] T029 [US5] Update rescue explanation and confirmation copy in `src/components/progress/StreakPanel.tsx`
 
 **Checkpoint**: No past date other than yesterday can consume a rescue through UI or direct API.
 
@@ -116,13 +116,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T030 [P] [US3] Add behavior-aware overdue and duration formatting unit cases in `src/utils/behaviorMode.test.ts`
+- [X] T030 [P] [US3] Add behavior-aware overdue and duration formatting unit cases in `src/utils/behaviorMode.test.ts`
 - [ ] T031 [P] [US3] Add TaskItem light/dark rendering and accessibility cases in `src/components/tasks/TaskItem.test.tsx`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Implement pure mode-aware overdue and duration helpers in `src/utils/behaviorMode.ts`
-- [ ] T033 [US3] Add the duration chip and strict-only red overdue date to `src/components/tasks/TaskItem.tsx`
+- [X] T032 [US3] Implement pure mode-aware overdue and duration helpers in `src/utils/behaviorMode.ts`
+- [X] T033 [US3] Add the duration chip and strict-only red overdue date to `src/components/tasks/TaskItem.tsx`
 - [ ] T034 [US3] Add mobile task-card regression to `e2e/personal-progress.smoke.spec.ts`
 
 **Checkpoint**: Time and strict overdue state are visible without opening the editor and do not crowd 320 px cards.
@@ -137,18 +137,18 @@
 
 ### Tests for User Story 4
 
-- [ ] T035 [P] [US4] Add Monday-grid, leap-year, state-priority and future-month cases in `backend/test/progress-service.test.js`
-- [ ] T036 [P] [US4] Add optional month validation and ownership-bounded response cases in `backend/test/progress-routes.test.js`
+- [X] T035 [P] [US4] Add Monday-grid, leap-year, state-priority and future-month cases in `backend/test/progress-service.test.js`
+- [X] T036 [P] [US4] Add optional month validation and ownership-bounded response cases in `backend/test/progress-routes.test.js`
 - [ ] T037 [P] [US4] Add calendar schema/API month parameter tests in `src/api/ProgressApi.test.ts`
-- [ ] T038 [P] [US4] Add calendar navigation, legend, explicit rescue confirmation and 320 px rendering tests in `src/components/progress/StreakPanel.test.tsx`
+- [X] T038 [P] [US4] Add calendar navigation, legend, explicit rescue confirmation and 320 px rendering tests in `src/components/progress/StreakPanel.test.tsx`
 
 ### Implementation for User Story 4
 
-- [ ] T039 [US4] Build the bounded monthly rhythm calendar and state precedence in `backend/services/progress/progress.service.js`
-- [ ] T040 [US4] Validate `month`, include calendar in overview and preserve existing response fields in `backend/routes/progress.routes.js`
-- [ ] T041 [US4] Send selected month and parse the additive calendar contract in `src/api/ProgressApi.ts` and `src/types/index.ts`
-- [ ] T042 [US4] Implement seven-column «Карта ритма», month navigation and accessible legend in `src/components/progress/StreakPanel.tsx`
-- [ ] T043 [US4] Keep selected month and reload overview safely in `src/pages/SuccessStairsPage.tsx`
+- [X] T039 [US4] Build the bounded monthly rhythm calendar and state precedence in `backend/services/progress/progress.service.js`
+- [X] T040 [US4] Validate `month`, include calendar in overview and preserve existing response fields in `backend/routes/progress.routes.js`
+- [X] T041 [US4] Send selected month and parse the additive calendar contract in `src/api/ProgressApi.ts` and `src/types/index.ts`
+- [X] T042 [US4] Implement seven-column «Карта ритма», month navigation and accessible legend in `src/components/progress/StreakPanel.tsx`
+- [X] T043 [US4] Keep selected month and reload overview safely in `src/pages/SuccessStairsPage.tsx`
 - [ ] T044 [US4] Add 320/360/390/430 month-grid Playwright coverage in `e2e/personal-progress.smoke.spec.ts`
 
 **Checkpoint**: The calendar explains the streak across months without horizontal scrolling or confusing rescue with completion.

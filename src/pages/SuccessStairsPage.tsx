@@ -143,6 +143,7 @@ const SuccessStairsPage = () => {
   const today = useMemo(() => formatLocalDateOnly(), []);
   const [activeTab, setActiveTab] = useState<ProgressTab>("xp");
   const [progress, setProgress] = useState<ProgressOverview | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(today.slice(0, 7));
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(!isGuest);
   const [isSaving, setIsSaving] = useState(false);
@@ -154,19 +155,19 @@ const SuccessStairsPage = () => {
     if (isGuest) return;
     setError("");
     try {
-      setProgress(await ProgressApi.getOverview(today));
+      setProgress(await ProgressApi.getOverview(today, selectedMonth));
     } catch {
       setError("Не удалось загрузить прогресс. Попробуй обновить страницу.");
     } finally {
       setIsLoading(false);
     }
-  }, [isGuest, today]);
+  }, [isGuest, selectedMonth, today]);
 
   useEffect(() => {
     if (isGuest) return;
     let isActive = true;
 
-    ProgressApi.getOverview(today)
+    ProgressApi.getOverview(today, selectedMonth)
       .then((overview) => {
         if (isActive) setProgress(overview);
       })
@@ -182,7 +183,7 @@ const SuccessStairsPage = () => {
     return () => {
       isActive = false;
     };
-  }, [isGuest, today]);
+  }, [isGuest, selectedMonth, today]);
 
   const todayXp = tasks.reduce((sum, task) => {
     if (!task.completed || !task.xpAwarded) return sum;
@@ -294,7 +295,7 @@ const SuccessStairsPage = () => {
     setIsSaving(true);
     setError("");
     try {
-      setProgress(await ProgressApi.applyRescue(eligibleDate, today));
+      setProgress(await ProgressApi.applyRescue(eligibleDate, today, selectedMonth));
       trackProductEvent("rescue_used");
       setIsRescueConfirmOpen(false);
     } catch {
@@ -361,6 +362,7 @@ const SuccessStairsPage = () => {
           progress={progress}
           isApplyingRescue={isSaving}
           onUseRescue={async () => setIsRescueConfirmOpen(true)}
+          onMonthChange={setSelectedMonth}
         />
       )}
       {activeTab === "habits" && progress && !isGuest && (

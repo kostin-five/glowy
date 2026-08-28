@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { schemaTaskUpdateResponse } from ".";
+import { schemaProgressOverview, schemaTaskUpdateResponse } from ".";
 
 const task = {
   id: 1,
@@ -39,5 +39,39 @@ describe("task completion contract", () => {
       xpReward: 24,
       userProgress: { xp: 124, level: 3 },
     }).xpOutcome).toBeUndefined();
+  });
+});
+
+describe("rhythm calendar contract", () => {
+  it("accepts a bounded 35-day calendar", () => {
+    const days = Array.from({ length: 35 }, (_, index) => ({
+      date: `2026-08-${String(Math.min(index + 1, 31)).padStart(2, "0")}`,
+      inMonth: true,
+      state: index === 0 ? "active" : "missed",
+    }));
+    const parsed = schemaProgressOverview.parse({
+      xp: { current: 0, level: 1, nextLevelAt: 50 },
+      taskStreak: {
+        current: 1,
+        longest: 1,
+        lastActiveOn: "2026-08-01",
+        days: ["2026-08-01"],
+        missedDateEligibleForRescue: null,
+        calendar: {
+          month: "2026-08",
+          from: "2026-07-27",
+          to: "2026-08-30",
+          canGoPrevious: true,
+          canGoNext: false,
+          days,
+        },
+      },
+      rescues: { remaining: 3, monthlyLimit: 3, usedDates: [] },
+      habits: [],
+      achievements: [],
+      canUseFocusFeatures: false,
+    });
+
+    expect(parsed.taskStreak.calendar?.days).toHaveLength(35);
   });
 });

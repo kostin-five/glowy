@@ -6,12 +6,18 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 import {
   calculateHabitStreak,
   calculateStreak,
+  buildRhythmCalendar,
   findRescueEligibleDate,
   getMonthPrefix,
+  isMonthOnly,
 } from "../services/progress/progress.service.js";
 import { reconcileAchievements } from "../services/progress/achievements.service.js";
 import { isFocusEntitled } from "../services/feature-entitlements.service.js";
-import { isDateOnly, parsePositiveId } from "../utils/validation.utils.js";
+import {
+  addDaysToDateOnly,
+  isDateOnly,
+  parsePositiveId,
+} from "../utils/validation.utils.js";
 
 const MONTHLY_RESCUE_LIMIT = 3;
 const LEVEL_THRESHOLDS = [
@@ -46,7 +52,12 @@ const loadHabitSummary = async (db, userId, habitId, today) => {
   return habit ? summarizeHabit(habit, today) : null;
 };
 
-export const buildProgressOverview = async ({ db, userId, today }) => {
+export const buildProgressOverview = async ({
+  db,
+  userId,
+  today,
+  month = today.slice(0, 7),
+}) => {
   const [user, completedTasks, rescues, habits, habitCount] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
@@ -56,6 +67,7 @@ export const buildProgressOverview = async ({ db, userId, today }) => {
         plan: true,
         subscriptionStatus: true,
         planExpiresAt: true,
+        createdAt: true,
       },
     }),
     db.task.findMany({
@@ -120,6 +132,13 @@ export const buildProgressOverview = async ({ db, userId, today }) => {
         rescueDates,
         today,
       }),
+      calendar: buildRhythmCalendar({
+        month,
+        today,
+        activeDates,
+        rescueDates,
+        accountCreatedOn: user.createdAt?.toISOString?.().slice(0, 10) ?? null,
+      }),
     },
     rescues: {
       remaining: Math.max(0, MONTHLY_RESCUE_LIMIT - usedDates.length),
@@ -146,13 +165,14 @@ export const createProgressRouter = ({
 
   router.get("/", async (req, res) => {
     const today = req.query.today;
-    if (!isDateOnly(today)) {
-      return res.status(400).json({ error: "Укажите today в формате YYYY-MM-DD" });
+    const month = req.query.month ?? today?.slice(0, 7);
+    if (!isDateOnly(today) || !isMonthOnly(month) || month > today.slice(0, 7)) {
+      return res.status(400).json({ error: "Укажите корректные today и month" });
     }
 
     try {
       return res.json(
-        await buildProgressOverview({ db, userId: req.user.id, today })
+        await buildProgressOverview({ db, userId: req.user.id, today, month })
       );
     } catch (error) {
       logger.error("progress.overview.failed", { req, error, statusCode: 500 });
@@ -168,8 +188,11 @@ export const createProgressRouter = ({
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
       const { protectedOn, today } = req.body;
-      if (protectedOn >= today) {
-        return res.status(400).json({ error: "Можно защитить только прошедший день" });
+      const month = isMonthOnly(req.body.month)
+        ? req.body.month
+        : today.slice(0, 7);
+      if (protectedOn !== addDaysToDateOnly(today, -1)) {
+        return res.status(400).json({ error: "Спасательный круг защищает только вчерашний день" });
       }
 
       try {
@@ -223,7 +246,7 @@ export const createProgressRouter = ({
         }
 
         return res.status(201).json(
-          await buildProgressOverview({ db, userId: req.user.id, today })
+          await buildProgressOverview({ db, userId: req.user.id, today, month })
         );
       } catch (error) {
         logger.error("progress.rescue.failed", { req, error, statusCode: 500 });

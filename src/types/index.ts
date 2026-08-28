@@ -155,6 +155,19 @@ export const schemaAchievement = z.object({
   target: z.number().int().positive(),
 });
 
+export const schemaRhythmCalendar = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  from: z.string(),
+  to: z.string(),
+  canGoPrevious: z.boolean(),
+  canGoNext: z.boolean(),
+  days: z.array(z.object({
+    date: z.string(),
+    inMonth: z.boolean(),
+    state: z.enum(["active", "rescued", "missed", "today", "future", "empty"]),
+  })).min(35).max(42),
+});
+
 export const schemaProgressOverview = z.object({
   xp: z.object({
     current: z.number().int().nonnegative(),
@@ -167,6 +180,7 @@ export const schemaProgressOverview = z.object({
     lastActiveOn: z.string().nullable(),
     days: z.array(z.string()),
     missedDateEligibleForRescue: z.string().nullable(),
+    calendar: schemaRhythmCalendar.optional(),
   }),
   rescues: z.object({
     remaining: z.number().int().nonnegative(),

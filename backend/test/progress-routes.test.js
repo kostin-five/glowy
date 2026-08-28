@@ -40,6 +40,15 @@ test("rejects malformed progress dates before database access", async () => {
   assert.equal(touched, false);
 });
 
+test("rejects malformed or future calendar months before database access", async () => {
+  let touched = false;
+  const db = { user: { findUnique: async () => { touched = true; return null; } } };
+
+  assert.equal((await request(createApp(db)).get("/api/progress?today=2026-08-16&month=2026-13")).status, 400);
+  assert.equal((await request(createApp(db)).get("/api/progress?today=2026-08-16&month=2026-09")).status, 400);
+  assert.equal(touched, false);
+});
+
 test("creates a trimmed habit for the authenticated user", async () => {
   let createdData;
   const createdHabit = {
@@ -181,4 +190,18 @@ test("rejects a duplicate rescue without creating another record", async () => {
   assert.equal(response.status, 409);
   assert.equal(response.body.error, "Этот день уже защищен");
   assert.equal(createCalled, false);
+});
+
+test("rejects old, today and future rescue dates before a transaction", async () => {
+  let transactions = 0;
+  const app = createApp({ $transaction: async () => { transactions += 1; } });
+
+  for (const protectedOn of ["2026-08-14", "2026-08-16", "2026-08-17"]) {
+    const response = await request(app)
+      .post("/api/progress/rescues")
+      .send({ protectedOn, today: "2026-08-16" });
+    assert.equal(response.status, 400);
+    assert.match(response.body.error, /только вчерашний/i);
+  }
+  assert.equal(transactions, 0);
 });

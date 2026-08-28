@@ -18,13 +18,13 @@ const TaskFilter = () => {
         <button
           key={filter}
           onClick={() => setFilterStatus(filter)}
-          className={`min-w-0 flex-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-all duration-200 sm:text-sm ${
+          className={`min-w-0 flex-1 rounded-lg px-1 py-1.5 text-[10px] font-medium transition-all duration-200 min-[360px]:text-[11px] sm:px-2 sm:text-sm ${
             filter === filterStatus
               ? "border border-indigo-500/20 bg-indigo-500/10 font-semibold text-indigo-500 shadow-sm"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           }`}
         >
-          <span className="block truncate">
+          <span className="block whitespace-nowrap">
             {filter} ({taskCounts[filter]})
           </span>
         </button>

@@ -49,10 +49,10 @@
 
 **Independent Test**: tomorrow/custom date update existing tasks and failed ids remain selected.
 
-- [ ] T020 [P] [US3] Add local tomorrow/date and partial-result tests in `src/components/tasks/TaskList.bulk.test.tsx`
-- [ ] T021 [US3] Replace «Снять» with tomorrow/custom-date actions and accessible date dialog in `src/components/tasks/TaskList.tsx`
-- [ ] T022 [US3] Preserve failed selection and show Russian bulk result in `src/components/tasks/TaskList.tsx`
-- [ ] T023 [US3] Make all task filter labels/counts visible at 320 px in `src/components/tasks/TaskFilter.tsx`
+- [X] T020 [P] [US3] Add local tomorrow/date and partial-result tests in `src/components/tasks/TaskList.bulk.test.tsx`
+- [X] T021 [US3] Replace «Снять» with tomorrow/custom-date actions and accessible date dialog in `src/components/tasks/TaskList.tsx`
+- [X] T022 [US3] Preserve failed selection and show Russian bulk result in `src/components/tasks/TaskList.tsx`
+- [X] T023 [US3] Make all task filter labels/counts visible at 320 px in `src/components/tasks/TaskFilter.tsx`
 - [ ] T024 [US3] Add bulk move and filter visibility Playwright flow in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 6: User Story 4 - Устойчивый глубокий отчёт (P1)

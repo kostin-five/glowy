@@ -44,6 +44,8 @@ import {
   type TaskViewMode,
 } from "../../store/useSettingsStore";
 import { trackProductEvent } from "../../utils/analytics";
+import Modal from "../ui/Modal";
+import { getTomorrowDate, moveSelectedTasks } from "./bulkTaskActions";
 
 interface TaskListProps {
   onlyActive?: boolean;
@@ -248,6 +250,9 @@ const TaskList = ({
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isMoveDateOpen, setIsMoveDateOpen] = useState(false);
+  const [bulkMoveDate, setBulkMoveDate] = useState(getTomorrowDate);
+  const [isBulkMoving, setIsBulkMoving] = useState(false);
 
   const toggleSelection = (id: number) => {
     setSelectedIds((prev) => {
@@ -271,20 +276,40 @@ const TaskList = ({
     clearSelection();
   };
 
-  const handleBulkUncomplete = async () => {
-    const tasksToToggle = displayedTasks.filter((t) => selectedIds.has(t.id) && t.completed);
-    for (const task of tasksToToggle) {
-      await toggle(task.id);
-    }
-    clearSelection();
-  };
-
   const handleBulkDelete = async () => {
     const tasksToDelete = displayedTasks.filter((t) => selectedIds.has(t.id));
     for (const task of tasksToDelete) {
       const removed = removeTaskLocally(task.id);
       if (removed) await confirmTaskDeletion(removed.task.id);
     }
+    clearSelection();
+  };
+
+  const handleBulkMove = async (targetDate: string) => {
+    if (!targetDate || isBulkMoving) return;
+    setIsBulkMoving(true);
+    const { succeededIds, failedIds } = await moveSelectedTasks({
+      tasks: displayedTasks,
+      selectedIds,
+      targetDate,
+      updateTask,
+    });
+    setIsBulkMoving(false);
+    setIsMoveDateOpen(false);
+    if (failedIds.length > 0) {
+      setSelectedIds(new Set(failedIds));
+      setCompletionNotice(
+        succeededIds.length > 0
+          ? `Перенесено: ${succeededIds.length}. Не удалось: ${failedIds.length}.`
+          : "Не удалось перенести выбранные задачи. Попробуй ещё раз."
+      );
+      return;
+    }
+    setCompletionNotice(
+      succeededIds.length > 0
+        ? `Перенесено задач: ${succeededIds.length}.`
+        : "Для переноса выбери активные задачи."
+    );
     clearSelection();
   };
 
@@ -587,9 +612,10 @@ const TaskList = ({
               className="fixed inset-x-2 bottom-20 z-50 mx-auto flex max-w-3xl flex-col items-stretch gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-3 text-sm text-slate-900 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95 dark:text-slate-100 sm:inset-x-4 sm:flex-row sm:items-center sm:justify-between lg:bottom-6"
             >
               <span className="font-semibold">Выбрано: {visibleSelectedIds.size}</span>
-              <div className="grid grid-cols-2 gap-1 sm:flex sm:items-center">
+              <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:items-center">
                 <button onClick={handleBulkComplete} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Выполнить</button>
-                <button onClick={handleBulkUncomplete} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Снять</button>
+                <button disabled={isBulkMoving} onClick={() => void handleBulkMove(getTomorrowDate())} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">На завтра</button>
+                <button disabled={isBulkMoving} onClick={() => setIsMoveDateOpen(true)} className="rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Перенести</button>
                 <button onClick={handleBulkDelete} className="rounded-lg px-2 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 sm:px-3 sm:text-sm">Удалить</button>
                 <button onClick={clearSelection} className="rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 sm:px-3 sm:text-sm">Отмена</button>
               </div>
@@ -625,6 +651,26 @@ const TaskList = ({
         onClose={() => setActualTimeTask(null)}
         onSave={saveActualTime}
       />
+      <Modal
+        isOpen={isMoveDateOpen}
+        onClose={() => setIsMoveDateOpen(false)}
+        title="Перенести задачи"
+      >
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200" htmlFor="bulk-move-date">
+          Новая дата
+        </label>
+        <input
+          id="bulk-move-date"
+          type="date"
+          value={bulkMoveDate}
+          onChange={(event) => setBulkMoveDate(event.target.value)}
+          className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={() => setIsMoveDateOpen(false)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Отмена</button>
+          <button type="button" disabled={!bulkMoveDate || isBulkMoving} onClick={() => void handleBulkMove(bulkMoveDate)} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">{isBulkMoving ? "Переношу..." : "Перенести"}</button>
+        </div>
+      </Modal>
     </>
   );
 };

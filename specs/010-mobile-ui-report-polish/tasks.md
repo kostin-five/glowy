@@ -61,10 +61,10 @@
 
 **Independent Test**: report restores per owner/period, copies, deletes and survives failed regeneration.
 
-- [ ] T025 [P] [US4] Add Analytics report restore/copy/delete/regenerate tests in `src/pages/AnalyticsPage.test.tsx`
-- [ ] T026 [US4] Restore/save owner-period report around existing Analytics API flow in `src/pages/AnalyticsPage.tsx`
-- [ ] T027 [US4] Render safe formatted report and add copy feedback in `src/pages/AnalyticsPage.tsx`
-- [ ] T028 [US4] Add explicit delete/new-report confirmation while retaining old result on error in `src/pages/AnalyticsPage.tsx`
+- [X] T025 [P] [US4] Add Analytics report restore/copy/delete/regenerate tests in `src/pages/AnalyticsPage.test.tsx`
+- [X] T026 [US4] Restore/save owner-period report around existing Analytics API flow in `src/pages/AnalyticsPage.tsx`
+- [X] T027 [US4] Render safe formatted report and add copy feedback in `src/pages/AnalyticsPage.tsx`
+- [X] T028 [US4] Add explicit delete/new-report confirmation while retaining old result on error in `src/pages/AnalyticsPage.tsx`
 - [ ] T029 [US4] Add route/reload/account-isolation report Playwright flow in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 7: User Story 5 - Forever preview (P2)

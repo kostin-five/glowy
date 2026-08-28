@@ -31,5 +31,13 @@ describe("analytics report storage", () => {
     deleteAnalyticsReport(identity);
     expect(readAnalyticsReport(identity)).toBeNull();
   });
-});
 
+  it("does not break the report screen when browser storage is unavailable", () => {
+    const unavailableStorage = {
+      setItem: () => { throw new Error("blocked"); },
+      removeItem: () => { throw new Error("blocked"); },
+    };
+    expect(saveAnalyticsReport(identity, "Отчёт", unavailableStorage)).toBeNull();
+    expect(() => deleteAnalyticsReport(identity, unavailableStorage)).not.toThrow();
+  });
+});

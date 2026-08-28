@@ -14,15 +14,31 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Clock3, Flame, ListChecks, LoaderCircle, Sparkles } from "lucide-react";
+import {
+  Clock3,
+  Copy,
+  Flame,
+  ListChecks,
+  LoaderCircle,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import {
   AnalyticsApi,
   type AnalyticsPeriodKind,
 } from "../api/AnalyticsApi";
 import { formatLocalDateOnly } from "../utils/localDate";
-import { useIsGuest } from "../store/useAuthStore";
+import { useAuthStore, useIsGuest } from "../store/useAuthStore";
 import type { AnalyticsSnapshot } from "../types";
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
+import Modal from "../components/ui/Modal";
+import SafeReportMarkdown from "../components/analytics/SafeReportMarkdown";
+import {
+  deleteAnalyticsReport,
+  readAnalyticsReport,
+  saveAnalyticsReport,
+} from "../utils/analyticsReportStorage";
 
 const tooltipStyles = {
   backgroundColor: "#0f172a",
@@ -78,12 +94,18 @@ const MetricCard = ({
 
 const AnalyticsPage = () => {
   const isGuest = useIsGuest();
+  const ownerId = useAuthStore((state) => state.userId);
   const [period, setPeriod] = useState<AnalyticsPeriodKind>("week");
   const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!isGuest);
-  const [insight, setInsight] = useState<string | null>(null);
+  const [reportOverride, setReportOverride] = useState<{
+    key: string;
+    text: string | null;
+  } | null>(null);
   const [isInsightLoading, setIsInsightLoading] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [isRegenerateConfirmOpen, setIsRegenerateConfirmOpen] = useState(false);
   const anchor = formatLocalDateOnly();
 
   useEffect(() => {
@@ -128,11 +150,30 @@ const AnalyticsPage = () => {
         : [],
     [snapshot]
   );
+  const reportIdentity = useMemo(() => {
+    if (!ownerId || !snapshot || snapshot.period.kind !== period) return null;
+    return {
+      ownerId,
+      period,
+      from: snapshot.period.from,
+      to: snapshot.period.to,
+    };
+  }, [ownerId, period, snapshot]);
+  const reportIdentityKey = reportIdentity
+    ? `${reportIdentity.ownerId}:${reportIdentity.period}:${reportIdentity.from}:${reportIdentity.to}`
+    : "";
+  const storedInsight = useMemo(
+    () => reportIdentity ? readAnalyticsReport(reportIdentity)?.text ?? null : null,
+    [reportIdentity]
+  );
+  const insight = reportOverride?.key === reportIdentityKey
+    ? reportOverride.text
+    : storedInsight;
 
   const changePeriod = (nextPeriod: AnalyticsPeriodKind) => {
     if (nextPeriod === period) return;
     setPeriod(nextPeriod);
-    setInsight(null);
+    setCopyFeedback(null);
     setError(null);
     setIsLoading(true);
   };
@@ -143,7 +184,8 @@ const AnalyticsPage = () => {
     setError(null);
     try {
       const result = await AnalyticsApi.requestInsight(period, anchor);
-      setInsight(result.insight);
+      setReportOverride({ key: reportIdentityKey, text: result.insight });
+      if (reportIdentity) saveAnalyticsReport(reportIdentity, result.insight);
     } catch (requestError) {
       setError(
         readApiError(requestError, "Glowy не смог подготовить вывод. Попробуй позже.")
@@ -151,6 +193,22 @@ const AnalyticsPage = () => {
     } finally {
       setIsInsightLoading(false);
     }
+  };
+
+  const copyInsight = async () => {
+    if (!insight) return;
+    try {
+      await navigator.clipboard.writeText(insight);
+      setCopyFeedback("Отчёт скопирован");
+    } catch {
+      setCopyFeedback("Не удалось скопировать отчёт");
+    }
+  };
+
+  const deleteInsight = () => {
+    if (reportIdentity) deleteAnalyticsReport(reportIdentity);
+    setReportOverride({ key: reportIdentityKey, text: null });
+    setCopyFeedback(null);
   };
 
   if (isGuest) {
@@ -334,7 +392,41 @@ const AnalyticsPage = () => {
               <div className="min-w-0 flex-1">
                 <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
                 {insight ? (
-                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700 dark:text-slate-300">{insight}</p>
+                  <div className="mt-3">
+                    <div className="mb-4 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={copyInsight}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-indigo-500/30 px-3 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-300"
+                      >
+                        <Copy size={16} />
+                        Копировать
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsRegenerateConfirmOpen(true)}
+                        disabled={isInsightLoading || !snapshot.canRequestAiInsight}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
+                      >
+                        <RotateCcw size={16} />
+                        Новый отчёт
+                      </button>
+                      <button
+                        type="button"
+                        onClick={deleteInsight}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-rose-600 dark:text-rose-300"
+                      >
+                        <Trash2 size={16} />
+                        Удалить отчёт
+                      </button>
+                      {copyFeedback && (
+                        <span className="text-sm text-slate-600 dark:text-slate-400" role="status">
+                          {copyFeedback}
+                        </span>
+                      )}
+                    </div>
+                    <SafeReportMarkdown text={insight} />
+                  </div>
                 ) : !snapshot.canUseFocusFeatures ? (
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Founder.</p>
                 ) : !snapshot.hasActivity ? (
@@ -367,6 +459,34 @@ const AnalyticsPage = () => {
           Аналитика пока недоступна.
         </div>
       )}
+      <Modal
+        isOpen={isRegenerateConfirmOpen}
+        onClose={() => setIsRegenerateConfirmOpen(false)}
+        title="Сделать новый отчёт?"
+      >
+        <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+          Новый разбор потратит ещё {period === "month" ? "10" : "5"} AI-запросов. Текущий отчёт заменится только после успешного ответа Glowy.
+        </p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setIsRegenerateConfirmOpen(false)}
+            className="min-h-10 rounded-md border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegenerateConfirmOpen(false);
+              void requestInsight();
+            }}
+            className="min-h-10 rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white"
+          >
+            Сделать новый
+          </button>
+        </div>
+      </Modal>
     </section>
   );
 };

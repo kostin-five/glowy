@@ -70,12 +70,21 @@ export const saveAnalyticsReport = (
     text: trimmed,
     createdAt: now.toISOString(),
   };
-  storage.setItem(reportKey(identity), JSON.stringify(report));
-  return report;
+  try {
+    storage.setItem(reportKey(identity), JSON.stringify(report));
+    return report;
+  } catch {
+    return null;
+  }
 };
 
 export const deleteAnalyticsReport = (
   identity: ReportIdentity,
   storage: Pick<Storage, "removeItem"> = localStorage
-) => storage.removeItem(reportKey(identity));
-
+) => {
+  try {
+    storage.removeItem(reportKey(identity));
+  } catch {
+    // Storage can be unavailable in private or restricted browser contexts.
+  }
+};

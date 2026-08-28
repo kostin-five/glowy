@@ -22,11 +22,14 @@ const progress: ProgressOverview = {
       to: "2026-09-06",
       canGoPrevious: true,
       canGoNext: false,
-      days: Array.from({ length: 42 }, (_, index) => ({
-        date: `2026-08-${String(Math.min(index + 1, 31)).padStart(2, "0")}`,
-        inMonth: true,
+      days: Array.from({ length: 42 }, (_, index) => {
+        const date = new Date(Date.UTC(2026, 6, 27 + index));
+        const value = date.toISOString().slice(0, 10);
+        return {
+        date: value,
+        inMonth: value.startsWith("2026-08"),
         state: index === 0 ? "active" as const : index === 1 ? "rescued" as const : "missed" as const,
-      })),
+      }}),
     },
   },
   rescues: { remaining: 2, monthlyLimit: 3, usedDates: [] },

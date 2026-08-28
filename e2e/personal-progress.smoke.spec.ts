@@ -21,6 +21,22 @@ const progressOverview = (habits: ReturnType<typeof habit>[] = []) => ({
     lastActiveOn: today,
     days: ["2026-08-14", "2026-08-15", today],
     missedDateEligibleForRescue: null,
+    calendar: {
+      month: "2026-08",
+      from: "2026-07-27",
+      to: "2026-09-06",
+      canGoPrevious: true,
+      canGoNext: false,
+      days: Array.from({ length: 42 }, (_, index) => {
+        const date = new Date(Date.UTC(2026, 6, 27 + index));
+        const value = date.toISOString().slice(0, 10);
+        return {
+          date: value,
+          inMonth: value.startsWith("2026-08"),
+          state: index === 10 ? "active" : index === 11 ? "rescued" : "missed",
+        };
+      }),
+    },
   },
   rescues: { remaining: 3, monthlyLimit: 3, usedDates: [] },
   habits,
@@ -109,6 +125,27 @@ const prepareAuthenticatedApp = async (page: Page) => {
       return fulfillJson(route, { xp: 120, level: 2 });
     }
 
+    if (path === "/api/user/preferences" && request.method() === "GET") {
+      return fulfillJson(route, {
+        avatarId: "orbit-indigo",
+        aiTone: "calm",
+        focusBetaEnabled: true,
+        canUseFocusFeatures: true,
+        focusBetaAvailable: true,
+      });
+    }
+
+    if (path === "/api/user/preferences" && request.method() === "PATCH") {
+      const patch = request.postDataJSON() as { aiTone?: string; avatarId?: string };
+      return fulfillJson(route, {
+        avatarId: patch.avatarId ?? "orbit-indigo",
+        aiTone: patch.aiTone ?? "calm",
+        focusBetaEnabled: true,
+        canUseFocusFeatures: true,
+        focusBetaAvailable: true,
+      });
+    }
+
     if (path === "/api/progress/habits" && request.method() === "POST") {
       const createdHabit = habit(
         (request.postDataJSON() as { title: string }).title
@@ -191,5 +228,28 @@ test.describe("personal progress releases", () => {
     await page.getByRole("button", { name: "Закрыть подсказку" }).click();
     await expect(hint).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Сохранить" })).toBeVisible();
+  });
+
+  test("observes a saved strict behavior mode within three seconds", async ({ page }) => {
+    await page.goto("/settings");
+    const strict = page.getByRole("button", { name: /Жёсткий/ });
+
+    await strict.click();
+
+    await expect(strict).toHaveAttribute("aria-pressed", "true", { timeout: 3_000 });
+  });
+
+  test("keeps the rhythm calendar within 320–430 px viewports", async ({ page }) => {
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto("/stairs");
+      await page.getByRole("tab", { name: "Стрик побед" }).click();
+      const calendar = page.getByLabel("Календарь ритма");
+      await expect(calendar).toBeVisible();
+      const box = await calendar.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    }
   });
 });

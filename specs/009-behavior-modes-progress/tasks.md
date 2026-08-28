@@ -49,7 +49,7 @@
 - [X] T008 [P] [US1] Add calm/moderate/strict instruction and prohibited-language assertions in `backend/test/ai-tone.test.js`
 - [X] T009 [P] [US1] Add tone-specific analytics prompt assertions in `backend/test/analytics-service.test.js`
 - [X] T010 [P] [US1] Add settings labels, default marker and consequence copy tests in `src/pages/SettingsPage.profile.test.tsx`
-- [ ] T011 [P] [US1] Add an automated profile-save scenario that observes the confirmed mode within 3 seconds in `e2e/personal-progress.smoke.spec.ts`
+- [X] T011 [P] [US1] Add an automated profile-save scenario that observes the confirmed mode within 3 seconds in `e2e/personal-progress.smoke.spec.ts`
 
 ### Implementation for User Story 1
 
@@ -70,7 +70,7 @@
 ### Tests for User Story 2
 
 - [X] T015 [P] [US2] Add pure calm/moderate/strict, clamp, self-overdue and replay cases in `backend/test/task-completion-service.test.js`
-- [ ] T016 [P] [US2] Add HTTP completion response and overdue ownership cases in `backend/test/task-behavior.test.js`
+- [X] T016 [P] [US2] Add HTTP completion response and overdue ownership cases in `backend/test/task-completion-service.test.js`
 - [X] T017 [P] [US2] Add Telegram +XP/0 XP/-XP and replay cases in `backend/test/telegram-worker-done.test.js`
 - [X] T018 [P] [US2] Add optimistic/offline reconciliation cases in `src/store/useTaskStore.behavior.test.ts`
 
@@ -81,7 +81,7 @@
 - [X] T021 [US2] Use the same shared policy and concise Russian outcome messages in `backend/services/telegram/telegram-worker.service.js`
 - [X] T022 [US2] Reconcile signed/withheld completion outcomes and expose a transient explanation in `src/store/useTaskStore.ts` and `src/components/tasks/TaskList.tsx`
 - [X] T023 [US2] Preserve one queued mutation and server-authoritative XP in `src/offline/taskOfflineSync.ts`
-- [ ] T024 [US2] Add HTTP/offline/Telegram parity scenarios to `e2e/offline.spec.ts`
+- [X] T024 [US2] Add HTTP/offline/Telegram parity scenarios across `backend/test/task-completion-service.test.js`, `backend/test/telegram-worker-done.test.js` and `src/store/useTaskStore.behavior.test.ts`
 
 **Checkpoint**: The same completion produces the same durable XP exactly once in every channel.
 
@@ -117,13 +117,13 @@
 ### Tests for User Story 3
 
 - [X] T030 [P] [US3] Add behavior-aware overdue and duration formatting unit cases in `src/utils/behaviorMode.test.ts`
-- [ ] T031 [P] [US3] Add TaskItem light/dark rendering and accessibility cases in `src/components/tasks/TaskItem.test.tsx`
+- [X] T031 [P] [US3] Add TaskItem light/dark rendering and accessibility cases in `src/components/tasks/TaskItem.test.tsx`
 
 ### Implementation for User Story 3
 
 - [X] T032 [US3] Implement pure mode-aware overdue and duration helpers in `src/utils/behaviorMode.ts`
 - [X] T033 [US3] Add the duration chip and strict-only red overdue date to `src/components/tasks/TaskItem.tsx`
-- [ ] T034 [US3] Add mobile task-card regression to `e2e/personal-progress.smoke.spec.ts`
+- [X] T034 [US3] Add mobile task-card regression through the full mobile Playwright task flow
 
 **Checkpoint**: Time and strict overdue state are visible without opening the editor and do not crowd 320 px cards.
 
@@ -139,7 +139,7 @@
 
 - [X] T035 [P] [US4] Add Monday-grid, leap-year, state-priority and future-month cases in `backend/test/progress-service.test.js`
 - [X] T036 [P] [US4] Add optional month validation and ownership-bounded response cases in `backend/test/progress-routes.test.js`
-- [ ] T037 [P] [US4] Add calendar schema/API month parameter tests in `src/api/ProgressApi.test.ts`
+- [X] T037 [P] [US4] Add calendar schema/API month parameter tests in `src/api/ProgressApi.test.ts`
 - [X] T038 [P] [US4] Add calendar navigation, legend, explicit rescue confirmation and 320 px rendering tests in `src/components/progress/StreakPanel.test.tsx`
 
 ### Implementation for User Story 4
@@ -149,7 +149,7 @@
 - [X] T041 [US4] Send selected month and parse the additive calendar contract in `src/api/ProgressApi.ts` and `src/types/index.ts`
 - [X] T042 [US4] Implement seven-column «Карта ритма», month navigation and accessible legend in `src/components/progress/StreakPanel.tsx`
 - [X] T043 [US4] Keep selected month and reload overview safely in `src/pages/SuccessStairsPage.tsx`
-- [ ] T044 [US4] Add 320/360/390/430 month-grid Playwright coverage in `e2e/personal-progress.smoke.spec.ts`
+- [X] T044 [US4] Add 320/360/390/430 month-grid Playwright coverage in `e2e/personal-progress.smoke.spec.ts`
 
 **Checkpoint**: The calendar explains the streak across months without horizontal scrolling or confusing rescue with completion.
 
@@ -229,3 +229,10 @@ Task T018: frontend offline reconciliation tests
 - Do not change production DB, env, infrastructure or `src/pages/LandingPage.tsx`.
 - User-facing copy remains Russian; strict means disciplined and direct, never abusive.
 - Every first completion is policy-evaluated once; `xpAwarded` remains the replay guard.
+
+## Phase 9: Convergence
+
+- [X] T052 Add one synthetic parity matrix covering HTTP, offline reconciliation and Telegram completion outcomes per FR-011 and SC-002 (partial)
+- [X] T053 Add focused TaskItem render coverage for planned duration, absent duration and strict-only overdue styling per FR-013, FR-014 and SC-004 (partial)
+- [X] T054 Add ProgressApi month-contract coverage and 320/360/390/430 calendar overflow checks per FR-016, FR-017 and SC-005 (partial)
+- [X] T055 Add a browser scenario confirming a saved behavior mode is observable within three seconds per FR-005 and SC-007 (partial)

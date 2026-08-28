@@ -7,6 +7,7 @@ import {
   linkedConnection,
   messageUpdate,
 } from "./telegram-test-helpers.js";
+import { buildCompletionXpOutcome } from "../services/tasks/task-completion.service.js";
 
 test("done lists owned incomplete tasks and asks for a second confirmation", async () => {
   const recorder = createApiRecorder();
@@ -77,6 +78,40 @@ test("done reports withheld and deducted XP without exposing another task", asyn
     await worker.processUpdate(callbackUpdate("tg:done-confirm:7"), "11");
     assert.match(recorder.calls.at(-1)[1].text, expected);
     assert.doesNotMatch(recorder.calls.at(-1)[1].text, /название|отч[её]т/i);
+  }
+});
+
+test("shared behavior matrix produces the same signed outcome consumed by Telegram", async () => {
+  const cases = [
+    ["calm", "awarded", 24, /Начислено \+24 XP/],
+    ["moderate", "withheld", 0, /XP не начислены/],
+    ["strict", "deducted", -24, /Списано 24 XP/],
+  ];
+
+  for (const [aiTone, effect, xpDelta, expectedMessage] of cases) {
+    const outcome = buildCompletionXpOutcome({
+      aiTone,
+      reward: 24,
+      currentXp: 90,
+      hasOverdueBlocker: true,
+      targetIsOverdue: false,
+    });
+    assert.equal(outcome.effect, effect);
+    assert.equal(outcome.xpDelta, xpDelta);
+
+    const recorder = createApiRecorder();
+    const worker = createWorkerFixture({
+      api: recorder.api,
+      db: { telegramConnection: { findUnique: async () => linkedConnection } },
+      completeTask: async () => ({
+        state: "COMPLETED",
+        xpReward: outcome.xpDelta,
+        xpOutcome: outcome,
+      }),
+    });
+
+    await worker.processUpdate(callbackUpdate("tg:done-confirm:7"), "11");
+    assert.match(recorder.calls.at(-1)[1].text, expectedMessage);
   }
 });
 

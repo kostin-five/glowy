@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tag, Check } from "lucide-react";
 import { useIsAuthenticated, useIsGuest } from "../store/useAuthStore";
 import { PaymentApi } from "../api/PaymentApi";
-import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
 import useNetworkStatus from "../hooks/useNetworkStatus";
 import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
@@ -17,14 +16,11 @@ type CurrentPlan = {
 
 const PricingPage = () => {
   const navigate = useNavigate();
-  const startRoute = useStartRoute();
-  const [searchParams, setSearchParams] = useSearchParams();
   const isAuthenticated = useIsAuthenticated();
   const isGuest = useIsGuest();
   const isOnline = useNetworkStatus();
   const [isLoading, setIsLoading] = useState(false);
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
-  const hasActivatedFounderRef = useRef(false);
   const paymentsEnabled = import.meta.env.VITE_PAYMENTS_ENABLED === "true";
   const { isTelegramMiniApp, webApp } = useTelegramMiniApp();
 
@@ -48,41 +44,6 @@ const PricingPage = () => {
     currentPlan.subscriptionStatus === "active");
   const isLifetimeActive = isFounderActive;
   const isStartActive = !isFocusActive && !isLifetimeActive;
-
-  const activateFounderPlan = useCallback(async () => {
-    if (!isOnline) {
-      alert("Для оформления тарифа нужно подключение к интернету.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const data = await PaymentApi.activateFounderPlan();
-      setCurrentPlan(data);
-      setSearchParams({}, { replace: true });
-      navigate(startRoute, { replace: true });
-    } catch {
-      alert("Не удалось активировать тариф Founder. Попробуйте позже.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isOnline, navigate, setSearchParams, startRoute]);
-
-  useEffect(() => {
-    if (
-      searchParams.get("activate") !== "founder" ||
-      hasActivatedFounderRef.current ||
-      !isAuthenticated ||
-      isGuest ||
-      isFounderActive ||
-      !isOnline
-    ) {
-      return;
-    }
-
-    hasActivatedFounderRef.current = true;
-    activateFounderPlan();
-  }, [activateFounderPlan, isAuthenticated, isFounderActive, isGuest, isOnline, searchParams]);
 
   const handleFocusClick = async () => {
     if (!paymentsEnabled || isFocusActive || isLifetimeActive) return;
@@ -138,17 +99,6 @@ const PricingPage = () => {
     }
   };
 
-  const handleFounderClick = async () => {
-    if (!paymentsEnabled || isFounderActive) return;
-
-    if (!isAuthenticated || isGuest) {
-      navigate(`/login?redirect=${encodeURIComponent("/pricing?activate=founder")}`);
-      return;
-    }
-
-    await activateFounderPlan();
-  };
-
   const plans = [
     {
       name: "Start",
@@ -186,21 +136,19 @@ const PricingPage = () => {
       expiresAt: currentPlan?.planExpiresAt,
     },
     {
-      name: "Founder",
-      price: "0 ₽",
-      period: "навсегда",
+      name: "Forever",
+      price: "—",
+      period: "пожизненно",
       features: [
         "Все функции Start",
         "100 AI-запросов в день",
         "Глубокий аналитический анализ",
         "Выбор тона общения Glowy",
         "Ранний доступ к новым функциям и обновлениям",
-        "Для первых пользователей",
+        "Пожизненный доступ после запуска",
       ],
-      cta: isFounderActive
-        ? "Текущий тариф"
-        : (paymentsEnabled ? "Получить Founder" : "Оформление отключено"),
-      disabled: !paymentsEnabled || isFounderActive,
+      cta: "Скоро",
+      disabled: true,
       active: isLifetimeActive,
       accent: true,
     },
@@ -255,7 +203,7 @@ const PricingPage = () => {
                     Активен до {new Date(plan.expiresAt).toLocaleDateString("ru-RU")}
                   </p>
                 )}
-                {plan.name === "Founder" && plan.active && (
+                {plan.name === "Forever" && plan.active && (
                   <p className="mt-2 text-sm text-indigo-400">
                     Активен бессрочно
                   </p>
@@ -274,9 +222,7 @@ const PricingPage = () => {
                 onClick={
                   plan.name === "Focus"
                     ? handleFocusClick
-                    : plan.name === "Founder"
-                      ? handleFounderClick
-                      : undefined
+                    : undefined
                 }
                 className={`w-full rounded-2xl py-3 text-sm font-bold transition-all ${
                   plan.highlight || (plan.accent && !plan.disabled)
@@ -286,7 +232,7 @@ const PricingPage = () => {
                       : "bg-slate-800 text-slate-300"
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                {(plan.name === "Focus" || plan.name === "Founder") && isLoading
+                {plan.name === "Focus" && isLoading
                   ? "Загрузка..."
                   : plan.cta}
               </button>

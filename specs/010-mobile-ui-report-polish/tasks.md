@@ -73,9 +73,9 @@
 
 **Independent Test**: Pricing shows Forever/Скоро and never calls activation; existing Founder stays active.
 
-- [ ] T030 [P] [US5] Update pricing smoke assertions for Forever and zero activation calls in `e2e/pricing.smoke.spec.ts`
-- [ ] T031 [P] [US5] Add existing-Founder presentation test in `src/pages/PricingPage.test.tsx`
-- [ ] T032 [US5] Remove query/click auto activation and render disabled Forever preview in `src/pages/PricingPage.tsx`
+- [X] T030 [P] [US5] Update pricing smoke assertions for Forever and zero activation calls in `e2e/pricing.smoke.spec.ts`
+- [X] T031 [P] [US5] Add existing-Founder presentation test in `src/pages/PricingPage.test.tsx`
+- [X] T032 [US5] Remove query/click auto activation and render disabled Forever preview in `src/pages/PricingPage.tsx`
 
 ## Phase 8: User Story 6 - Operations roadmap (P3)
 

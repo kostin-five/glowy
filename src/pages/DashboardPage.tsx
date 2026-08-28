@@ -1,13 +1,12 @@
 import { useRef, useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ListChecks } from "lucide-react";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
 import useMediaQuery from "../hooks/useMediaQuery";
-import { formatTaskDateForUI } from "../utils/taskDateGroups";
 import type { Task } from "../types";
+import ReadOnlyTaskCard from "../components/tasks/ReadOnlyTaskCard";
 
 const AI_TASK_IDS_KEY = "glowy-ai-created-task-ids";
 const AI_TASK_IDS_EVENT = "glowy-ai-created-task-ids-updated";
@@ -30,12 +29,6 @@ const readAiTaskIds = () => {
   } catch {
     return [];
   }
-};
-
-const energyAccent: Record<Task["energyLevel"], string> = {
-  low: "bg-emerald-400",
-  med: "bg-amber-400",
-  high: "bg-rose-400",
 };
 
 const getFocusHint = (currentEnergy: number) => {
@@ -68,45 +61,6 @@ const getPriorityRank = (priority: string, order: string[]) => {
   const normalizedPriority = priority || "P2";
   const index = order.findIndex((value) => normalizedPriority.includes(value));
   return index === -1 ? order.indexOf("P2") : index;
-};
-
-const getSubtaskProgress = (task: Task) => {
-  const total = task.subtasks?.length ?? 0;
-  if (!total) return null;
-
-  const completed = task.subtasks.filter((subtask) => subtask.completed).length;
-  return `${completed}/${total}`;
-};
-
-const TaskMiniRow = ({ task }: { task: Task }) => {
-  const subtaskProgress = getSubtaskProgress(task);
-
-  return (
-    <Link to="/tasks" className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3 transition-colors hover:border-indigo-300/70 hover:bg-white dark:border-slate-700/60 dark:bg-slate-950/35 dark:hover:border-indigo-500/40 dark:hover:bg-slate-900/70">
-    <span
-      className={`h-10 w-1 shrink-0 rounded-full ${energyAccent[task.energyLevel]}`}
-    />
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-        {task.title}
-      </p>
-      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <span>{formatTaskDateForUI(task.date)}</span>
-        {task.category && (
-          <span className="rounded-lg border border-slate-300/70 px-2 py-0.5 text-slate-600 dark:border-slate-600/80 dark:text-slate-300">
-            {task.category}
-          </span>
-        )}
-        {subtaskProgress && (
-          <span className="inline-flex items-center gap-1 rounded-lg border border-indigo-400/30 bg-indigo-500/10 px-2 py-0.5 font-semibold text-indigo-500 dark:text-indigo-300">
-            <ListChecks size={12} />
-            {subtaskProgress}
-          </span>
-        )}
-      </div>
-    </div>
-  </Link>
-  );
 };
 
 const DashboardPage = () => {
@@ -179,8 +133,8 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="mb-8">
+    <div className="flex flex-col gap-5">
+      <div>
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -213,7 +167,7 @@ const DashboardPage = () => {
                 <>
                   <div className="space-y-3">
                     {focusTasks.map((task) => (
-                      <TaskMiniRow key={task.id} task={task} />
+                      <ReadOnlyTaskCard key={task.id} task={task} />
                     ))}
                   </div>
                   <div className="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm leading-6 text-indigo-100/90 xl:block">
@@ -264,7 +218,7 @@ const DashboardPage = () => {
             {todayTasks.length > 0 ? (
               <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2">
                 {todayTasks.map((task) => (
-                  <TaskMiniRow key={task.id} task={task} />
+                  <ReadOnlyTaskCard key={task.id} task={task} />
                 ))}
               </div>
             ) : (
@@ -281,7 +235,7 @@ const DashboardPage = () => {
             {aiTasks.length > 0 ? (
               <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2">
                 {aiTasks.map((task) => (
-                  <TaskMiniRow key={task.id} task={task} />
+                  <ReadOnlyTaskCard key={task.id} task={task} />
                 ))}
               </div>
             ) : (

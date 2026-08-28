@@ -30,7 +30,7 @@ const SidebarContent = ({
   const isDarkMode = useIsDarkMode();
   const handleLogout = useLogout();
   const menuItems = [
-    { to: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
+    { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
     { to: "/notes", label: "Заметки", icon: NotebookPen },
     { to: "/ai", label: "Чат", icon: MessageCircle },
@@ -51,13 +51,13 @@ const SidebarContent = ({
           <img
             src="/Glowy.png"
             alt="Логотип Glowy"
-            className="w-10 h-10 object-contain"
+            className={`${isCollapsed ? "h-16 w-16" : "h-10 w-10"} object-contain`}
           />
         ) : (
           <img
             src="/Glowy-dark.png"
             alt="Логотип Glowy"
-            className="w-10 h-10 object-contain"
+            className={`${isCollapsed ? "h-16 w-16" : "h-10 w-10"} object-contain`}
           />
         )}
 
@@ -67,7 +67,7 @@ const SidebarContent = ({
           </h2>
         )}
       </Link>
-      <nav className="flex flex-col gap-2">
+      {!isCollapsed && <nav className="flex flex-col gap-2">
         {menuItems.map((item) => (
           <Link
             key={item.to}
@@ -83,7 +83,7 @@ const SidebarContent = ({
             {!isCollapsed && item.label}
           </Link>
         ))}
-      </nav>
+      </nav>}
       <div className={`mt-auto flex items-center gap-3 ${isCollapsed ? "flex-col" : ""}`}>
         <div className={`flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-100/70 py-1 dark:border-slate-700/50 dark:bg-slate-800/60 ${isCollapsed ? "px-2" : "px-5"}`}>
           <ProfileAvatar avatarId={avatarId} size="sm" />
@@ -114,7 +114,7 @@ const Sidebar = () => {
 
   return (
     <aside
-      className={`sticky top-0 hidden h-screen flex-col border-r border-slate-200 bg-white p-6 transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-900 lg:flex ${isCollapsed ? "w-20" : "w-64"}`}
+      className={`sticky top-0 hidden h-screen flex-col border-r border-slate-200 bg-white transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-900 lg:flex ${isCollapsed ? "w-20 p-2" : "w-64 p-6"}`}
     >
       <button
         type="button"

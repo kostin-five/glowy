@@ -58,7 +58,7 @@ const startRouteOptions: Array<{
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { value: "/dashboard", label: "Пункт управления", icon: LayoutDashboard },
+  { value: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { value: "/tasks", label: "Задачи", icon: CheckSquare },
   { value: "/ai", label: "Чат", icon: MessageCircle },
 ];

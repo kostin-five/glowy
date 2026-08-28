@@ -23,10 +23,10 @@
 
 **Independent Test**: task sections render metadata/subtask counts and expose no mutation control.
 
-- [ ] T008 [P] [US1] Add read-only card accessibility and no-mutation tests in `src/components/tasks/ReadOnlyTaskCard.test.tsx`
-- [ ] T009 [US1] Create visually aligned read-only task card in `src/components/tasks/ReadOnlyTaskCard.tsx`
-- [ ] T010 [US1] Replace dashboard mini rows and remove excessive height/gaps in `src/pages/DashboardPage.tsx`
-- [ ] T011 [US1] Rename dashboard navigation text to «Главная» in `src/components/layout/Sidebar.tsx` and `src/pages/SettingsPage.tsx`
+- [X] T008 [P] [US1] Add read-only card accessibility and no-mutation tests in `src/components/tasks/ReadOnlyTaskCard.test.tsx`
+- [X] T009 [US1] Create visually aligned read-only task card in `src/components/tasks/ReadOnlyTaskCard.tsx`
+- [X] T010 [US1] Replace dashboard mini rows and remove excessive height/gaps in `src/pages/DashboardPage.tsx`
+- [X] T011 [US1] Rename dashboard navigation text to «Главная» in `src/components/layout/Sidebar.tsx` and `src/pages/SettingsPage.tsx`
 - [ ] T012 [US1] Add Dashboard render/mobile regression in `src/pages/DashboardPage.test.tsx` and `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 4: User Story 2 - Надёжная мобильная оболочка (P1)
@@ -35,12 +35,12 @@
 
 **Independent Test**: mobile widths have no overlap/scroll; collapsed routes are absent; animation is active unless reduced-motion.
 
-- [ ] T013 [P] [US2] Add orb animation and reduced-motion assertions in `src/components/layout/GlowyAiOrb.test.tsx`
-- [ ] T014 [P] [US2] Add collapsed/expanded sidebar interaction tests in `src/components/layout/Sidebar.test.tsx`
-- [ ] T015 [US2] Implement Safari-safe named orb animation in `src/components/layout/GlowyAiOrb.tsx` and `src/index.css`
-- [ ] T016 [US2] Remove route navigation from collapsed sidebar and enlarge logo in `src/components/layout/Sidebar.tsx`
-- [ ] T017 [US2] Reserve desktop collapse-control space in page chat header in `src/components/mind/MindHubChat.tsx`
-- [ ] T018 [US2] Keep task heading one line and shell spacing compact in `src/pages/TaskPage.tsx`
+- [X] T013 [P] [US2] Add orb animation and reduced-motion assertions in `src/components/layout/GlowyAiOrb.test.tsx`
+- [X] T014 [P] [US2] Add collapsed/expanded sidebar interaction tests in `src/components/layout/Sidebar.test.tsx`
+- [X] T015 [US2] Implement Safari-safe named orb animation in `src/components/layout/GlowyAiOrb.tsx` and `src/index.css`
+- [X] T016 [US2] Remove route navigation from collapsed sidebar and enlarge logo in `src/components/layout/Sidebar.tsx`
+- [X] T017 [US2] Reserve desktop collapse-control space in page chat header in `src/components/mind/MindHubChat.tsx`
+- [X] T018 [US2] Keep task heading one line and shell spacing compact in `src/pages/TaskPage.tsx`
 - [ ] T019 [US2] Add 320/360/390/430 shell, chat and sidebar Playwright coverage in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 5: User Story 3 - Массовый перенос задач (P1)

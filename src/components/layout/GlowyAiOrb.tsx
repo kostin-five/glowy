@@ -52,7 +52,7 @@ const GlowyAiOrb = ({ isActive, onClick }: GlowyAiOrbProps) => {
         <circle cx="25" cy="23" r="8" fill="#fff" fillOpacity="0.34" />
         <g
           data-testid="glowy-ai-orbit"
-          className="origin-center motion-safe:animate-[spin_7s_linear_infinite] motion-reduce:animate-none"
+          className="glowy-ai-orbit"
         >
           <ellipse
             cx="32"

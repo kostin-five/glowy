@@ -556,7 +556,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   return (
     <section className={sectionClassName}>
       {variant !== "quick" && (
-        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+        <div className={`sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 ${variant === "page" ? "lg:pl-12" : ""}`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-indigo-300" />

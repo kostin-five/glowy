@@ -27,33 +27,11 @@ import {
   formatPlannedDuration,
   isStrictOverdueTask,
 } from "../../utils/behaviorMode";
-
-const getPriorityLabel = (priority: string) => {
-  if (priority.includes("P1")) return "Высокий";
-  if (priority.includes("P2")) return "Средний";
-  if (priority.includes("P3")) return "Низкий";
-
-  return priority;
-};
-
-const getPriorityRibbonStyles = (priority: string) => {
-  if (priority.includes("P1")) {
-    return "border-red-500/80 bg-white/80 text-red-600 dark:bg-slate-950/70 dark:text-red-300";
-  }
-
-  if (priority.includes("P2")) {
-    return "border-amber-400/80 bg-white/80 text-amber-700 dark:bg-slate-950/70 dark:text-amber-300";
-  }
-
-  return "border-emerald-500/80 bg-white/80 text-emerald-700 dark:bg-slate-950/70 dark:text-emerald-300";
-};
-
-const getEnergyAccentStyles = (energyLevel: string) => {
-  if (energyLevel === "high") return "bg-red-500";
-  if (energyLevel === "med") return "bg-yellow-400";
-
-  return "bg-green-500";
-};
+import {
+  getTaskEnergyAccentStyles,
+  getTaskPriorityLabel,
+  getTaskPriorityRibbonStyles,
+} from "../../utils/taskCardPresentation";
 
 const TaskItem = ({
   task: initialTask,
@@ -158,9 +136,9 @@ const TaskItem = ({
   const totalSubs = task.subtasks?.length || 0;
   const completedSubs = task.subtasks?.filter((s) => s.completed).length || 0;
   const category = (task.category || "").trim();
-  const priorityLabel = getPriorityLabel(task.priority);
-  const priorityRibbonStyles = getPriorityRibbonStyles(task.priority);
-  const energyAccentStyles = getEnergyAccentStyles(task.energyLevel);
+  const priorityLabel = getTaskPriorityLabel(task.priority);
+  const priorityRibbonStyles = getTaskPriorityRibbonStyles(task.priority);
+  const energyAccentStyles = getTaskEnergyAccentStyles(task.energyLevel);
   const plannedDuration = formatPlannedDuration(task.estimatedMinutes);
   const strictOverdue = isStrictOverdueTask(task, aiTone, formatLocalDateOnly());
   const sortableStyle: CSSProperties = {

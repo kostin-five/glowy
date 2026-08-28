@@ -79,3 +79,19 @@ textarea:-webkit-autofill:focus {
 .mind-hub-scrollbar::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #94a3b8, #6366f1);
 }
+@keyframes glowy-ai-orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.glowy-ai-orbit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: glowy-ai-orbit-spin 7s linear infinite;
+  will-change: transform;
+  -webkit-transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glowy-ai-orbit { animation: none; }
+}

@@ -12,8 +12,6 @@ describe("GlowyAiOrb", () => {
     expect(
       screen.getByRole("button", { name: "Открыть Glowy AI" })
     ).toBeInTheDocument();
-    expect(screen.getByTestId("glowy-ai-orbit")).toHaveClass(
-      "motion-reduce:animate-none"
-    );
+    expect(screen.getByTestId("glowy-ai-orbit")).toHaveClass("glowy-ai-orbit");
   });
 });

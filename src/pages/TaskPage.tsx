@@ -22,8 +22,8 @@ const TaskPage = () => {
   }, [searchParams]);
 
   return (
-    <div className="flex flex-col gap-8 px-4 md:px-8 max-w-5xl mx-auto w-full">
-      <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-0 sm:px-2 md:gap-8 md:px-8">
+      <h1 className="whitespace-nowrap font-display text-[clamp(1.65rem,9vw,1.875rem)] font-bold text-slate-950 dark:text-slate-100">
         Твои задачи
       </h1>
       <TaskControls 

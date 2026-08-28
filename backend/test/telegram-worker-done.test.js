@@ -42,7 +42,11 @@ test("done confirm delegates to the shared owned completion service once", async
     db: { telegramConnection: { findUnique: async () => linkedConnection } },
     completeTask: async (args) => {
       completionArgs = args;
-      return { state: "COMPLETED", xpReward: 20 };
+      return {
+        state: "COMPLETED",
+        xpReward: 20,
+        xpOutcome: { effect: "awarded", amount: 20, reason: "normal" },
+      };
     },
   });
 
@@ -51,7 +55,29 @@ test("done confirm delegates to the shared owned completion service once", async
   assert.equal(completionArgs.userId, 42);
   assert.equal(completionArgs.taskId, 7);
   assert.equal(completionArgs.completedOn, "2026-08-26");
-  assert.match(recorder.calls.at(-1)[1].text, /\+20 XP/);
+  assert.match(recorder.calls.at(-1)[1].text, /Начислено \+20 XP/);
+});
+
+test("done reports withheld and deducted XP without exposing another task", async () => {
+  for (const [effect, amount, expected] of [
+    ["withheld", 0, /XP не начислены/],
+    ["deducted", 20, /Списано 20 XP/],
+  ]) {
+    const recorder = createApiRecorder();
+    const worker = createWorkerFixture({
+      api: recorder.api,
+      db: { telegramConnection: { findUnique: async () => linkedConnection } },
+      completeTask: async () => ({
+        state: "COMPLETED",
+        xpReward: effect === "deducted" ? -amount : 0,
+        xpOutcome: { effect, amount, reason: "overdue_blocker" },
+      }),
+    });
+
+    await worker.processUpdate(callbackUpdate("tg:done-confirm:7"), "11");
+    assert.match(recorder.calls.at(-1)[1].text, expected);
+    assert.doesNotMatch(recorder.calls.at(-1)[1].text, /название|отч[её]т/i);
+  }
 });
 
 test("done cancel and foreign task do not complete anything", async () => {

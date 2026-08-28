@@ -87,6 +87,19 @@ export const schemaUserProgress = z.object({
   level: z.number(),
 });
 
+export const schemaTaskCompletionOutcome = z.object({
+  effect: z.enum(["awarded", "withheld", "deducted", "unchanged"]),
+  amount: z.number().int().nonnegative(),
+  reason: z.enum(["normal", "overdue_blocker", "already_processed"]),
+});
+
+export const schemaTaskUpdateResponse = z.object({
+  task: schemaTask,
+  xpReward: z.number().int(),
+  xpOutcome: schemaTaskCompletionOutcome.nullable().optional(),
+  userProgress: schemaUserProgress.nullable(),
+});
+
 export const schemaAvatarId = z.enum(avatarIds);
 export const schemaAiTone = z.enum(aiTones);
 export const schemaUserPreferences = z.object({
@@ -233,6 +246,8 @@ export type Auth = z.infer<typeof schemaAuthData>;
 export type SubTask = z.infer<typeof schemaSubTask>;
 export type SubTaskDraft = z.infer<typeof schemaSubTaskDraft>;
 export type UserProgress = z.infer<typeof schemaUserProgress>;
+export type TaskCompletionOutcome = z.infer<typeof schemaTaskCompletionOutcome>;
+export type TaskUpdateResponse = z.infer<typeof schemaTaskUpdateResponse>;
 export type AvatarId = z.infer<typeof schemaAvatarId>;
 export type AiTone = z.infer<typeof schemaAiTone>;
 export type UserPreferences = z.infer<typeof schemaUserPreferences>;

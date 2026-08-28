@@ -29,9 +29,9 @@
 
 **⚠️ CRITICAL**: Complete before US2 or US4.
 
-- [ ] T004 [P] Extend task completion response types with signed XP outcome in `src/api/TaskApi.ts` and `src/types/index.ts`
+- [X] T004 [P] Extend task completion response types with signed XP outcome in `src/api/TaskApi.ts` and `src/types/index.ts`
 - [ ] T005 [P] Extend progress overview types with bounded calendar fields in `src/types/index.ts`
-- [ ] T006 Add behavior-aware completion result state and safe reason mapping to `src/store/useTaskStore.ts`
+- [X] T006 Add behavior-aware completion result state and safe reason mapping to `src/store/useTaskStore.ts`
 - [ ] T007 Add schema compatibility tests for XP outcome and calendar parsing in `src/types/index.test.ts`
 
 **Checkpoint**: Existing responses still parse; additive fields have validated frontend contracts.
@@ -69,18 +69,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T015 [P] [US2] Add pure calm/moderate/strict, clamp, self-overdue and replay cases in `backend/test/task-completion-service.test.js`
+- [X] T015 [P] [US2] Add pure calm/moderate/strict, clamp, self-overdue and replay cases in `backend/test/task-completion-service.test.js`
 - [ ] T016 [P] [US2] Add HTTP completion response and overdue ownership cases in `backend/test/task-behavior.test.js`
-- [ ] T017 [P] [US2] Add Telegram +XP/0 XP/-XP and replay cases in `backend/test/telegram-worker-done.test.js`
-- [ ] T018 [P] [US2] Add optimistic/offline reconciliation cases in `src/store/useTaskStore.behavior.test.ts`
+- [X] T017 [P] [US2] Add Telegram +XP/0 XP/-XP and replay cases in `backend/test/telegram-worker-done.test.js`
+- [X] T018 [P] [US2] Add optimistic/offline reconciliation cases in `src/store/useTaskStore.behavior.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Implement the signed behavior-mode XP policy and safe outcome codes in `backend/services/tasks/task-completion.service.js`
-- [ ] T020 [US2] Use the shared policy, user-scoped overdue query and resulting progress in `backend/routes/task.routes.js`
-- [ ] T021 [US2] Use the same shared policy and concise Russian outcome messages in `backend/services/telegram/telegram-worker.service.js`
-- [ ] T022 [US2] Reconcile signed/withheld completion outcomes and expose a transient explanation in `src/store/useTaskStore.ts` and `src/components/tasks/TaskList.tsx`
-- [ ] T023 [US2] Preserve one queued mutation and server-authoritative XP in `src/offline/taskOfflineSync.ts`
+- [X] T019 [US2] Implement the signed behavior-mode XP policy and safe outcome codes in `backend/services/tasks/task-completion.service.js`
+- [X] T020 [US2] Use the shared policy, user-scoped overdue query and resulting progress in `backend/routes/task.routes.js`
+- [X] T021 [US2] Use the same shared policy and concise Russian outcome messages in `backend/services/telegram/telegram-worker.service.js`
+- [X] T022 [US2] Reconcile signed/withheld completion outcomes and expose a transient explanation in `src/store/useTaskStore.ts` and `src/components/tasks/TaskList.tsx`
+- [X] T023 [US2] Preserve one queued mutation and server-authoritative XP in `src/offline/taskOfflineSync.ts`
 - [ ] T024 [US2] Add HTTP/offline/Telegram parity scenarios to `e2e/offline.spec.ts`
 
 **Checkpoint**: The same completion produces the same durable XP exactly once in every channel.

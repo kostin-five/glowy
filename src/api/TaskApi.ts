@@ -1,5 +1,6 @@
 import axios from "axios";
-import type { Task, TaskDraft, UserProgress } from "../types";
+import { schemaTaskUpdateResponse } from "../types";
+import type { Task, TaskDraft, TaskUpdateResponse } from "../types";
 import { useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
@@ -20,12 +21,6 @@ api.interceptors.request.use((config) => {
 });
 
 attachUnauthorizedInterceptor(api);
-
-export interface TaskUpdateResponse {
-  task: Task;
-  xpReward: number;
-  userProgress: UserProgress | null;
-}
 
 export const TaskApi = {
   async getTasks(): Promise<Task[]> {
@@ -48,6 +43,9 @@ export const TaskApi = {
     data: Partial<Task>
   ): Promise<TaskUpdateResponse | Task> {
     const response = await api.put(`/${id}`, data);
+    if (response.data && typeof response.data === "object" && "task" in response.data) {
+      return schemaTaskUpdateResponse.parse(response.data);
+    }
     return response.data;
   },
 

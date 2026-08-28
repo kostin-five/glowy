@@ -27,6 +27,63 @@ export const getXpReward = (energyLevel = "low", priority = "") => {
 
 export const buildUserProgress = (user) => ({ xp: user.xp, level: user.level });
 
+export const isTaskOverdueOn = (task, referenceDay) =>
+  Boolean(
+    task?.completed !== true &&
+      typeof task?.date === "string" &&
+      task.date.length > 0 &&
+      task.date < referenceDay
+  );
+
+export const buildCompletionXpOutcome = ({
+  aiTone = "calm",
+  reward,
+  currentXp,
+  hasOverdueBlocker = false,
+  targetIsOverdue = false,
+}) => {
+  if (!hasOverdueBlocker || targetIsOverdue || aiTone === "calm") {
+    return {
+      effect: "awarded",
+      amount: reward,
+      reason: "normal",
+      xpDelta: reward,
+    };
+  }
+
+  if (aiTone === "strict") {
+    const amount = Math.min(reward, Math.max(0, currentXp));
+    return {
+      effect: "deducted",
+      amount,
+      reason: "overdue_blocker",
+      xpDelta: -amount,
+    };
+  }
+
+  return {
+    effect: "withheld",
+    amount: 0,
+    reason: "overdue_blocker",
+    xpDelta: 0,
+  };
+};
+
+export const hasActiveOverdueTask = async ({
+  db,
+  userId,
+  excludeTaskId,
+  referenceDay,
+}) => Boolean(await db.task.findFirst({
+  where: {
+    userId,
+    id: { not: excludeTaskId },
+    completed: false,
+    date: { not: "", lt: referenceDay },
+  },
+  select: { id: true },
+}));
+
 export const completeTaskForUser = async ({
   db = prisma,
   userId,
@@ -48,14 +105,44 @@ export const completeTaskForUser = async ({
   if (claimed.count !== 1) return { state: "ALREADY_COMPLETED" };
 
   let xpReward = 0;
+  let xpOutcome = null;
+  let userProgress = null;
   if (!task.xpAwarded) {
-    xpReward = getXpReward(task.energyLevel, task.priority);
-    const user = await tx.user.findUnique({ where: { id: userId }, select: { xp: true } });
-    const nextXp = (user?.xp ?? 0) + xpReward;
-    await tx.user.update({
+    const reward = getXpReward(task.energyLevel, task.priority);
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, aiTone: true },
+    });
+    const targetIsOverdue = isTaskOverdueOn(task, completedOn);
+    const hasOverdueBlocker = targetIsOverdue
+      ? false
+      : await hasActiveOverdueTask({
+          db: tx,
+          userId,
+          excludeTaskId: taskId,
+          referenceDay: completedOn,
+        });
+    xpOutcome = buildCompletionXpOutcome({
+      aiTone: user?.aiTone,
+      reward,
+      currentXp: user?.xp ?? 0,
+      hasOverdueBlocker,
+      targetIsOverdue,
+    });
+    xpReward = xpOutcome.xpDelta;
+    const nextXp = Math.max(0, (user?.xp ?? 0) + xpReward);
+    const updatedUser = await tx.user.update({
       where: { id: userId },
       data: { xp: nextXp, level: getLevelByXp(nextXp) },
+      select: { xp: true, level: true },
     });
+    userProgress = buildUserProgress(updatedUser);
   }
-  return { state: "COMPLETED", task: { ...task, completed: true, completedOn }, xpReward };
+  return {
+    state: "COMPLETED",
+    task: { ...task, completed: true, completedOn, xpAwarded: true },
+    xpReward,
+    xpOutcome,
+    userProgress,
+  };
 });

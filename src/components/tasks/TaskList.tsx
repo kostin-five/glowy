@@ -9,6 +9,8 @@ import {
   useUpdateTask,
   useSortField,
   useSortDirection,
+  useCompletionNotice,
+  useSetCompletionNotice,
 } from "../../store/useTaskStore";
 import type { SubTask, Task } from "../../types";
 import { groupTasks, formatTaskDateForUI } from "../../utils/taskDateGroups";
@@ -221,6 +223,14 @@ const TaskList = ({
   const [pendingDeletion, setPendingDeletion] =
     useState<PendingTaskDeletion | null>(null);
   const [actualTimeTask, setActualTimeTask] = useState<Task | null>(null);
+  const completionNotice = useCompletionNotice();
+  const setCompletionNotice = useSetCompletionNotice();
+
+  useEffect(() => {
+    if (!completionNotice) return;
+    const timer = window.setTimeout(() => setCompletionNotice(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [completionNotice, setCompletionNotice]);
 
   const saveActualTime = async (minutes: number) => {
     if (!actualTimeTask) return;
@@ -453,6 +463,14 @@ const TaskList = ({
 
   return (
     <>
+      {completionNotice && (
+        <div
+          role="status"
+          className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200"
+        >
+          {completionNotice}
+        </div>
+      )}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

@@ -1,7 +1,8 @@
 import axios from "axios";
 import { SubTaskApi } from "../api/SubTaskApi";
 import { TaskApi } from "../api/TaskApi";
-import type { Task } from "../types";
+import { UserApi } from "../api/UserApi";
+import type { Task, TaskCompletionOutcome, UserProgress } from "../types";
 import {
   deleteTaskOperation,
   listTaskOperations,
@@ -20,6 +21,8 @@ import type {
 type TaskAdapter = {
   getTasks: () => Task[];
   setTasks: (tasks: Task[]) => void;
+  setProgress?: (progress: UserProgress) => void;
+  setCompletionOutcome?: (outcome: TaskCompletionOutcome | null) => void;
 };
 
 let activeOwnerKey: string | null = null;
@@ -85,6 +88,8 @@ const processOperation = async (
 ) => {
   const taskIds = new Map<number, number>();
   const subTaskIds = new Map<number, number>();
+  let progress: UserProgress | null = null;
+  let completionOutcome: TaskCompletionOutcome | null = null;
 
   switch (operation.kind) {
     case "task.create": {
@@ -99,9 +104,14 @@ const processOperation = async (
       });
       break;
     }
-    case "task.update":
-      await TaskApi.putTask(operation.entityId, operation.payload);
+    case "task.update": {
+      const result = await TaskApi.putTask(operation.entityId, operation.payload);
+      if ("task" in result) {
+        progress = result.userProgress;
+        completionOutcome = result.xpOutcome ?? null;
+      }
       break;
+    }
     case "task.delete":
       await TaskApi.deleteTask(operation.entityId);
       break;
@@ -127,7 +137,7 @@ const processOperation = async (
       break;
   }
 
-  return { taskIds, subTaskIds };
+  return { taskIds, subTaskIds, progress, completionOutcome };
 };
 
 const isRetryableError = (error: unknown) => {
@@ -153,10 +163,12 @@ const runSync = async () => {
   try {
     while (operations.length && activeOwnerKey === ownerKey) {
       const operation = operations[0];
-      const { taskIds, subTaskIds } = await processOperation(
+      const { taskIds, subTaskIds, progress, completionOutcome } = await processOperation(
         operation,
         adapter.getTasks()
       );
+      if (progress) adapter.setProgress?.(progress);
+      if (completionOutcome) adapter.setCompletionOutcome?.(completionOutcome);
       await deleteTaskOperation(operation.id);
       operations = replaceIds(operations.slice(1), taskIds, subTaskIds);
       await replaceTaskOperations(ownerKey, operations);
@@ -201,6 +213,7 @@ const runSync = async () => {
     );
     if (!snapshotUpdated || revisionAtStart !== mutationRevision) return;
     adapter.setTasks(serverTasks);
+    adapter.setProgress?.(await UserApi.getProgress());
     emit({ phase: "idle", pendingCount: 0, error: null });
     channel?.postMessage({ type: "snapshot", ownerKey });
   } catch (error) {

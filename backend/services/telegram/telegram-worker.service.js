@@ -653,8 +653,15 @@ export const createTelegramWorker = ({
         taskId,
         completedOn: getDateOnlyInTimeZone(now(), timeZone),
       });
+      const outcomeText = result.xpOutcome?.effect === "withheld"
+        ? " XP не начислены: сначала закрой просроченную задачу."
+        : result.xpOutcome?.effect === "deducted"
+          ? ` Списано ${result.xpOutcome.amount} XP: осталась просроченная задача.`
+          : result.xpReward > 0
+            ? ` Начислено +${result.xpReward} XP.`
+            : "";
       const message = result.state === "COMPLETED"
-        ? `Готово! Задача выполнена${result.xpReward ? `, +${result.xpReward} XP` : ""}.`
+        ? `Готово! Задача выполнена.${outcomeText}`
         : result.state === "ALREADY_COMPLETED"
           ? "Эта задача уже отмечена выполненной. Повторно XP не начислены."
           : "Задача больше недоступна.";

@@ -9,6 +9,7 @@ import type {
   Task,
   TaskDraft,
   UserProgress,
+  TaskCompletionOutcome,
 } from "../types";
 import type { StateCreator } from "zustand";
 import { TaskApi } from "../api/TaskApi";
@@ -39,8 +40,10 @@ interface TaskStore {
   userLevel: number;
   currentXP: number;
   isLoading: boolean;
+  completionNotice: string | null;
 
   setUserProgress: (progress: UserProgress) => void;
+  setCompletionNotice: (notice: string | null) => void;
   setTasks: (updatedTasks: Task[]) => void;
   removeTaskLocally: (id: number) => { task: Task; index: number } | undefined;
   restoreTaskLocally: (task: Task, index: number) => void;
@@ -105,13 +108,67 @@ const normalizeTask = (task: Task): Task => ({
   subtasks: sortSubTasks(task.subtasks ?? []),
 });
 
-const applyOptimisticXpReward = (currentXP: number, task: Task) => {
-  const nextXP = currentXP + getXpReward(task.energyLevel, task.priority);
+export const getOptimisticCompletionOutcome = ({
+  currentXP,
+  task,
+  tasks,
+  completedOn,
+  aiTone,
+}: {
+  currentXP: number;
+  task: Task;
+  tasks: Task[];
+  completedOn: string;
+  aiTone: "calm" | "moderate" | "strict";
+}) => {
+  const reward = getXpReward(task.energyLevel, task.priority);
+  const targetIsOverdue = Boolean(task.date && task.date < completedOn);
+  const hasOverdueBlocker = !targetIsOverdue && tasks.some(
+    (candidate) =>
+      candidate.id !== task.id &&
+      !candidate.completed &&
+      Boolean(candidate.date) &&
+      candidate.date < completedOn
+  );
+  const delta = !hasOverdueBlocker || aiTone === "calm"
+    ? reward
+    : aiTone === "strict"
+      ? -Math.min(reward, currentXP)
+      : 0;
+  const notice = !hasOverdueBlocker || aiTone === "calm"
+    ? `Начислено +${reward} XP.`
+    : aiTone === "strict"
+      ? `Списано ${Math.abs(delta)} XP: сначала закрой просроченную задачу.`
+      : "XP не начислены: сначала закрой просроченную задачу.";
+
+  return { delta, notice };
+};
+
+const applyOptimisticXpOutcome = (
+  currentXP: number,
+  outcome: ReturnType<typeof getOptimisticCompletionOutcome>
+) => {
+  const nextXP = Math.max(0, currentXP + outcome.delta);
 
   return {
     currentXP: nextXP,
     userLevel: getLevelByXp(nextXP),
+    completionNotice: outcome.notice,
   };
+};
+
+export const getCompletionOutcomeNotice = (
+  outcome: TaskCompletionOutcome | null | undefined
+) => {
+  if (!outcome) return null;
+  if (outcome.effect === "withheld") {
+    return "XP не начислены: сначала закрой просроченную задачу.";
+  }
+  if (outcome.effect === "deducted") {
+    return `Списано ${outcome.amount} XP: сначала закрой просроченную задачу.`;
+  }
+  if (outcome.effect === "awarded") return `Начислено +${outcome.amount} XP.`;
+  return null;
 };
 
 const isGuestSession = () => useAuthStore.getState().isGuest;
@@ -165,12 +222,14 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
   userLevel: 1,
   currentXP: 0,
   isLoading: false,
+  completionNotice: null,
 
   setUserProgress: (progress: UserProgress) =>
     set(() => ({
       currentXP: progress.xp,
       userLevel: progress.level,
     })),
+  setCompletionNotice: (completionNotice) => set({ completionNotice }),
 
   setTasks: (updatedTasks: Task[]) =>
     set(() => ({
@@ -268,17 +327,27 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
       const nextCompleted = !taskToToggle.completed;
       const shouldAwardXp = nextCompleted && !taskToToggle.xpAwarded;
+      const completedOn = nextCompleted ? formatLocalDateOnly() : null;
+      const outcome = shouldAwardXp && completedOn
+        ? getOptimisticCompletionOutcome({
+            currentXP: get().currentXP,
+            task: taskToToggle,
+            tasks: get().tasks,
+            completedOn,
+            aiTone: "calm",
+          })
+        : null;
       const updatedTask = normalizeTask({
         ...taskToToggle,
         completed: nextCompleted,
-        completedOn: nextCompleted ? formatLocalDateOnly() : null,
+        completedOn,
         xpAwarded: taskToToggle.xpAwarded || shouldAwardXp,
       });
 
       set((state) => ({
         tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
         ...(shouldAwardXp
-          ? applyOptimisticXpReward(state.currentXP, taskToToggle)
+          ? applyOptimisticXpOutcome(state.currentXP, outcome!)
           : {}),
       }));
 
@@ -290,16 +359,26 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
     const nextCompleted = !taskToToggle.completed;
     const shouldAwardXp = nextCompleted && !taskToToggle.xpAwarded;
+    const completedOn = nextCompleted ? formatLocalDateOnly() : null;
+    const outcome = shouldAwardXp && completedOn
+      ? getOptimisticCompletionOutcome({
+          currentXP: get().currentXP,
+          task: taskToToggle,
+          tasks: get().tasks,
+          completedOn,
+          aiTone: useAuthStore.getState().aiTone,
+        })
+      : null;
     const updatedTask = normalizeTask({
       ...taskToToggle,
       completed: nextCompleted,
-      completedOn: nextCompleted ? formatLocalDateOnly() : null,
+      completedOn,
       xpAwarded: taskToToggle.xpAwarded || shouldAwardXp,
     });
     set((state) => ({
       tasks: state.tasks.map((task) => (task.id === id ? updatedTask : task)),
       ...(shouldAwardXp
-        ? applyOptimisticXpReward(state.currentXP, taskToToggle)
+        ? applyOptimisticXpOutcome(state.currentXP, outcome!)
         : {}),
     }));
     await persistAndQueue(get().tasks, {
@@ -650,6 +729,10 @@ export const useSetSearchQuery = () =>
 export const useUserLevel = () => useTaskStore((state) => state.userLevel);
 export const useCurrentXP = () => useTaskStore((state) => state.currentXP);
 export const useIsLoading = () => useTaskStore((state) => state.isLoading);
+export const useCompletionNotice = () =>
+  useTaskStore((state) => state.completionNotice);
+export const useSetCompletionNotice = () =>
+  useTaskStore((state) => state.setCompletionNotice);
 export const useSetUserProgress = () =>
   useTaskStore((state) => state.setUserProgress);
 export const useSetTasks = () => useTaskStore((state) => state.setTasks);

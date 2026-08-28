@@ -1,6 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { completeTaskForUser } from "../services/tasks/task-completion.service.js";
+import {
+  buildCompletionXpOutcome,
+  completeTaskForUser,
+} from "../services/tasks/task-completion.service.js";
+
+test("behavior XP policy awards, withholds, deducts and clamps", () => {
+  const base = { reward: 24, currentXp: 90, hasOverdueBlocker: true, targetIsOverdue: false };
+
+  assert.deepEqual(buildCompletionXpOutcome({ ...base, aiTone: "calm" }), {
+    effect: "awarded", amount: 24, reason: "normal", xpDelta: 24,
+  });
+  assert.deepEqual(buildCompletionXpOutcome({ ...base, aiTone: "moderate" }), {
+    effect: "withheld", amount: 0, reason: "overdue_blocker", xpDelta: 0,
+  });
+  assert.deepEqual(buildCompletionXpOutcome({ ...base, aiTone: "strict" }), {
+    effect: "deducted", amount: 24, reason: "overdue_blocker", xpDelta: -24,
+  });
+  assert.equal(buildCompletionXpOutcome({ ...base, aiTone: "strict", currentXp: 5 }).xpDelta, -5);
+  assert.equal(buildCompletionXpOutcome({ ...base, aiTone: "strict", targetIsOverdue: true }).xpDelta, 24);
+});
 
 test("completion awards XP once and repeated completion is idempotent", async () => {
   const task = {
@@ -8,6 +27,7 @@ test("completion awards XP once and repeated completion is idempotent", async ()
     userId: 42,
     completed: false,
     completedOn: null,
+    date: "2026-08-27",
     xpAwarded: false,
     energyLevel: "med",
     priority: "⚡️ P2",
@@ -16,6 +36,7 @@ test("completion awards XP once and repeated completion is idempotent", async ()
   const tx = {
     task: {
       findUnique: async () => ({ ...task }),
+      findFirst: async () => null,
       updateMany: async ({ where, data }) => {
         if (task.completed || where.userId !== task.userId) return { count: 0 };
         Object.assign(task, data);
@@ -23,7 +44,7 @@ test("completion awards XP once and repeated completion is idempotent", async ()
       },
     },
     user: {
-      findUnique: async () => ({ xp: user.xp }),
+      findUnique: async () => ({ xp: user.xp, aiTone: "calm" }),
       update: async ({ data }) => { Object.assign(user, data); return user; },
     },
   };
@@ -35,6 +56,8 @@ test("completion awards XP once and repeated completion is idempotent", async ()
 
   assert.equal(first.state, "COMPLETED");
   assert.equal(first.xpReward, 24);
+  assert.equal(first.xpOutcome.effect, "awarded");
+  assert.deepEqual(first.userProgress, { xp: 114, level: 3 });
   assert.equal(second.state, "ALREADY_COMPLETED");
   assert.equal(user.xp, xpAfterFirst);
 });

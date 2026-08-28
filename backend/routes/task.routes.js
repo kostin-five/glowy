@@ -6,8 +6,11 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 import { createTaskForUser } from "../services/tasks/task-write.service.js";
 import {
   buildUserProgress,
+  buildCompletionXpOutcome,
   getLevelByXp,
   getXpReward,
+  hasActiveOverdueTask,
+  isTaskOverdueOn,
 } from "../services/tasks/task-completion.service.js";
 import {
   addDaysToDateOnly,
@@ -167,20 +170,42 @@ router.put(
 
     const result = await prisma.$transaction(async (tx) => {
       let xpReward = 0;
+      let xpOutcome = null;
       let updatedUser = null;
       const shouldAwardXp =
         completed === true && !uniqueTask.completed && !uniqueTask.xpAwarded;
 
       if (shouldAwardXp) {
-        xpReward = getXpReward(
+        const reward = getXpReward(
           energyLevel ?? uniqueTask.energyLevel,
           priority ?? uniqueTask.priority
         );
         const user = await tx.user.findUnique({
           where: { id: req.user.id },
-          select: { xp: true },
+          select: { xp: true, aiTone: true },
         });
-        const nextXp = (user?.xp ?? 0) + xpReward;
+        const targetTask = {
+          ...uniqueTask,
+          date: date ?? uniqueTask.date,
+        };
+        const targetIsOverdue = isTaskOverdueOn(targetTask, nextCompletedOn);
+        const hasOverdueBlocker = targetIsOverdue
+          ? false
+          : await hasActiveOverdueTask({
+              db: tx,
+              userId: req.user.id,
+              excludeTaskId: taskId,
+              referenceDay: nextCompletedOn,
+            });
+        xpOutcome = buildCompletionXpOutcome({
+          aiTone: user?.aiTone,
+          reward,
+          currentXp: user?.xp ?? 0,
+          hasOverdueBlocker,
+          targetIsOverdue,
+        });
+        xpReward = xpOutcome.xpDelta;
+        const nextXp = Math.max(0, (user?.xp ?? 0) + xpReward);
 
         updatedUser = await tx.user.update({
           where: { id: req.user.id },
@@ -237,6 +262,7 @@ router.put(
       return {
         task,
         xpReward,
+        xpOutcome,
         userProgress: updatedUser ? buildUserProgress(updatedUser) : null,
       };
     });

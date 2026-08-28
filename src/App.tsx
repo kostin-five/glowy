@@ -19,6 +19,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  getCompletionOutcomeNotice,
   useFetchProgress,
   useTaskStore,
 } from "./store/useTaskStore";
@@ -41,6 +42,7 @@ import {
   syncOfflineTasks,
 } from "./offline/taskOfflineSync";
 import { TelegramMiniAppProvider } from "./telegram/TelegramMiniAppProvider";
+import type { TaskCompletionOutcome, UserProgress } from "./types";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const NotesPage = lazy(() => import("./pages/NotesPage"));
@@ -217,6 +219,12 @@ function App() {
       getTasks: () => useTaskStore.getState().tasks,
       setTasks: (tasks: ReturnType<typeof useTaskStore.getState>["tasks"]) =>
         useTaskStore.getState().setTasks(tasks),
+      setProgress: (progress: UserProgress) =>
+        useTaskStore.getState().setUserProgress(progress),
+      setCompletionOutcome: (outcome: TaskCompletionOutcome | null) =>
+        useTaskStore.getState().setCompletionNotice(
+        getCompletionOutcomeNotice(outcome)
+      ),
     };
 
     if (isGuest) {

@@ -111,7 +111,7 @@ const ProfilePreferencesPanel = ({
 
       <fieldset disabled={isGuest || isSaving || !preferences.canUseFocusFeatures}>
         <legend className="text-sm font-bold text-slate-800 dark:text-slate-200">
-          Как Glowy общается со мной
+          Как Glowy помогает мне действовать
         </legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           {toneCatalog.map((tone) => {
@@ -129,8 +129,13 @@ const ProfilePreferencesPanel = ({
                 }`}
                 aria-pressed={selected}
               >
-                <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">
+                <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
                   {tone.label}
+                  {tone.badge && (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200">
+                      {tone.badge}
+                    </span>
+                  )}
                 </span>
                 <span className="mt-1 block text-xs leading-5 text-slate-600 dark:text-slate-400">
                   {tone.description}
@@ -146,8 +151,8 @@ const ProfilePreferencesPanel = ({
           <div className="flex min-w-0 items-start gap-3">
             <Lock className="mt-0.5 shrink-0 text-indigo-400" size={19} />
             <div>
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Персональный тон Glowy</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Спокойный тон остаётся базовым. Умеренный и требовательный доступны в Focus и Founder.</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Режим поведения Glowy</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Спокойный режим остаётся базовым. Умеренный и жёсткий доступны в Focus и Founder.</p>
             </div>
           </div>
           <Link to="/pricing" className="inline-flex w-full shrink-0 justify-center rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-500 sm:w-auto">Тарифы</Link>

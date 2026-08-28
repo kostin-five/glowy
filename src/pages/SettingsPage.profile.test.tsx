@@ -48,7 +48,7 @@ describe("profile preferences", () => {
     });
   });
 
-  it("offers three tones and persists the strict respectful mode", async () => {
+  it("explains three behavior modes, marks the default and persists strict", async () => {
     vi.spyOn(UserApi, "getPreferences").mockResolvedValue({
       ...basePreferences,
       canUseFocusFeatures: true,
@@ -64,8 +64,11 @@ describe("profile preferences", () => {
         <ProfilePreferencesPanel isGuest={false} onSaved={() => undefined} />
       </MemoryRouter>
     );
-    await screen.findByRole("button", { name: /Строго/ });
-    fireEvent.click(screen.getByRole("button", { name: /Строго/ }));
+    await screen.findByRole("button", { name: /Жёсткий/ });
+    expect(screen.getByText("По умолчанию")).toBeVisible();
+    expect(screen.getByText(/не начисляет XP за другую задачу/i)).toBeVisible();
+    expect(screen.getByText(/вычитает XP/i)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /Жёсткий/ }));
 
     await waitFor(() => {
       expect(update).toHaveBeenCalledWith({ aiTone: "strict" });

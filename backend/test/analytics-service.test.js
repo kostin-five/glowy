@@ -108,3 +108,19 @@ test("analytics insight prompt contains aggregates but ignores extra user text",
   assert.match(prompt, /Что попробовать дальше/);
   assert.doesNotMatch(prompt, /Секретное название задачи/);
 });
+
+test("analytics insight prompt makes each behavior mode distinct", () => {
+  const snapshot = {
+    period: { kind: "week", from: "2026-08-10", to: "2026-08-16" },
+    completedTasks: 0,
+    dailyCompleted: [],
+    energyDistribution: { low: 0, med: 0, high: 0 },
+    taskStreak: 0,
+    time: { estimatedMinutes: 0, actualMinutes: 0, tasksWithEstimate: 0, tasksWithActual: 0 },
+  };
+
+  assert.match(buildAnalyticsInsightPrompt(snapshot, "calm"), /поддерживающе/i);
+  assert.match(buildAnalyticsInsightPrompt(snapshot, "moderate"), /без утешений/i);
+  assert.match(buildAnalyticsInsightPrompt(snapshot, "strict"), /невыполн/i);
+  assert.match(buildAnalyticsInsightPrompt(snapshot, "strict"), /не стыди/i);
+});

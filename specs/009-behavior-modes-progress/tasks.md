@@ -46,16 +46,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add calm/moderate/strict instruction and prohibited-language assertions in `backend/test/mind-hub-service.test.js`
-- [ ] T009 [P] [US1] Add tone-specific analytics prompt assertions in `backend/test/analytics-service.test.js`
-- [ ] T010 [P] [US1] Add settings labels, default marker and consequence copy tests in `src/components/profile/ProfilePreferencesPanel.test.tsx`
+- [X] T008 [P] [US1] Add calm/moderate/strict instruction and prohibited-language assertions in `backend/test/ai-tone.test.js`
+- [X] T009 [P] [US1] Add tone-specific analytics prompt assertions in `backend/test/analytics-service.test.js`
+- [X] T010 [P] [US1] Add settings labels, default marker and consequence copy tests in `src/pages/SettingsPage.profile.test.tsx`
 - [ ] T011 [P] [US1] Add an automated profile-save scenario that observes the confirmed mode within 3 seconds in `e2e/personal-progress.smoke.spec.ts`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Strengthen behavior instructions and remove unconditional warm/friend wording from tone-dependent prompts in `backend/services/ai/mind-hub.service.js`
-- [ ] T013 [P] [US1] Align analytics insight behavior instructions in `backend/services/analytics/analytics.service.js`
-- [ ] T014 [US1] Rename user-facing tone selection to behavior guidance, mark calm as default and explain mode consequences in `src/constants/profile.ts` and `src/components/profile/ProfilePreferencesPanel.tsx`
+- [X] T012 [US1] Strengthen behavior instructions and remove unconditional warm/friend wording from tone-dependent prompts in `backend/services/ai/mind-hub.service.js`
+- [X] T013 [P] [US1] Align analytics insight behavior instructions in `backend/services/analytics/analytics.service.js`
+- [X] T014 [US1] Rename user-facing tone selection to behavior guidance, mark calm as default and explain mode consequences in `src/constants/profile.ts` and `src/components/profile/ProfilePreferencesPanel.tsx`
 
 **Checkpoint**: Each mode is independently distinguishable and reversible; unsafe strict copy is prohibited by tests.
 

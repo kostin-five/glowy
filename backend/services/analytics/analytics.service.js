@@ -153,10 +153,10 @@ export const loadAnalyticsSnapshot = async ({ db, userId, kind, anchor }) => {
 export const buildAnalyticsInsightPrompt = (snapshot, aiTone = "calm") => {
   const tone =
     aiTone === "strict"
-      ? "прямо и требовательно, но без стыда, угроз и оценки личности"
+      ? "жёстко и требовательно: прямо назови невыполненное действие и потребуй конкретное решение, но не стыди, не угрожай и не оценивай личность"
       : aiTone === "moderate"
-        ? "спокойно и прямо, с одним ясным следующим шагом"
-        : "мягко и поддерживающе, без давления";
+        ? "нейтрально и прямо, без утешений и критики, с одним ясным следующим шагом"
+        : "мягко и поддерживающе, признавая усилия и предлагая небольшой шаг без давления";
 
   const dailyCompleted = snapshot.dailyCompleted
     .map((day) => `${day.date}: ${day.completedTasks}`)

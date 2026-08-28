@@ -9,6 +9,7 @@ import {
 } from "../../store/useTaskStore";
 import {
   CheckSquare,
+  Clock3,
   ListChecks,
   Plus,
   Square,
@@ -20,6 +21,12 @@ import { Link } from "react-router-dom";
 import { useSortable } from "@dnd-kit/sortable";
 import { formatTaskDateForUI } from "../../utils/taskDateGroups";
 import { CSS } from "@dnd-kit/utilities";
+import { useAiTone } from "../../store/useAuthStore";
+import { formatLocalDateOnly } from "../../utils/localDate";
+import {
+  formatPlannedDuration,
+  isStrictOverdueTask,
+} from "../../utils/behaviorMode";
 
 const getPriorityLabel = (priority: string) => {
   if (priority.includes("P1")) return "Высокий";
@@ -69,6 +76,7 @@ const TaskItem = ({
     state.tasks.find((t) => t.id === initialTask.id)
   );
   const task = storeTask ?? initialTask;
+  const aiTone = useAiTone();
   const {
     attributes,
     listeners,
@@ -153,6 +161,8 @@ const TaskItem = ({
   const priorityLabel = getPriorityLabel(task.priority);
   const priorityRibbonStyles = getPriorityRibbonStyles(task.priority);
   const energyAccentStyles = getEnergyAccentStyles(task.energyLevel);
+  const plannedDuration = formatPlannedDuration(task.estimatedMinutes);
+  const strictOverdue = isStrictOverdueTask(task, aiTone, formatLocalDateOnly());
   const sortableStyle: CSSProperties = {
     transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition,
@@ -228,9 +238,17 @@ const TaskItem = ({
               >
                 {task.title}
               </span>
-              <span className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-                {formatTaskDateForUI(task.date)}
-              </span>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                <span className={strictOverdue ? "font-bold text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-400"}>
+                  {formatTaskDateForUI(task.date)}
+                </span>
+                {plannedDuration && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-cyan-300/50 bg-cyan-400/10 px-2 py-0.5 font-semibold text-cyan-700 dark:border-cyan-400/25 dark:text-cyan-200">
+                    <Clock3 size={12} aria-hidden="true" />
+                    <span aria-label={`Плановая длительность: ${plannedDuration}`}>{plannedDuration}</span>
+                  </span>
+                )}
+              </div>
               {totalSubs > 0 && (
                 <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-md border border-indigo-200 bg-white/70 px-2 py-1 text-xs font-medium text-indigo-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-indigo-300">
                   <ListChecks size={13} />

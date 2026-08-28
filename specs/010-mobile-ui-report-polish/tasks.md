@@ -6,16 +6,16 @@
 
 ## Phase 1: Setup and Guards
 
-- [ ] T001 Record current git status and automated baseline in `specs/010-mobile-ui-report-polish/quickstart.md`
-- [ ] T002 Verify no diff in `src/pages/LandingPage.tsx` and `backend/prisma/schema.prisma`
-- [ ] T003 [P] Add exact current unit-economics/admin scope notes to `specs/010-mobile-ui-report-polish/quickstart.md`
+- [X] T001 Record current git status and automated baseline in `specs/010-mobile-ui-report-polish/quickstart.md`
+- [X] T002 Verify no diff in `src/pages/LandingPage.tsx` and `backend/prisma/schema.prisma`
+- [X] T003 [P] Add exact current unit-economics/admin scope notes to `specs/010-mobile-ui-report-polish/quickstart.md`
 
 ## Phase 2: Foundational Presentation and Storage
 
-- [ ] T004 [P] Extract shared task presentation helpers in `src/utils/taskCardPresentation.ts`
-- [ ] T005 [P] Add owner/period-scoped report read/write/delete helpers in `src/utils/analyticsReportStorage.ts`
-- [ ] T006 [P] Add safe headings/lists/bold parser component in `src/components/analytics/SafeReportMarkdown.tsx`
-- [ ] T007 [P] Add helper tests in `src/utils/taskCardPresentation.test.ts`, `src/utils/analyticsReportStorage.test.ts` and `src/components/analytics/SafeReportMarkdown.test.tsx`
+- [X] T004 [P] Extract shared task presentation helpers in `src/utils/taskCardPresentation.ts`
+- [X] T005 [P] Add owner/period-scoped report read/write/delete helpers in `src/utils/analyticsReportStorage.ts`
+- [X] T006 [P] Add safe headings/lists/bold parser component in `src/components/analytics/SafeReportMarkdown.tsx`
+- [X] T007 [P] Add helper tests in `src/utils/taskCardPresentation.test.ts`, `src/utils/analyticsReportStorage.test.ts` and `src/components/analytics/SafeReportMarkdown.test.tsx`
 
 ## Phase 3: User Story 1 - Компактная Главная (P1)
 
@@ -114,4 +114,3 @@
 4. Commit analytics report persistence/formatting.
 5. Commit Forever/docs.
 6. Commit regression coverage and verification records.
-

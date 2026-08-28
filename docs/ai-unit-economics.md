@@ -47,6 +47,63 @@ ORDER BY usage_date DESC, plan, provider, model;
 показывайте долю `priced_requests / requests`. Смешивание известных и
 неизвестных ставок занизит результат.
 
+## Себестоимость запроса и пользователя-дня
+
+`estimated_cost_microusd / priced_requests` — средняя оценочная себестоимость
+одного запроса, для которого известна ставка. Рядом всегда показывайте покрытие
+`priced_requests / requests`: без него среднее может выглядеть точнее, чем есть
+на самом деле.
+
+```sql
+SELECT
+  plan,
+  provider,
+  model,
+  SUM(estimated_cost_microusd)::numeric
+    / NULLIF(SUM(priced_requests), 0) AS avg_cost_per_priced_request_microusd,
+  SUM(priced_requests)::numeric
+    / NULLIF(SUM(requests), 0) AS pricing_coverage,
+  SUM(requests) AS requests
+FROM ai_usage_daily
+WHERE usage_date >= TO_CHAR(CURRENT_DATE - INTERVAL '30 days', 'YYYY-MM-DD')
+GROUP BY plan, provider, model
+ORDER BY plan, provider, model;
+```
+
+Пользователь-день — один пользователь, у которого в конкретную дату был хотя
+бы один успешный AI-запрос. Внешний запрос ниже возвращает только агрегаты по
+тарифу: `user_id` используется внутри CTE для корректной группировки и не
+выводится в результат.
+
+```sql
+WITH user_days AS (
+  SELECT
+    user_id,
+    usage_date,
+    plan,
+    SUM(requests) AS requests,
+    SUM(priced_requests) AS priced_requests,
+    SUM(estimated_cost_microusd) AS cost_microusd
+  FROM ai_usage_daily
+  WHERE usage_date >= TO_CHAR(CURRENT_DATE - INTERVAL '30 days', 'YYYY-MM-DD')
+  GROUP BY user_id, usage_date, plan
+)
+SELECT
+  plan,
+  COUNT(*) AS active_user_days,
+  AVG(requests) AS avg_requests_per_active_user_day,
+  AVG(cost_microusd) AS avg_cost_per_active_user_day_microusd,
+  SUM(cost_microusd)::numeric
+    / NULLIF(SUM(priced_requests), 0) AS avg_cost_per_priced_request_microusd
+FROM user_days
+GROUP BY plan
+ORDER BY plan;
+```
+
+Это агрегированная оценка, а не бухгалтерская сумма провайдера. Точная история
+каждого отдельного запроса намеренно не хранится; для решения о лимитах и цене
+используется устойчивая выборка по дням, тарифам и покрытию ставок.
+
 ## Приватность и эксплуатация
 
 - Не добавляйте prompt/response в эту таблицу или логи.

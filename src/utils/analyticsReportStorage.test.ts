@@ -40,4 +40,11 @@ describe("analytics report storage", () => {
     expect(saveAnalyticsReport(identity, "Отчёт", unavailableStorage)).toBeNull();
     expect(() => deleteAnalyticsReport(identity, unavailableStorage)).not.toThrow();
   });
+
+  it("rejects invalid owners and period boundaries", () => {
+    expect(saveAnalyticsReport({ ...identity, ownerId: 0 }, "Отчёт")).toBeNull();
+    expect(saveAnalyticsReport({ ...identity, from: "28.08.2026" }, "Отчёт")).toBeNull();
+    expect(saveAnalyticsReport({ ...identity, from: "2026-08-31" }, "Отчёт")).toBeNull();
+    expect(readAnalyticsReport({ ...identity, ownerId: -1 })).toBeNull();
+  });
 });

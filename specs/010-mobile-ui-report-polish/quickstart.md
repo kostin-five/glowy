@@ -34,3 +34,14 @@ Fixture включает headings/lists/bold/literal HTML. Проверить sa
 Pricing: `Forever`, disabled `Скоро`, activation API не вызывается; internal Founder сохраняет lifetime status. Backend/DB неизменны.
 
 `docs/ai-unit-economics.md`: cost per request/user-day доступен только при filled pricing env, prompt text не хранится. Admin implementation остаётся v3.8.0.
+
+## Итог проверки 2026-08-28
+
+- Focused Vitest и Playwright по Главной, shell, bulk, отчётам и Pricing: пройдены.
+- Frontend: typecheck и lint пройдены; 134 Vitest пройдены; production build собран.
+- Backend: 134 теста пройдены; `prisma validate` пройден без миграций и подключения к production.
+- Full Playwright: 103 сценария пройдены, 1 намеренно пропущен; desktop и mobile projects.
+- На 320/360/390/430 px автоматизированы отсутствие horizontal overflow, видимость tabs/counts, dashboard read-only, chat/sidebar collision и состояния motion/reduced-motion сферы.
+- `LandingPage.tsx`, Prisma schema, backend Founder implementation и `PaymentApi.activateFounderPlan` не менялись в рамках feature; secrets и пользовательские тексты не логируются.
+- Физический iOS/Android не проверялся: остаётся ручная проверка плавности сферы на настоящем touch-устройстве.
+- Dev/production deploy и инфраструктурные настройки не выполнялись; ручная проверка dev остаётся после отдельного согласованного deploy.

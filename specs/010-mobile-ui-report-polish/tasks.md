@@ -27,7 +27,7 @@
 - [X] T009 [US1] Create visually aligned read-only task card in `src/components/tasks/ReadOnlyTaskCard.tsx`
 - [X] T010 [US1] Replace dashboard mini rows and remove excessive height/gaps in `src/pages/DashboardPage.tsx`
 - [X] T011 [US1] Rename dashboard navigation text to «Главная» in `src/components/layout/Sidebar.tsx` and `src/pages/SettingsPage.tsx`
-- [ ] T012 [US1] Add Dashboard render/mobile regression in `src/pages/DashboardPage.test.tsx` and `e2e/mobile-ui-polish.spec.ts`
+- [X] T012 [US1] Add Dashboard render/mobile regression in `src/pages/DashboardPage.test.tsx` and `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 4: User Story 2 - Надёжная мобильная оболочка (P1)
 
@@ -41,7 +41,7 @@
 - [X] T016 [US2] Remove route navigation from collapsed sidebar and enlarge logo in `src/components/layout/Sidebar.tsx`
 - [X] T017 [US2] Reserve desktop collapse-control space in page chat header in `src/components/mind/MindHubChat.tsx`
 - [X] T018 [US2] Keep task heading one line and shell spacing compact in `src/pages/TaskPage.tsx`
-- [ ] T019 [US2] Add 320/360/390/430 shell, chat and sidebar Playwright coverage in `e2e/mobile-ui-polish.spec.ts`
+- [X] T019 [US2] Add 320/360/390/430 shell, chat and sidebar Playwright coverage in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 5: User Story 3 - Массовый перенос задач (P1)
 
@@ -53,7 +53,7 @@
 - [X] T021 [US3] Replace «Снять» with tomorrow/custom-date actions and accessible date dialog in `src/components/tasks/TaskList.tsx`
 - [X] T022 [US3] Preserve failed selection and show Russian bulk result in `src/components/tasks/TaskList.tsx`
 - [X] T023 [US3] Make all task filter labels/counts visible at 320 px in `src/components/tasks/TaskFilter.tsx`
-- [ ] T024 [US3] Add bulk move and filter visibility Playwright flow in `e2e/mobile-ui-polish.spec.ts`
+- [X] T024 [US3] Add bulk move and filter visibility Playwright flow in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 6: User Story 4 - Устойчивый глубокий отчёт (P1)
 
@@ -65,7 +65,7 @@
 - [X] T026 [US4] Restore/save owner-period report around existing Analytics API flow in `src/pages/AnalyticsPage.tsx`
 - [X] T027 [US4] Render safe formatted report and add copy feedback in `src/pages/AnalyticsPage.tsx`
 - [X] T028 [US4] Add explicit delete/new-report confirmation while retaining old result on error in `src/pages/AnalyticsPage.tsx`
-- [ ] T029 [US4] Add route/reload/account-isolation report Playwright flow in `e2e/mobile-ui-polish.spec.ts`
+- [X] T029 [US4] Add route/reload/account-isolation report Playwright flow in `e2e/mobile-ui-polish.spec.ts`
 
 ## Phase 7: User Story 5 - Forever preview (P2)
 
@@ -83,19 +83,19 @@
 
 **Independent Test**: docs contain safe per-request/per-user queries and retain admin at v3.8.0.
 
-- [ ] T033 [P] [US6] Document per-request and per-user/day formulas and query examples in `docs/ai-unit-economics.md`
-- [ ] T034 [P] [US6] Reconcile Forever presentation and admin v3.8 scope in `docs/product-roadmap.md`
-- [ ] T035 [US6] Update frontend-only storage/pricing boundaries in `docs/architecture.md`
+- [X] T033 [P] [US6] Document per-request and per-user/day formulas and query examples in `docs/ai-unit-economics.md`
+- [X] T034 [P] [US6] Reconcile Forever presentation and admin v3.8 scope in `docs/product-roadmap.md`
+- [X] T035 [US6] Update frontend-only storage/pricing boundaries in `docs/architecture.md`
 
 ## Phase 9: Polish and Verification
 
-- [ ] T036 Run focused Vitest and Playwright suites for every user story
-- [ ] T037 Run full frontend typecheck, lint, Vitest and production build
-- [ ] T038 Run complete backend test suite and Prisma validate without migration
-- [ ] T039 Run full Playwright desktop/mobile suite
-- [ ] T040 Confirm LandingPage, Prisma schema, backend Founder implementation and PaymentApi activation method have no feature diff
-- [ ] T041 Record unavailable physical iOS/Android and dev checks in `specs/010-mobile-ui-report-polish/quickstart.md`
-- [ ] T042 Run `git diff --check`, inspect secrets/user-text logging and create thematic commits
+- [X] T036 Run focused Vitest and Playwright suites for every user story
+- [X] T037 Run full frontend typecheck, lint, Vitest and production build
+- [X] T038 Run complete backend test suite and Prisma validate without migration
+- [X] T039 Run full Playwright desktop/mobile suite
+- [X] T040 Confirm LandingPage, Prisma schema, backend Founder implementation and PaymentApi activation method have no feature diff
+- [X] T041 Record unavailable physical iOS/Android and dev checks in `specs/010-mobile-ui-report-polish/quickstart.md`
+- [X] T042 Run `git diff --check`, inspect secrets/user-text logging and create thematic commits
 
 ## Dependencies
 
@@ -114,3 +114,8 @@
 4. Commit analytics report persistence/formatting.
 5. Commit Forever/docs.
 6. Commit regression coverage and verification records.
+
+## Phase 10: Convergence
+
+- [X] T043 Add an automated reduced-motion assertion for the orb per FR-006 / T013 (partial)
+- [X] T044 Reject invalid owner/date report identities in `src/utils/analyticsReportStorage.ts` per contract: analytics-report-storage (partial)

@@ -20,6 +20,14 @@ interface ReportIdentity {
 const REPORT_PREFIX = "glowy-analytics-report-v1";
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
+const isValidIdentity = (identity: ReportIdentity) =>
+  Number.isInteger(identity.ownerId) &&
+  identity.ownerId > 0 &&
+  (identity.period === "week" || identity.period === "month") &&
+  DATE_ONLY.test(identity.from) &&
+  DATE_ONLY.test(identity.to) &&
+  identity.from <= identity.to;
+
 const reportKey = ({ ownerId, period, from, to }: ReportIdentity) =>
   `${REPORT_PREFIX}:${ownerId}:${period}:${from}:${to}`;
 
@@ -46,6 +54,7 @@ export const readAnalyticsReport = (
   identity: ReportIdentity,
   storage: Pick<Storage, "getItem"> = localStorage
 ) => {
+  if (!isValidIdentity(identity)) return null;
   try {
     const raw = storage.getItem(reportKey(identity));
     if (!raw) return null;
@@ -62,6 +71,7 @@ export const saveAnalyticsReport = (
   storage: Pick<Storage, "setItem"> = localStorage,
   now = new Date()
 ) => {
+  if (!isValidIdentity(identity)) return null;
   const trimmed = text.trim();
   if (!trimmed) return null;
   const report: StoredAnalyticsReportV1 = {
@@ -82,6 +92,7 @@ export const deleteAnalyticsReport = (
   identity: ReportIdentity,
   storage: Pick<Storage, "removeItem"> = localStorage
 ) => {
+  if (!isValidIdentity(identity)) return;
   try {
     storage.removeItem(reportKey(identity));
   } catch {

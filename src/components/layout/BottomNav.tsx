@@ -29,7 +29,7 @@ const BottomNav = () => {
     { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Задачи", icon: CheckSquare },
   ];
-  const progressItem = { to: "/stairs", label: "Мой прогресс", icon: Trophy };
+  const progressItem = { to: "/progress", label: "Мой прогресс", icon: Trophy };
   const isAiActive = activePanel === "ai" || location.pathname === "/ai";
   const isMoreActive =
     activePanel === "more" ||

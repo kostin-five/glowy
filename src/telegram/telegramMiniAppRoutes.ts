@@ -3,7 +3,7 @@ export const TELEGRAM_MINI_APP_ROUTES = {
   tasks: "/tasks",
   notes: "/notes",
   ai: "/ai",
-  progress: "/stairs",
+  progress: "/progress",
   analytics: "/analytics",
   settings: "/settings",
 } as const;

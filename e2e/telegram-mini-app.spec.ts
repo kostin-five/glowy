@@ -84,7 +84,7 @@ const targets = {
   tasks: "/tasks",
   notes: "/notes",
   ai: "/ai",
-  progress: "/stairs",
+  progress: "/progress",
   analytics: "/analytics",
   settings: "/settings",
 };

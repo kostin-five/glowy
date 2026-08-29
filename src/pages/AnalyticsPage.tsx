@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
@@ -107,6 +107,19 @@ const AnalyticsPage = () => {
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isRegenerateConfirmOpen, setIsRegenerateConfirmOpen] = useState(false);
   const anchor = formatLocalDateOnly();
+
+  const retrySnapshot = useCallback(async () => {
+    if (isGuest) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      setSnapshot(await AnalyticsApi.getSnapshot(period, anchor));
+    } catch (requestError) {
+      setError(readApiError(requestError, "Не удалось загрузить аналитику."));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [anchor, isGuest, period]);
 
   useEffect(() => {
     if (isGuest) return;
@@ -265,8 +278,17 @@ const AnalyticsPage = () => {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
-          {error}
+        <div className="flex flex-col gap-3 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 sm:flex-row sm:items-center sm:justify-between">
+          <span>{error}</span>
+          {!snapshot && !isLoading && (
+            <button
+              type="button"
+              onClick={() => void retrySnapshot()}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg border border-rose-400/40 px-4 py-2 text-sm font-bold transition-colors hover:bg-rose-500/10"
+            >
+              Повторить
+            </button>
+          )}
         </div>
       )}
 

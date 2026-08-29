@@ -73,6 +73,20 @@ beforeEach(() => {
 });
 
 describe("AnalyticsPage report", () => {
+  it("retries a failed analytics snapshot without reloading the page", async () => {
+    vi.mocked(AnalyticsApi.getSnapshot)
+      .mockRejectedValueOnce(new Error("server unavailable"))
+      .mockResolvedValue(snapshot);
+
+    renderPage();
+
+    expect(await screen.findByText("Не удалось загрузить аналитику.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
+
+    expect(await screen.findByText("2", { exact: true })).toBeTruthy();
+    expect(AnalyticsApi.getSnapshot).toHaveBeenCalledTimes(2);
+  });
+
   it("formats, copies, restores and deletes the current owner report", async () => {
     const first = renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Разобрать неделю · 5 запросов" }));

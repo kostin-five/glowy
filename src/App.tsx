@@ -423,13 +423,14 @@ function App() {
           }
         />
         <Route
-          path="/stairs"
+          path="/progress"
           element={
             <ProtectedLayoutRoute>
               <SuccessStairsPage />
             </ProtectedLayoutRoute>
           }
         />
+        <Route path="/stairs" element={<Navigate to="/progress" replace />} />
         <Route
           path="/settings"
           element={
@@ -448,7 +449,7 @@ function App() {
         />
         <Route
           path="/success-stairs"
-          element={<Navigate to="/stairs" replace />}
+          element={<Navigate to="/progress" replace />}
         />
         <Route path="*" element={<Navigate to={startRoute} replace />} />
         </Routes>

@@ -184,7 +184,7 @@ test.describe("personal progress releases", () => {
   });
 
   test("creates a habit from My progress", async ({ page }) => {
-    await page.goto("/stairs");
+    await page.goto("/progress");
 
     await page.getByRole("tab", { name: "Привычки" }).click();
     await page
@@ -193,6 +193,13 @@ test.describe("personal progress releases", () => {
     await page.getByRole("button", { name: "Добавить" }).click();
 
     await expect(page.getByText("Прогулка после обеда")).toBeVisible();
+  });
+
+  test("redirects the legacy progress address to the canonical route", async ({ page }) => {
+    await page.goto("/stairs");
+
+    await expect(page).toHaveURL(/\/progress$/);
+    await expect(page.getByRole("heading", { name: "Мой прогресс" })).toBeVisible();
   });
 
   test("shows a weighted Focus insight after an explicit request", async ({ page }) => {
@@ -242,7 +249,7 @@ test.describe("personal progress releases", () => {
   test("keeps the rhythm calendar within 320–430 px viewports", async ({ page }) => {
     for (const width of [320, 360, 390, 430]) {
       await page.setViewportSize({ width, height: 844 });
-      await page.goto("/stairs");
+      await page.goto("/progress");
       await page.getByRole("tab", { name: "Стрик побед" }).click();
       const calendar = page.getByLabel("Календарь ритма");
       await expect(calendar).toBeVisible();

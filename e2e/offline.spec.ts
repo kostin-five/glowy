@@ -260,7 +260,7 @@ test("opens My progress after the connection is lost", async ({
   await waitForAppShell(page);
   await setAppOnline(page, context, server, false);
 
-  await page.goto("/stairs");
+  await page.goto("/progress");
 
   await expect(page.getByRole("heading", { name: "Мой прогресс" })).toBeVisible();
   await expect(

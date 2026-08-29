@@ -113,7 +113,7 @@ describe("BottomNav", () => {
     renderNav();
 
     fireEvent.click(screen.getByRole("link", { name: "Мой прогресс" }));
-    expect(screen.getByLabelText("Текущий маршрут")).toHaveTextContent("/stairs");
+    expect(screen.getByLabelText("Текущий маршрут")).toHaveTextContent("/progress");
 
     fireEvent.click(screen.getByRole("button", { name: "Открыть меню «Ещё»" }));
     expect(screen.getByRole("dialog", { name: "Ещё" })).toBeInTheDocument();

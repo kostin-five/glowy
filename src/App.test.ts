@@ -17,7 +17,7 @@ describe("application routes", () => {
       ["/tasks", "TaskPage"],
       ["/notes/:noteId?", "NotesPage"],
       ["/ai", "GlowyAiPage"],
-      ["/stairs", "SuccessStairsPage"],
+      ["/progress", "SuccessStairsPage"],
       ["/analytics", "AnalyticsPage"],
       ["/settings", "SettingsPage"],
     ]) {
@@ -26,5 +26,8 @@ describe("application routes", () => {
     }
     expect(appSource).toContain('path="/telegram"');
     expect(appSource).toContain("<TelegramMiniAppBootstrap />");
+    expect(appSource).toContain(
+      'path="/stairs" element={<Navigate to="/progress" replace />}'
+    );
   });
 });

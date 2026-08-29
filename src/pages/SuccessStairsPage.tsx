@@ -17,6 +17,9 @@ import { getLevelProgress, getXpReward } from "../utils/xp";
 type ProgressTab = "xp" | "streak" | "habits";
 type TaskWithTimestamps = Task & { createdAt?: string; updatedAt?: string };
 
+const PROGRESS_LOAD_ERROR =
+  "Не удалось загрузить прогресс. Нажми «Повторить», чтобы попробовать ещё раз.";
+
 const tabs: Array<{ id: ProgressTab; label: string }> = [
   { id: "xp", label: "Уровень и XP" },
   { id: "streak", label: "Стрик побед" },
@@ -38,21 +41,44 @@ const getTaskActivityDate = (task: TaskWithTimestamps): Date | null => {
   return parseTaskDateToLocalDay(task.date);
 };
 
-const ServerProgressPlaceholder = ({ isGuest }: { isGuest: boolean }) => (
+const ServerProgressPlaceholder = ({
+  isGuest,
+  isLoading,
+  onRetry,
+}: {
+  isGuest: boolean;
+  isLoading: boolean;
+  onRetry: () => void;
+}) => (
   <section className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-8 text-center dark:border-slate-700 dark:bg-slate-900/30">
-    {!isGuest && (
+    {!isGuest && isLoading && (
       <span className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400">
         <LoaderCircle className="animate-spin" size={23} />
       </span>
     )}
     <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
-      {isGuest ? "Прогресс сохраняется в аккаунте" : "Загружаю прогресс"}
+      {isGuest
+        ? "Прогресс сохраняется в аккаунте"
+        : isLoading
+          ? "Загружаю прогресс"
+          : "Прогресс пока недоступен"}
     </h2>
     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
       {isGuest
         ? "Войди или зарегистрируйся, чтобы вести стрик, привычки и достижения на всех устройствах."
-        : "Собираю выполненные задачи и привычки без лишней суеты."}
+        : isLoading
+          ? "Собираю выполненные задачи и привычки без лишней суеты."
+          : "Не получилось получить данные с сервера. Проверь соединение и попробуй ещё раз."}
     </p>
+    {!isGuest && !isLoading && (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-500"
+      >
+        Повторить
+      </button>
+    )}
   </section>
 );
 
@@ -153,11 +179,12 @@ const SuccessStairsPage = () => {
 
   const loadProgress = useCallback(async () => {
     if (isGuest) return;
+    setIsLoading(true);
     setError("");
     try {
       setProgress(await ProgressApi.getOverview(today, selectedMonth));
     } catch {
-      setError("Не удалось загрузить прогресс. Попробуй обновить страницу.");
+      setError(PROGRESS_LOAD_ERROR);
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +200,7 @@ const SuccessStairsPage = () => {
       })
       .catch(() => {
         if (isActive) {
-          setError("Не удалось загрузить прогресс. Попробуй обновить страницу.");
+          setError(PROGRESS_LOAD_ERROR);
         }
       })
       .finally(() => {
@@ -355,7 +382,11 @@ const SuccessStairsPage = () => {
         />
       )}
       {activeTab !== "xp" && (isGuest || isLoading || !progress) && (
-        <ServerProgressPlaceholder isGuest={isGuest} />
+        <ServerProgressPlaceholder
+          isGuest={isGuest}
+          isLoading={isLoading}
+          onRetry={() => void loadProgress()}
+        />
       )}
       {activeTab === "streak" && progress && !isGuest && (
         <StreakPanel

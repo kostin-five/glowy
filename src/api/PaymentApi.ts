@@ -10,14 +10,6 @@ export const PaymentApi = {
     );
     return data;
   },
-  activateFounderPlan: async () => {
-    const { data } = await axios.post(
-      `${API_BASE_URL}/payments/forever/activate`,
-      undefined,
-      { withCredentials: true }
-    );
-    return data;
-  },
   getCurrentPlan: async () => {
     const { data } = await axios.get(`${API_BASE_URL}/payments/current-plan`, {
       withCredentials: true,

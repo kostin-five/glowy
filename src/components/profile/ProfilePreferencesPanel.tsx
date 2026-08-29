@@ -152,7 +152,7 @@ const ProfilePreferencesPanel = ({
             <Lock className="mt-0.5 shrink-0 text-indigo-400" size={19} />
             <div>
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Режим поведения Glowy</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Спокойный режим остаётся базовым. Умеренный и жёсткий доступны в Focus и Founder.</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Спокойный режим остаётся базовым. Умеренный и жёсткий доступны в Focus и Forever.</p>
             </div>
           </div>
           <Link to="/pricing" className="inline-flex w-full shrink-0 justify-center rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white hover:bg-indigo-500 sm:w-auto">Тарифы</Link>

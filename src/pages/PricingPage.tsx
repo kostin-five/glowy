@@ -39,10 +39,10 @@ const PricingPage = () => {
     currentPlan.planExpiresAt &&
     new Date(currentPlan.planExpiresAt) > new Date());
 
-  const isFounderActive = Boolean(currentPlan &&
-    currentPlan.plan === "founder" &&
+  const isForeverActive = Boolean(currentPlan &&
+    currentPlan.plan === "forever" &&
     currentPlan.subscriptionStatus === "active");
-  const isLifetimeActive = isFounderActive;
+  const isLifetimeActive = isForeverActive;
   const isStartActive = !isFocusActive && !isLifetimeActive;
 
   const handleFocusClick = async () => {

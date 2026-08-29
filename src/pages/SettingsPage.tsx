@@ -78,7 +78,6 @@ const planLabels = {
   demo: "Демо-доступ",
   start: "Стартовый",
   focus: "Focus",
-  founder: "Founder",
   forever: "Forever",
 } as const;
 
@@ -87,7 +86,7 @@ const SettingsPage = () => {
     useState<SettingsSectionId>("profile");
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [aiUsage, setAiUsage] = useState<{
-    plan: "demo" | "start" | "focus" | "founder" | "forever";
+    plan: "demo" | "start" | "focus" | "forever";
     used: number;
     limit: number;
     remaining: number;

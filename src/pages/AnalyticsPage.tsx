@@ -428,7 +428,7 @@ const AnalyticsPage = () => {
                     <SafeReportMarkdown text={insight} />
                   </div>
                 ) : !snapshot.canUseFocusFeatures ? (
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Founder.</p>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Forever.</p>
                 ) : !snapshot.hasActivity ? (
                   <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Выполни хотя бы одну задачу за период, чтобы получить разбор.</p>
                 ) : (

@@ -19,20 +19,19 @@ vi.mock("../api/PaymentApi", () => ({
   PaymentApi: {
     getCurrentPlan: vi.fn(),
     createFocusPayment: vi.fn(),
-    activateFounderPlan: vi.fn(),
   },
 }));
 
 beforeEach(() => {
   vi.mocked(PaymentApi.getCurrentPlan).mockResolvedValue({
-    plan: "founder",
+    plan: "forever",
     subscriptionStatus: "active",
     planExpiresAt: null,
   });
 });
 
 describe("PricingPage", () => {
-  it("presents an existing Founder account as Forever without public activation", async () => {
+  it("presents an existing Forever account without public activation", async () => {
     render(
       <MemoryRouter>
         <PricingPage />
@@ -42,6 +41,6 @@ describe("PricingPage", () => {
     expect(await screen.findByRole("heading", { level: 3, name: "Forever" })).toBeTruthy();
     expect(screen.getByText("Активен бессрочно")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Скоро" })).toHaveProperty("disabled", true);
-    expect(PaymentApi.activateFounderPlan).not.toHaveBeenCalled();
+    expect(Object.keys(PaymentApi).sort()).toEqual(["createFocusPayment", "getCurrentPlan"].sort());
   });
 });

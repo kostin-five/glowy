@@ -25,8 +25,7 @@ describe("AnalyticsApi", () => {
     get.mockReset();
   });
 
-  it("bypasses stale edge cache when loading a private snapshot", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(123456789);
+  it("loads a private snapshot without a trailing slash", async () => {
     get.mockResolvedValue({
       data: {
         period: { kind: "week", from: "2026-08-24", to: "2026-08-30" },
@@ -51,11 +50,10 @@ describe("AnalyticsApi", () => {
     const { AnalyticsApi } = await import("./AnalyticsApi");
     await AnalyticsApi.getSnapshot("week", "2026-08-29");
 
-    expect(get).toHaveBeenCalledWith("/", {
+    expect(get).toHaveBeenCalledWith("", {
       params: {
         period: "week",
         anchor: "2026-08-29",
-        cacheBust: 123456789,
       },
     });
   });

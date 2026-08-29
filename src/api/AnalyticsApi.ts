@@ -29,7 +29,9 @@ export const AnalyticsApi = {
     period: AnalyticsPeriodKind,
     anchor: string
   ): Promise<AnalyticsSnapshot> {
-    const response = await api.get("/", { params: { period, anchor } });
+    const response = await api.get("/", {
+      params: { period, anchor, cacheBust: Date.now() },
+    });
     return schemaAnalyticsSnapshot.parse(response.data);
   },
 

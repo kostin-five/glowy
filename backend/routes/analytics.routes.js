@@ -70,7 +70,7 @@ export const createAnalyticsRouter = ({
         anchor,
       });
       if (!snapshot.canUseFocusFeatures) {
-        return res.status(403).json({ error: "AI-вывод доступен в Focus и Founder" });
+        return res.status(403).json({ error: "AI-вывод доступен в Focus и Forever" });
       }
       if (!snapshot.hasActivity) {
         return res.status(422).json({

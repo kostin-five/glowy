@@ -6,7 +6,6 @@ export const AI_LIMITS_BY_PLAN = {
   start: 10,
   focus: 100,
   forever: 100,
-  founder: 100,
 };
 
 const getSafeAiPlan = (plan) => {
@@ -47,9 +46,6 @@ export const getEffectiveAiPlan = (user) => {
   return plan;
 };
 
-const getPublicAiPlan = (plan, hasPaidForeverPayment = false) =>
-  plan === "forever" && !hasPaidForeverPayment ? "founder" : plan;
-
 export const getEffectiveAiLimit = (user) =>
   AI_LIMITS_BY_PLAN[getEffectiveAiPlan(user)] ?? DEFAULT_AI_REQUEST_LIMIT;
 
@@ -72,11 +68,6 @@ export const getAuthenticatedAiUsage = async (userId) => {
       plan: true,
       subscriptionStatus: true,
       planExpiresAt: true,
-      payments: {
-        where: { plan: "forever", paid: true, status: "succeeded" },
-        select: { id: true },
-        take: 1,
-      },
     },
   });
 
@@ -92,7 +83,7 @@ export const getAuthenticatedAiUsage = async (userId) => {
   const limit = AI_LIMITS_BY_PLAN[plan] ?? DEFAULT_AI_REQUEST_LIMIT;
 
   return {
-    plan: getPublicAiPlan(plan, Boolean(user.payments?.length)),
+    plan,
     used,
     limit,
     remaining: Math.max(0, limit - used),

@@ -88,13 +88,13 @@ test("rejects invalid preferences and protects legacy premium opt-in", async () 
     .send({ focusBetaEnabled: true });
   assert.equal(forbidden.status, 403);
 
-  const founderFixture = createFixture({
+  const foreverFixture = createFixture({
     plan: "forever",
     subscriptionStatus: "active",
   });
-  const allowed = await request(founderFixture.app)
+  const allowed = await request(foreverFixture.app)
     .patch("/api/user/preferences")
-    .set("Authorization", founderFixture.authorization)
+    .set("Authorization", foreverFixture.authorization)
     .send({ focusBetaEnabled: true });
   assert.equal(allowed.status, 200);
   assert.equal(allowed.body.focusBetaEnabled, true);

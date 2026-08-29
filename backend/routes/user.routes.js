@@ -125,13 +125,13 @@ export const createUserRouter = ({
         !isFocusEntitled(currentUser)
       ) {
         return res.status(403).json({
-          error: "Beta-функции доступны только активному тарифу Focus или Founder",
+          error: "Beta-функции доступны только активному тарифу Focus или Forever",
         });
       }
 
       if ("aiTone" in validation.data && !isFocusEntitled(currentUser)) {
         return res.status(403).json({
-          error: "Настройка тона доступна только на тарифах Focus и Founder",
+          error: "Настройка тона доступна только на тарифах Focus и Forever",
         });
       }
 

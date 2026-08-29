@@ -5,13 +5,14 @@ import {
   getEffectiveAiLimit,
 } from "./ai-limits.service.js";
 
-test("retains 100 daily AI requests for legacy lifetime entitlements", () => {
-  const founderStoredAsForever = {
+test("retains 100 daily AI requests for Forever", () => {
+  const foreverUser = {
     plan: "forever",
     subscriptionStatus: "active",
     planExpiresAt: null,
   };
 
-  assert.equal(AI_LIMITS_BY_PLAN.founder, 100);
-  assert.equal(getEffectiveAiLimit(founderStoredAsForever), 100);
+  assert.equal(AI_LIMITS_BY_PLAN.forever, 100);
+  assert.deepEqual(Object.keys(AI_LIMITS_BY_PLAN), ["start", "focus", "forever"]);
+  assert.equal(getEffectiveAiLimit(foreverUser), 100);
 });

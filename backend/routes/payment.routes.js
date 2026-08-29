@@ -301,15 +301,6 @@ router.get("/current-plan", async (req, res) => {
         plan: true,
         subscriptionStatus: true,
         planExpiresAt: true,
-        payments: {
-          where: {
-            plan: "forever",
-            paid: true,
-            status: "succeeded",
-          },
-          select: { id: true },
-          take: 1,
-        },
       },
     });
 
@@ -319,9 +310,7 @@ router.get("/current-plan", async (req, res) => {
 
     const normalizedUser = await normalizePlanState(req.user.id, user);
 
-    res.json(
-      toPublicPlanState(normalizedUser, Boolean(normalizedUser.payments?.length))
-    );
+    res.json(toPublicPlanState(normalizedUser));
   } catch (error) {
     logger.error("payments.current_plan.failed", { req, error, statusCode: 500 });
     res.status(500).json({ error: "Ошибка при загрузке данных плана" });
@@ -335,45 +324,11 @@ router.post(
   createPaymentHandler("forever")
 );
 
-router.post("/forever/activate", paymentCreateLimiter, async (req, res) => {
-  try {
-    const rawUser = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        plan: true,
-        subscriptionStatus: true,
-        planExpiresAt: true,
-      },
-    });
-    const user = await normalizePlanState(req.user.id, rawUser);
-
-    if (isActivePlan(user, "forever")) {
-      return res.json(toPublicPlanState(user));
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
-      data: {
-        plan: "forever",
-        subscriptionStatus: "active",
-        planExpiresAt: null,
-      },
-      select: {
-        plan: true,
-        subscriptionStatus: true,
-        planExpiresAt: true,
-      },
-    });
-
-    res.json(toPublicPlanState(updatedUser));
-  } catch (error) {
-    logger.error("payments.founder.activate_failed", {
-      req,
-      error,
-      statusCode: 500,
-    });
-    res.status(500).json({ error: "Ошибка при активации тарифа" });
-  }
+router.post("/forever/activate", paymentCreateLimiter, (_req, res) => {
+  res.status(410).json({
+    error: "Бесплатная активация Forever больше недоступна",
+    code: "PLAN_UNAVAILABLE",
+  });
 });
 
 export default router;

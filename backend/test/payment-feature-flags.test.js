@@ -35,3 +35,14 @@ test("disabled paid Forever returns before database or YooKassa work", async () 
   assert.equal(response.status, 403);
   assert.equal(response.body.code, "PAID_FOREVER_DISABLED");
 });
+
+test("legacy free Forever activation is gone before database work", async () => {
+  const response = await request(createApp())
+    .post("/api/payments/forever/activate")
+    .set("Origin", "http://localhost:5173")
+    .set("Authorization", createAuthHeader());
+
+  assert.equal(response.status, 410);
+  assert.equal(response.body.code, "PLAN_UNAVAILABLE");
+  assert.equal(response.body.error, "Бесплатная активация Forever больше недоступна");
+});

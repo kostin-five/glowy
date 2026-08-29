@@ -3,16 +3,11 @@ export const isActiveLifetimeEntitlement = (user) =>
   user?.subscriptionStatus === "active" &&
   !user?.planExpiresAt;
 
-export const isFounderEntitlement = (user, hasPaidForeverPayment = false) =>
-  isActiveLifetimeEntitlement(user) && !hasPaidForeverPayment;
-
-export const toPublicPlanState = (user, hasPaidForeverPayment = false) => {
+export const toPublicPlanState = (user) => {
   if (!user) return user;
 
   return {
-    plan: isFounderEntitlement(user, hasPaidForeverPayment)
-      ? "founder"
-      : user.plan,
+    plan: user.plan,
     subscriptionStatus: user.subscriptionStatus,
     planExpiresAt: user.planExpiresAt,
   };

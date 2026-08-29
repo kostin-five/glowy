@@ -1,29 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  isFounderEntitlement,
+  isActiveLifetimeEntitlement,
   isPaidForeverEnabled,
   toPublicPlanState,
 } from "./plan-entitlements.service.js";
 
-const founderUser = {
+const foreverUser = {
   plan: "forever",
   subscriptionStatus: "active",
   planExpiresAt: null,
 };
 
-test("maps a legacy free lifetime entitlement to Founder", () => {
-  assert.equal(isFounderEntitlement(founderUser), true);
-  assert.deepEqual(toPublicPlanState(founderUser), {
-    plan: "founder",
+test("keeps an active lifetime entitlement public as Forever", () => {
+  assert.equal(isActiveLifetimeEntitlement(foreverUser), true);
+  assert.deepEqual(toPublicPlanState(foreverUser), {
+    plan: "forever",
     subscriptionStatus: "active",
     planExpiresAt: null,
   });
 });
 
-test("does not relabel a paid Forever entitlement", () => {
-  assert.equal(isFounderEntitlement(founderUser, true), false);
-  assert.equal(toPublicPlanState(founderUser, true).plan, "forever");
+test("does not change Forever based on payment history", () => {
+  assert.equal(toPublicPlanState(foreverUser).plan, "forever");
 });
 
 test("paid Forever remains disabled unless explicitly enabled", () => {

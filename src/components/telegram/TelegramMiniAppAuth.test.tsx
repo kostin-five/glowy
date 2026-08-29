@@ -47,11 +47,28 @@ describe("TelegramMiniAppAuth", () => {
     expect(onAuthenticated).toHaveBeenCalledWith(user);
   });
 
-  it("allows an existing user to switch to login", () => {
-    render(<TelegramMiniAppAuth initData="signed" onAuthenticated={vi.fn()} />);
+  it("allows an existing user to sign in with a legacy password", async () => {
+    const user = { id: 2, name: "Иван", email: "ivan@example.com", xp: 10, level: 1 };
+    mocks.login.mockResolvedValue(user);
+    const onAuthenticated = vi.fn();
+    render(<TelegramMiniAppAuth initData="signed" onAuthenticated={onAuthenticated} />);
+
     fireEvent.click(screen.getByRole("tab", { name: "Вход" }));
     expect(screen.queryByLabelText("Имя")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Войти" })).toBeEnabled();
+    const passwordInput = screen.getByLabelText("Пароль");
+    expect(passwordInput).not.toHaveAttribute("minlength");
+    expect(passwordInput).not.toHaveAttribute("maxlength");
+
+    fireEvent.change(screen.getByLabelText("Почта"), { target: { value: "ivan@example.com" } });
+    fireEvent.change(passwordInput, { target: { value: "old123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+
+    await waitFor(() => expect(mocks.login).toHaveBeenCalledWith({
+      initData: "signed",
+      email: "ivan@example.com",
+      password: "old123",
+    }));
+    expect(onAuthenticated).toHaveBeenCalledWith(user);
   });
 
   it("opens legal documents externally from the Mini App", () => {

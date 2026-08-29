@@ -117,8 +117,8 @@ const TelegramMiniAppAuth = ({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete={mode === "register" ? "new-password" : "current-password"}
-              minLength={8}
-              maxLength={20}
+              minLength={mode === "register" ? 8 : undefined}
+              maxLength={mode === "register" ? 20 : undefined}
               required
               className="mt-2 min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 text-base outline-none focus:border-indigo-500"
             />

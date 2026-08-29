@@ -84,16 +84,20 @@ test("creates a trimmed habit for the authenticated user", async () => {
 });
 
 test("resets the monthly rescue allowance at a month boundary", async () => {
+  let userQuery;
   const overview = await buildProgressOverview({
     db: {
       user: {
-        findUnique: async () => ({
-          xp: 120,
-          level: 2,
-          plan: "focus",
-          subscriptionStatus: "active",
-          planExpiresAt: new Date("2026-09-01T00:00:00.000Z"),
-        }),
+        findUnique: async (query) => {
+          userQuery = query;
+          return {
+            xp: 120,
+            level: 2,
+            plan: "focus",
+            subscriptionStatus: "active",
+            planExpiresAt: new Date("2026-09-01T00:00:00.000Z"),
+          };
+        },
       },
       task: {
         findMany: async () => [],
@@ -123,6 +127,7 @@ test("resets the monthly rescue allowance at a month boundary", async () => {
     monthlyLimit: 3,
     usedDates: ["2026-08-04"],
   });
+  assert.equal(userQuery.select.createdAt, undefined);
 });
 
 test("returns task streak to Start users", async () => {

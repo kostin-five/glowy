@@ -67,7 +67,6 @@ export const buildProgressOverview = async ({
         plan: true,
         subscriptionStatus: true,
         planExpiresAt: true,
-        createdAt: true,
       },
     }),
     db.task.findMany({
@@ -137,7 +136,7 @@ export const buildProgressOverview = async ({
         today,
         activeDates,
         rescueDates,
-        accountCreatedOn: user.createdAt?.toISOString?.().slice(0, 10) ?? null,
+        accountCreatedOn: null,
       }),
     },
     rescues: {

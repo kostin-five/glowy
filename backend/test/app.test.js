@@ -21,6 +21,13 @@ test("health-check returns service status and a request identifier", async () =>
     service: "glowy-backend",
   });
   assert.match(response.headers["x-request-id"], /^[\da-f-]{36}$/i);
+  assert.equal(
+    response.headers["cache-control"],
+    "private, no-store, max-age=0, must-revalidate"
+  );
+  assert.equal(response.headers["cdn-cache-control"], "no-store");
+  assert.equal(response.headers["vercel-cdn-cache-control"], "no-store");
+  assert.equal(response.headers.etag, undefined);
 });
 
 test("rejects requests from an unapproved origin before routes run", async () => {

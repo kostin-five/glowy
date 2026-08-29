@@ -87,7 +87,16 @@ export const createApp = ({ testRoute = false, telegramRouter = telegramRoutes }
   };
 
   app.set("trust proxy", 1);
+  app.disable("etag");
   app.use(requestIdMiddleware);
+  app.use((_req, res, next) => {
+    res.setHeader("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+    res.setHeader("CDN-Cache-Control", "no-store");
+    res.setHeader("Vercel-CDN-Cache-Control", "no-store");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    return next();
+  });
   app.use(express.json());
   app.use(
     cors({

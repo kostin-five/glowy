@@ -74,7 +74,7 @@ unlink and confirm the next protected call is unauthorized with all ordinary acc
 
 - [X] T018 [P] [US2] Add failing HTTP contract tests for session/register/login, five-minute launch expiry, 24-hour cookie, generic errors, connection conflicts and a separate warmed-session recovery measurement under 3 seconds in `backend/test/telegram-mini-app-routes.test.js`
 - [X] T019 [P] [US2] Add failing middleware tests for short Telegram claims, active connection checks and unlink revocation in `backend/test/auth-middleware-telegram.test.js`
-- [X] T020 [P] [US2] Add frontend tests for in-app login/register, validation, conflict and auth-store hydration in `src/components/telegram/TelegramMiniAppAuth.test.tsx`
+- [X] T020 [P] [US2] Add frontend tests for in-app login/register, validation, conflict and auth-store hydration in `src/pages/LoginPage.test.tsx`, `src/pages/RegisterPage.analytics.test.tsx` and `src/components/telegram/TelegramMiniAppBootstrap.test.tsx`
 
 ### Implementation for User Story 2
 
@@ -83,7 +83,7 @@ unlink and confirm the next protected call is unauthorized with all ordinary acc
 - [X] T023 [US2] Issue short Telegram-bound claims and validate their current connection in `backend/services/auth/auth-session.service.js` and `backend/middleware/auth.middleware.js`
 - [X] T024 [US2] Preserve normal web registration/login behavior while routing shared credential work through the common service in `backend/routes/auth.routes.js`
 - [X] T025 [US2] Add typed Mini App auth calls that never persist or log init data in `src/api/TelegramMiniAppApi.ts`
-- [X] T026 [US2] Implement Russian in-Mini-App register/login UI with current legal acknowledgements in `src/components/telegram/TelegramMiniAppAuth.tsx`
+- [X] T026 [US2] Implement Russian in-Mini-App register/login through the shared credential UI with current legal acknowledgements in `src/pages/LoginPage.tsx` and `src/pages/RegisterPage.tsx`
 - [X] T027 [US2] Connect bootstrap session restore/auth completion to the existing Zustand auth state in `src/components/telegram/TelegramMiniAppBootstrap.tsx` and `src/store/useAuthStore.ts`
 - [X] T028 [US2] Make settings unlink clearly preserve the Glowy account and revoke Telegram access in `src/components/settings/TelegramConnectionPanel.tsx`
 
@@ -111,7 +111,7 @@ settings; mutate shared data and observe it on web; test safe areas/back/externa
 - [X] T033 [US3] Preserve Telegram context while navigating the existing protected routes and fullscreen AI in `src/telegram/TelegramMiniAppProvider.tsx` and `src/App.tsx`
 - [X] T034 [US3] Implement allowlisted native external-link handling with browser fallback in `src/telegram/telegramExternalLink.ts`
 - [X] T035 [US3] Route YooKassa confirmation externally from Mini App while preserving web behavior in `src/pages/PricingPage.tsx`
-- [X] T036 [US3] Route legal links exposed by Mini App auth externally and verify no recovery/security actions are exposed there in `src/components/telegram/TelegramMiniAppAuth.tsx`
+- [X] T036 [US3] Route legal links exposed by Mini App auth externally and verify no recovery/security actions are exposed there in `src/pages/RegisterPage.tsx`
 - [X] T037 [US3] Verify existing offline/cache startup never intercepts or blanks the Telegram bootstrap in `src/App.tsx` and `src/components/ui/AppErrorBoundary.tsx`
 
 **Checkpoint**: The full authenticated Glowy product works as one UI/data system inside Telegram and web.
@@ -225,3 +225,16 @@ US4: navigation (T038), reads (T039), completion (T040), AI (T041)
 
 All 60 tasks use checkbox, sequential ID, optional `[P]`, required story label in story phases and
 specific repository file paths.
+
+---
+
+## Phase 9: Production auth stabilization
+
+**Goal**: Use one familiar credential UI and make explicit Mini App logout durable without unlinking
+Telegram.
+
+- [X] T061 [P] [US2] Add regression coverage for familiar Telegram credential screens and channel API selection in `src/pages/LoginPage.test.tsx`, `src/pages/RegisterPage.analytics.test.tsx` and `src/components/telegram/TelegramMiniAppBootstrap.test.tsx`
+- [X] T062 [P] [US2] Add a non-sensitive local auto-restore preference with unit coverage in `src/telegram/telegramMiniAppSession.ts` and `src/telegram/telegramMiniAppSession.test.ts`
+- [X] T063 [US2] Route Mini App login/register through the existing pages and Telegram channel adapter in `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx` and `src/components/telegram/TelegramMiniAppBootstrap.tsx`
+- [X] T064 [US2] Mark explicit Telegram logout without unlinking the bot in `src/hooks/useLogout.ts` and `src/hooks/useLogout.test.ts`
+- [X] T065 Run frontend typecheck, lint, focused tests, full unit tests, production build and `git diff --check`

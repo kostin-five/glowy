@@ -1,6 +1,7 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { AuthApi } from "../api/AuthApi";
+import { TelegramMiniAppApi } from "../api/TelegramMiniAppApi";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
@@ -8,6 +9,9 @@ import AuthLoader from "../components/ui/AuthLoader";
 import { useToLogin } from "../store/useAuthStore";
 import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
+import { openTelegramExternalLink } from "../telegram/telegramExternalLink";
+import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
+import { allowTelegramMiniAppAutoRestore } from "../telegram/telegramMiniAppSession";
 
 const RegisterPage = () => {
   const [name, setName] = useState<string>("");
@@ -26,6 +30,14 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const toLogin = useToLogin();
   const startRoute = useStartRoute();
+  const { isTelegramMiniApp, webApp } = useTelegramMiniApp();
+  const telegramInitData = isTelegramMiniApp ? webApp?.initData.trim() || "" : "";
+
+  const handleLegalLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!telegramInitData) return;
+    event.preventDefault();
+    openTelegramExternalLink(event.currentTarget.href, webApp);
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +55,17 @@ const RegisterPage = () => {
     trackProductEventOnce("signup_started");
 
     try {
-      const data = await AuthApi.registerRequest({ name, email, password });
+      const data = telegramInitData
+        ? await TelegramMiniAppApi.register({
+            initData: telegramInitData,
+            name,
+            email,
+            password,
+          })
+        : await AuthApi.registerRequest({ name, email, password });
+      if (telegramInitData) {
+        allowTelegramMiniAppAutoRestore();
+      }
       toLogin(data.id, data.name || name, data.email || email);
       trackProductEventOnce("signup_completed");
       navigate(redirect || startRoute);
@@ -212,6 +234,7 @@ const RegisterPage = () => {
               Я соглашаюсь с{" "}
               <Link
                 to="/terms"
+                onClick={handleLegalLink}
                 className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
               >
                 Условиями использования
@@ -219,6 +242,7 @@ const RegisterPage = () => {
               ,{" "}
               <Link
                 to="/privacy"
+                onClick={handleLegalLink}
                 className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
               >
                 Политикой конфиденциальности
@@ -226,6 +250,7 @@ const RegisterPage = () => {
               и{" "}
               <Link
                 to="/personal-data-consent"
+                onClick={handleLegalLink}
                 className="font-medium text-slate-300 transition-colors hover:text-indigo-400"
               >
                 Согласием на обработку персональных данных

@@ -54,6 +54,10 @@ Use a mocked Telegram bridge at 320/360/390/430 px:
    scrolling.
 6. Payment/recovery/security transition calls the external-link adapter only after a click; normal
    web continues using its existing behavior.
+7. First-time Mini App auth uses the same login/register screens as web while sending credentials
+   through the Telegram channel adapter.
+8. Logout, close and reopen stays on login without unlinking bot commands; a successful manual login
+   clears the suppression and the following reopen restores automatically.
 
 ## 5. Bot controller
 
@@ -109,3 +113,14 @@ involved, disabled dev worker, rotation of `TELEGRAM_WEBHOOK_SECRET` and
 Release gates not run locally: real BotFather menu/webhook, Render/Vercel dev deploy, new-user and
 existing-user flows in Telegram iOS/Android/Desktop, real unlink/reopen and external payment
 transition. Production migration, env, webhook, services and data were not touched.
+
+## 10. Production auth stabilization verification — 2026-08-30
+
+- Focused Mini App credential/logout suite: 17/17 tests passed.
+- Frontend typecheck and lint passed; full Vitest suite passed (141/141).
+- Production build and `git diff --check` passed; PWA service worker was generated.
+- Separate Telegram credential form was removed; ordinary web auth remains on its original API.
+- No schema, migration, backend environment, webhook or production service was changed.
+
+Release gate: after deployment, verify on a real Telegram client that logout → close → reopen stays
+on the familiar login screen, then manual login → close → reopen restores the account normally.

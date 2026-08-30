@@ -20,11 +20,20 @@ Missing/unknown target becomes `home`; raw paths/URLs are never redirected.
 
 1. `initializing`: call Telegram `ready()`/`expand()` and show Russian loader.
 2. `restoring`: send raw init data once to session endpoint.
-3. `needs-auth`: show in-Mini-App login/register without visiting the website.
+3. `needs-auth`: use the ordinary Glowy login/register pages inside Mini App with the Telegram
+   channel adapter; do not render a second visual auth implementation.
 4. `authenticated`: hydrate the existing auth store and replace-navigate to mapped route.
 5. `offline`: explain that initial verification needs a connection and offer retry.
 6. `invalid-launch`: explain how to open Glowy from the bot; expose no product data.
 7. `server-error`: calm Russian error and retry; never a white screen.
+
+## Explicit logout
+
+- Logout clears the current cookie and client user data as usual.
+- Inside Mini App it also stores a non-sensitive device-local preference that suppresses automatic
+  Telegram restore until the next successful manual login/register.
+- The preference contains no user, Telegram, token or launch data and does not unlink the bot.
+- A successful manual credential flow clears the preference and restores normal repeat-open behavior.
 
 ## Bridge behavior
 

@@ -96,8 +96,8 @@ specs/008-telegram-mini-app/
 src/
 ├── App.tsx
 ├── api/{AuthApi.ts,TelegramMiniAppApi.ts}
-├── components/telegram/{TelegramMiniAppBootstrap.tsx,TelegramMiniAppAuth.tsx}
-├── telegram/{TelegramMiniAppProvider.tsx,telegramMiniAppBridge.ts,telegramMiniAppRoutes.ts}
+├── components/telegram/TelegramMiniAppBootstrap.tsx
+├── telegram/{TelegramMiniAppProvider.tsx,telegramMiniAppBridge.ts,telegramMiniAppRoutes.ts,telegramMiniAppSession.ts}
 ├── layout/AppLayout.tsx
 └── pages/{LoginPage,RegisterPage,PricingPage}.tsx
 
@@ -151,6 +151,10 @@ Telegram routes являются channel adapter и вызывают общий 
    адресов и только по пользовательскому клику.
 5. Открытие `/telegram` вне Telegram не создаёт сессию и показывает кнопку возврата к боту;
    отсутствие bridge/init data никогда не даёт белый экран.
+6. Credential-flow Mini App переиспользует обычные страницы входа и регистрации, переключая только
+   channel API по наличию проверяемого Telegram launch context. Локальный флаг logout не содержит
+   идентификаторов или auth-данных: он лишь блокирует автоматический restore до успешного ручного
+   входа и не удаляет серверную `TelegramConnection`.
 
 ## Bot Processing Design
 

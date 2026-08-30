@@ -9,6 +9,7 @@ import TelegramMiniAppBootstrap from "./TelegramMiniAppBootstrap";
 const mocks = vi.hoisted(() => ({
   restore: vi.fn(),
   toLogin: vi.fn(),
+  autoRestoreBlocked: false,
   bridge: { isTelegramMiniApp: false, webApp: null as null | { initData: string } },
 }));
 
@@ -22,8 +23,8 @@ vi.mock("../../store/useAuthStore", () => ({
   useAuthStore: (selector: (state: { toLogin: typeof mocks.toLogin }) => unknown) =>
     selector({ toLogin: mocks.toLogin }),
 }));
-vi.mock("./TelegramMiniAppAuth", () => ({
-  default: () => <div>Форма Telegram</div>,
+vi.mock("../../telegram/telegramMiniAppSession", () => ({
+  isTelegramMiniAppAutoRestoreBlocked: () => mocks.autoRestoreBlocked,
 }));
 
 const renderBootstrap = (entry = "/telegram") =>
@@ -33,6 +34,8 @@ const renderBootstrap = (entry = "/telegram") =>
         <Route path="/telegram" element={<TelegramMiniAppBootstrap />} />
         <Route path="/tasks" element={<div>Раздел задач</div>} />
         <Route path="/dashboard" element={<div>Главная</div>} />
+        <Route path="/login" element={<div>Привычный вход</div>} />
+        <Route path="/register" element={<div>Привычная регистрация</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -41,6 +44,7 @@ describe("TelegramMiniAppBootstrap", () => {
   beforeEach(() => {
     mocks.restore.mockReset();
     mocks.toLogin.mockReset();
+    mocks.autoRestoreBlocked = false;
     mocks.bridge = { isTelegramMiniApp: false, webApp: null };
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   });
@@ -58,14 +62,24 @@ describe("TelegramMiniAppBootstrap", () => {
     expect(mocks.toLogin).toHaveBeenCalledWith(1, "Анна", "anna@example.com");
   });
 
-  it("shows in-app auth for a fresh Telegram user", async () => {
+  it("opens the ordinary registration screen for a fresh Telegram user", async () => {
     mocks.bridge = { isTelegramMiniApp: true, webApp: { initData: "signed" } };
     mocks.restore.mockRejectedValue({
       isAxiosError: true,
       response: { data: { code: "TELEGRAM_REGISTRATION_REQUIRED" } },
     });
     renderBootstrap();
-    await waitFor(() => expect(screen.getByText("Форма Telegram")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Привычная регистрация")).toBeInTheDocument());
+  });
+
+  it("opens the ordinary login screen after explicit logout without restoring", async () => {
+    mocks.bridge = { isTelegramMiniApp: true, webApp: { initData: "signed" } };
+    mocks.autoRestoreBlocked = true;
+
+    renderBootstrap("/telegram?target=tasks");
+
+    expect(await screen.findByText("Привычный вход")).toBeInTheDocument();
+    expect(mocks.restore).not.toHaveBeenCalled();
   });
 
   it("shows an unauthorized state for expired Telegram launch data", async () => {

@@ -5,10 +5,10 @@ import { TelegramMiniAppApi, type TelegramMiniAppUser } from "../../api/Telegram
 import { useAuthStore } from "../../store/useAuthStore";
 import { useTelegramMiniApp } from "../../telegram/telegramMiniAppContext";
 import { getTelegramMiniAppRoute } from "../../telegram/telegramMiniAppRoutes";
+import { isTelegramMiniAppAutoRestoreBlocked } from "../../telegram/telegramMiniAppSession";
 import RouteLoader from "../ui/RouteLoader";
-import TelegramMiniAppAuth from "./TelegramMiniAppAuth";
 
-type State = "loading" | "auth" | "offline" | "invalid" | "unauthorized" | "error";
+type State = "loading" | "offline" | "invalid" | "unauthorized" | "error";
 
 const TelegramMiniAppBootstrap = () => {
   const { webApp, isTelegramMiniApp } = useTelegramMiniApp();
@@ -35,6 +35,10 @@ const TelegramMiniAppBootstrap = () => {
   useEffect(() => {
     requestRef.current?.abort();
     if (!isTelegramMiniApp || !webApp?.initData || !navigator.onLine) return;
+    if (isTelegramMiniAppAutoRestoreBlocked()) {
+      navigate(`/login?redirect=${encodeURIComponent(targetRoute)}`, { replace: true });
+      return;
+    }
 
     const controller = new AbortController();
     requestRef.current = controller;
@@ -46,7 +50,7 @@ const TelegramMiniAppBootstrap = () => {
           axios.isAxiosError(error) &&
           error.response?.data?.code === "TELEGRAM_REGISTRATION_REQUIRED"
         ) {
-          setState("auth");
+          navigate(`/register?redirect=${encodeURIComponent(targetRoute)}`, { replace: true });
           return;
         }
         if (
@@ -60,7 +64,7 @@ const TelegramMiniAppBootstrap = () => {
         setState(!navigator.onLine || (axios.isAxiosError(error) && !error.response) ? "offline" : "error");
       });
     return () => controller.abort();
-  }, [attempt, complete, isTelegramMiniApp, webApp]);
+  }, [attempt, complete, isTelegramMiniApp, navigate, targetRoute, webApp]);
 
   const retry = () => {
     if (!navigator.onLine) {
@@ -74,10 +78,6 @@ const TelegramMiniAppBootstrap = () => {
   if (state === "loading") {
     return <RouteLoader className="min-h-[var(--tg-viewport-height,100dvh)]" />;
   }
-  if (state === "auth" && webApp?.initData) {
-    return <TelegramMiniAppAuth initData={webApp.initData} onAuthenticated={complete} />;
-  }
-
   const title =
     state === "invalid"
       ? "Откройте Glowy из Telegram"

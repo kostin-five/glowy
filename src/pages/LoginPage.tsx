@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthApi } from "../api/AuthApi";
+import { TelegramMiniAppApi } from "../api/TelegramMiniAppApi";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useToLogin } from "../store/useAuthStore";
@@ -7,6 +8,8 @@ import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
 import { useStartRoute } from "../store/useSettingsStore";
+import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
+import { allowTelegramMiniAppAutoRestore } from "../telegram/telegramMiniAppSession";
 
 const LoginPage = () => {
   const [email, setEmail] = useState<string>("");
@@ -23,6 +26,8 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showWakeupToast, setShowWakeupToast] = useState(false);
   const startRoute = useStartRoute();
+  const { isTelegramMiniApp, webApp } = useTelegramMiniApp();
+  const telegramInitData = isTelegramMiniApp ? webApp?.initData.trim() || "" : "";
 
   const toLoginUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +40,12 @@ const LoginPage = () => {
     }, 5000);
 
     try {
-      const data = await AuthApi.loginRequest({ email, password });
+      const data = telegramInitData
+        ? await TelegramMiniAppApi.login({ initData: telegramInitData, email, password })
+        : await AuthApi.loginRequest({ email, password });
+      if (telegramInitData) {
+        allowTelegramMiniAppAutoRestore();
+      }
       toLogin(data.id, data.name, data.email || email);
       navigate(redirect || startRoute);
     } catch (e) {

@@ -47,7 +47,8 @@ Glowy помогает пользователю:
 - AI: прямой DeepSeek с GigaChat fallback; временный proxy mode остаётся только для отката.
 - Payments: YooKassa checkout и webhook для тарифа Focus.
 - Process manager: PM2.
-- Deploy: Vercel frontend, VPS/Timeweb backend, Timeweb PostgreSQL.
+- Deploy: production frontend/backend на Timeweb, production PostgreSQL на Timeweb; dev frontend
+  на Vercel, dev backend на Render и отдельная dev PostgreSQL на Neon.
 
 ## Структура репозитория
 

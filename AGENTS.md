@@ -134,6 +134,7 @@ $speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
 ## Useful References
 
 - `.specify/memory/constitution.md` - non-negotiable project principles.
+- `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - current release, infrastructure, and next-step context.
 - `README.md` - setup, environment variables, deploy, and payment overview.
 - `docs/product-roadmap.md` - approved product direction and release boundaries.
 - `docs/payments-live-checklist.md` - operational checklist for live YooKassa payments.

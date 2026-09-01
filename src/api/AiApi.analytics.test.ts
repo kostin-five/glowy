@@ -46,37 +46,18 @@ describe("AI activation analytics", () => {
     expect(result.drafts).toEqual([]);
   });
 
-  it("does not record an activation event for a guest AI request", async () => {
+  it("does not send a network request for a stale guest AI session", async () => {
     useAuthStore.setState({
       isAuthenticated: true,
       isGuest: true,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
     });
-    post.mockResolvedValue({
-      data: {
-        drafts: [
-          {
-            title: " Подготовить доклад ",
-            date: "12.08.2026",
-            priority: "⚡️ P2",
-            category: "Учеба",
-            energyLevel: "high",
-            subtasks: [],
-          },
-        ],
-        reply: "Проверь черновик",
-      },
-    });
-
     const result = await AiApi.parseMindHub("Помоги выбрать следующую задачу");
 
+    expect(post).not.toHaveBeenCalled();
     expect(trackProductEventOnce).not.toHaveBeenCalled();
-    expect(result.drafts).toEqual([
-      expect.objectContaining({
-        title: "Подготовить доклад",
-        date: "2026-08-12",
-      }),
-    ]);
+    expect(result.drafts).toEqual([]);
+    expect(result.reply).toMatch(/зарегистрируйся|войдите|войти/i);
   });
 });

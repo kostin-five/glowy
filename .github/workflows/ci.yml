@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build and test shared contracts
+        run: npm run contracts:test
+
       - name: Check TypeScript
         run: npm run typecheck
 
@@ -46,6 +49,10 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+        working-directory: backend
+
+      - name: Check backend TypeScript foundation
+        run: npm run typecheck
         working-directory: backend
 
       - name: Run backend HTTP tests

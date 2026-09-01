@@ -82,7 +82,7 @@ const replaceIds = (
       : {}),
   })) as OfflineTaskOperation[];
 
-const processOperation = async (
+export const processTaskOfflineOperation = async (
   operation: OfflineTaskOperation,
   currentTasks: Task[]
 ) => {
@@ -163,7 +163,7 @@ const runSync = async () => {
   try {
     while (operations.length && activeOwnerKey === ownerKey) {
       const operation = operations[0];
-      const { taskIds, subTaskIds, progress, completionOutcome } = await processOperation(
+      const { taskIds, subTaskIds, progress, completionOutcome } = await processTaskOfflineOperation(
         operation,
         adapter.getTasks()
       );

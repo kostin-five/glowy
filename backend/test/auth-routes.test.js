@@ -24,6 +24,10 @@ const createApp = (db, authenticate = (req, _res, next) => {
 }) => {
   const app = express();
   app.use(express.json());
+  app.use((req, _res, next) => {
+    req.requestId = "018f07a2-7b6c-7d85-a2de-89efb6c124e1";
+    next();
+  });
   app.use("/api/auth", createAuthRouter({ db, authenticate }));
   return app;
 };
@@ -66,4 +70,15 @@ test("ordinary login, me and logout remain compatible", async () => {
   assert.equal(me.status, 200);
   assert.equal(me.body.password, undefined);
   assert.match(logout.headers["set-cookie"][0], /glowy_token=;/);
+});
+
+test("invalid registration returns an additive safe contract error", async () => {
+  const response = await request(createApp({ user: {} }))
+    .post("/api/auth/register")
+    .send({ name: "", email: "invalid", password: "short" });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.code, "AUTH_INVALID_INPUT");
+  assert.equal(response.body.requestId, "018f07a2-7b6c-7d85-a2de-89efb6c124e1");
+  assert.equal(JSON.stringify(response.body).includes("short"), false);
 });

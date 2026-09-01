@@ -7,6 +7,74 @@ const TOKEN_EXPIRY_SAFETY_MS = 60_000;
 
 let gigaChatTokenCache = null;
 
+export const createProviderBudget = ({
+  timeoutMs = getTimeoutMs(),
+  now = () => Date.now(),
+} = {}) => {
+  const deadline = now() + timeoutMs;
+  let exhausted = false;
+  return {
+    deadline,
+    remaining: () => (exhausted ? 0 : Math.max(0, deadline - now())),
+    exhaust: () => {
+      exhausted = true;
+    },
+  };
+};
+
+export const createAiCircuitBreaker = ({
+  now = () => Date.now(),
+  failureThreshold = 3,
+  openMs = 30_000,
+} = {}) => {
+  let state = "closed";
+  let retryableFailures = 0;
+  let openedUntil = 0;
+  let probeInFlight = false;
+
+  const beforeRequest = () => {
+    if (state === "closed") return { allowed: true, probe: false };
+    if (state === "open" && now() >= openedUntil && !probeInFlight) {
+      state = "half-open";
+      probeInFlight = true;
+      return { allowed: true, probe: true };
+    }
+    return {
+      allowed: false,
+      probe: false,
+      retryAfterMs: Math.max(0, openedUntil - now()),
+    };
+  };
+
+  const recordSuccess = () => {
+    state = "closed";
+    retryableFailures = 0;
+    openedUntil = 0;
+    probeInFlight = false;
+  };
+
+  const recordFailure = (retryable) => {
+    if (!retryable) {
+      if (state === "half-open") recordSuccess();
+      return;
+    }
+
+    retryableFailures += 1;
+    if (state === "half-open" || retryableFailures >= failureThreshold) {
+      state = "open";
+      openedUntil = now() + openMs;
+      probeInFlight = false;
+    }
+  };
+
+  const reset = () => recordSuccess();
+  const getState = () => ({ state, retryableFailures, openedUntil });
+
+  return { beforeRequest, recordSuccess, recordFailure, reset, getState };
+};
+
+const providerCircuit = createAiCircuitBreaker();
+
 export const createAiProviderError = ({
   code,
   message,
@@ -38,10 +106,21 @@ const requestJson = async ({
   init,
   provider,
   operation,
-  timeoutMs = getTimeoutMs(),
+  budget,
 }) => {
+  const timeoutMs = budget?.remaining() ?? getTimeoutMs();
+  if (timeoutMs <= 0) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_TIMEOUT",
+      message: "AI provider request timed out.",
+      status: 503,
+      retryable: true,
+      provider,
+      operation,
+    });
+  }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
 
   try {
     const response = await fetch(url, { ...init, signal: controller.signal });
@@ -72,6 +151,10 @@ const requestJson = async ({
     if (error?.code) throw error;
 
     if (error?.name === "AbortError") {
+      // A request-level abort is the deadline firing for the shared provider
+      // budget. Mark it exhausted so a slightly early timer cannot start the
+      // fallback with a new network call.
+      budget?.exhaust?.();
       throw createAiProviderError({
         code: "AI_PROVIDER_TIMEOUT",
         message: "AI provider request timed out.",
@@ -151,7 +234,7 @@ const readUsage = (payload) => ({
   totalTokens: Number(payload?.usage?.total_tokens) || 0,
 });
 
-const callDeepSeek = async ({ messages, generationConfig }) => {
+const callDeepSeek = async ({ messages, generationConfig }, budget) => {
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     throw createAiProviderError({
@@ -171,6 +254,7 @@ const callDeepSeek = async ({ messages, generationConfig }) => {
     url: `${baseUrl}/chat/completions`,
     provider: "deepseek",
     operation: "completion",
+    budget,
     init: {
       method: "POST",
       headers: {
@@ -205,7 +289,7 @@ const isCachedGigaChatTokenValid = () =>
       gigaChatTokenCache.expiresAt > Date.now() + TOKEN_EXPIRY_SAFETY_MS
   );
 
-const getGigaChatAccessToken = async ({ forceRefresh = false } = {}) => {
+const getGigaChatAccessToken = async ({ forceRefresh = false, budget } = {}) => {
   if (!forceRefresh && isCachedGigaChatTokenValid()) {
     return gigaChatTokenCache.accessToken;
   }
@@ -228,6 +312,7 @@ const getGigaChatAccessToken = async ({ forceRefresh = false } = {}) => {
     url: authUrl,
     provider: "gigachat",
     operation: "oauth",
+    budget,
     init: {
       method: "POST",
       headers: {
@@ -260,7 +345,12 @@ const getGigaChatAccessToken = async ({ forceRefresh = false } = {}) => {
   return gigaChatTokenCache.accessToken;
 };
 
-const requestGigaChatCompletion = async ({ messages, generationConfig, token }) => {
+const requestGigaChatCompletion = async ({
+  messages,
+  generationConfig,
+  token,
+  budget,
+}) => {
   const baseUrl = (process.env.GIGACHAT_BASE_URL || "https://api.giga.chat").replace(
     /\/$/,
     ""
@@ -270,6 +360,7 @@ const requestGigaChatCompletion = async ({ messages, generationConfig, token }) 
     url: `${baseUrl}/v1/chat/completions`,
     provider: "gigachat",
     operation: "completion",
+    budget,
     init: {
       method: "POST",
       headers: {
@@ -298,21 +389,28 @@ const requestGigaChatCompletion = async ({ messages, generationConfig, token }) 
   };
 };
 
-const callGigaChat = async (request) => {
-  const token = await getGigaChatAccessToken();
+const callGigaChat = async (request, budget) => {
+  const token = await getGigaChatAccessToken({ budget });
 
   try {
-    return await requestGigaChatCompletion({ ...request, token });
+    return await requestGigaChatCompletion({ ...request, token, budget });
   } catch (error) {
     if (error?.status !== 401) throw error;
 
     gigaChatTokenCache = null;
-    const refreshedToken = await getGigaChatAccessToken({ forceRefresh: true });
-    return requestGigaChatCompletion({ ...request, token: refreshedToken });
+    const refreshedToken = await getGigaChatAccessToken({
+      forceRefresh: true,
+      budget,
+    });
+    return requestGigaChatCompletion({
+      ...request,
+      token: refreshedToken,
+      budget,
+    });
   }
 };
 
-const callAiProxy = async (request) => {
+const callAiProxy = async (request, budget) => {
   const baseUrl = (process.env.AI_PROXY_URL || "").replace(/\/$/, "");
   const secret = process.env.AI_PROXY_SECRET;
 
@@ -329,6 +427,7 @@ const callAiProxy = async (request) => {
     url: `${baseUrl}/v1/chat/completions`,
     provider: "proxy",
     operation: "completion",
+    budget,
     init: {
       method: "POST",
       headers: {
@@ -357,9 +456,9 @@ const callAiProxy = async (request) => {
   };
 };
 
-const runDirectProviders = async (request, contextLabel) => {
+const runDirectProviders = async (request, contextLabel, budget) => {
   try {
-    return await callDeepSeek(request);
+    return await callDeepSeek(request, budget);
   } catch (primaryError) {
     if (!primaryError?.retryable) throw primaryError;
 
@@ -370,7 +469,7 @@ const runDirectProviders = async (request, contextLabel) => {
     });
 
     try {
-      return await callGigaChat(request);
+      return await callGigaChat(request, budget);
     } catch (fallbackError) {
       logger.info("ai.provider.fallback_failed", {
         context: contextLabel,
@@ -396,10 +495,45 @@ const runDirectProviders = async (request, contextLabel) => {
 
 const runProviderRequest = async (request, contextLabel, accountingContext) => {
   const startedAt = Date.now();
-  const result =
-    (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
-      ? await callAiProxy(request)
-      : await runDirectProviders(request, contextLabel);
+  const circuitPermission = providerCircuit.beforeRequest();
+  if (!circuitPermission.allowed) {
+    logger.info("ai.provider.circuit_rejected", {
+      code: "AI_PROVIDER_CIRCUIT_OPEN",
+      status: providerCircuit.getState().state,
+      retryable: true,
+      durationMs: 0,
+    });
+    throw createAiProviderError({
+      code: "AI_PROVIDER_CIRCUIT_OPEN",
+      message: "AI provider circuit is open.",
+      status: 503,
+      retryable: true,
+      operation: "circuit",
+    });
+  }
+  const budget = createProviderBudget();
+  let result;
+
+  try {
+    result =
+      (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
+        ? await callAiProxy(request, budget)
+        : await runDirectProviders(request, contextLabel, budget);
+    providerCircuit.recordSuccess();
+  } catch (error) {
+    providerCircuit.recordFailure(Boolean(error?.retryable));
+    logger.info("ai.provider.failed", {
+      provider: error?.provider || "unknown",
+      operation: error?.operation || "unknown",
+      code: error?.code || "AI_PROVIDER_UNKNOWN_ERROR",
+      statusCode: error?.status || 503,
+      status: providerCircuit.getState().state,
+      retryable: Boolean(error?.retryable),
+      durationMs: Date.now() - startedAt,
+      remaining: budget.remaining(),
+    });
+    throw error;
+  }
 
   logger.info("ai.provider.completed", {
     context: contextLabel,
@@ -448,4 +582,5 @@ export const isRetryableAiProviderError = (error) => Boolean(error?.retryable);
 
 export const resetAiProviderStateForTests = () => {
   gigaChatTokenCache = null;
+  providerCircuit.reset();
 };

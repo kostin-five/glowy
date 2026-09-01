@@ -87,6 +87,8 @@ const mockAuthenticatedApi = async (page: Page) => {
         id: activeUserId,
         name: `Тест ${activeUserId}`,
         email: `offline-${activeUserId}@example.com`,
+        xp: 0,
+        level: 1,
         avatarId: "orbit-indigo",
         aiTone: "calm",
       });

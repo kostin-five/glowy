@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -8,9 +8,6 @@ import useMediaQuery from "../hooks/useMediaQuery";
 import type { Task } from "../types";
 import ReadOnlyTaskCard from "../components/tasks/ReadOnlyTaskCard";
 
-const AI_TASK_IDS_KEY = "glowy-ai-created-task-ids";
-const AI_TASK_IDS_EVENT = "glowy-ai-created-task-ids-updated";
-
 const getTodayLocalDate = () => {
   const today = new Date();
   const year = today.getFullYear();
@@ -18,17 +15,6 @@ const getTodayLocalDate = () => {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
-};
-
-const readAiTaskIds = () => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(AI_TASK_IDS_KEY) || "[]");
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter((id): id is number => typeof id === "number");
-  } catch {
-    return [];
-  }
 };
 
 const getFocusHint = (currentEnergy: number) => {
@@ -68,18 +54,8 @@ const DashboardPage = () => {
   const userName = useAuthStore((state) => state.name);
   const currentEnergy = useAuthStore((state) => state.currentEnergy);
   const tasks = useTaskStore((state) => state.tasks);
-  const [aiTaskIds, setAiTaskIds] = useState<number[]>(readAiTaskIds);
 
-  useEffect(() => {
-    const updateAiIds = () => {
-      setAiTaskIds(readAiTaskIds());
-    };
-
-    window.addEventListener(AI_TASK_IDS_EVENT, updateAiIds);
-    return () => window.removeEventListener(AI_TASK_IDS_EVENT, updateAiIds);
-  }, []);
-
-  const { todayTasks, aiTasks, focusTasks } = useMemo(() => {
+  const { todayTasks, focusTasks } = useMemo(() => {
     const active = tasks.filter((t) => !t.completed);
     const todayStr = getTodayLocalDate();
     const today = active.filter((t) => t.date === todayStr);
@@ -105,17 +81,11 @@ const DashboardPage = () => {
       )
       .slice(0, 2);
 
-    const taskById = new Map(tasks.map((task) => [task.id, task]));
-    const recentAiTasks = aiTaskIds
-      .map((id) => taskById.get(id))
-      .filter((task): task is Task => task !== undefined && !task.completed);
-
     return {
       todayTasks: today,
-      aiTasks: recentAiTasks,
       focusTasks: recommendedFocusTasks,
     };
-  }, [tasks, currentEnergy, aiTaskIds]);
+  }, [tasks, currentEnergy]);
   const mindHubInputRef = useRef<HTMLTextAreaElement | null>(null);
   const isDesktopLayout = useMediaQuery("(min-width: 1024px)");
 
@@ -131,6 +101,74 @@ const DashboardPage = () => {
     });
     window.requestAnimationFrame(() => mindHubInputRef.current?.focus());
   };
+
+  const renderFocusSection = () => (
+    <section className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+      <div>
+        <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
+          Фокус дня
+        </h2>
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Лучше начать с
+        </p>
+
+        {focusTasks.length > 0 ? (
+          <>
+            <div className="space-y-3">
+              {focusTasks.map((task) => (
+                <ReadOnlyTaskCard key={task.id} task={task} />
+              ))}
+            </div>
+            <div className="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm leading-6 text-indigo-100/90 xl:block">
+              {getFocusHint(currentEnergy)}
+            </div>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+            <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+              Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при
+              необходимости предложу первый шаг как черновик.
+            </p>
+            <button
+              type="button"
+              onClick={focusMindHubInput}
+              className="mt-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
+            >
+              Выгрузить мысли
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
+  const renderTodaySection = () => (
+    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
+          Сегодня
+        </h2>
+        <Link
+          to="/tasks"
+          className="text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
+        >
+          Все
+        </Link>
+      </div>
+
+      {todayTasks.length > 0 ? (
+        <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2 xl:max-h-none xl:flex-1">
+          {todayTasks.map((task) => (
+            <ReadOnlyTaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          На сегодня нет активных задач.
+        </p>
+      )}
+    </section>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -154,43 +192,7 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:items-stretch">
         <div className="xl:col-span-3 flex flex-col gap-6 xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-0">
-          <section className="flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:flex-1">
-            <div>
-              <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
-                Фокус дня
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Лучше начать с
-              </p>
-
-              {focusTasks.length > 0 ? (
-                <>
-                  <div className="space-y-3">
-                    {focusTasks.map((task) => (
-                      <ReadOnlyTaskCard key={task.id} task={task} />
-                    ))}
-                  </div>
-                  <div className="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm leading-6 text-indigo-100/90 xl:block">
-                    {getFocusHint(currentEnergy)}
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-                  <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при
-                    необходимости предложу первый шаг как черновик.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={focusMindHubInput}
-                    className="mt-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
-                  >
-                    Выгрузить мысли
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
+          {isDesktopLayout ? renderTodaySection() : renderFocusSection()}
 
           <EnergySlider />
         </div>
@@ -201,50 +203,9 @@ const DashboardPage = () => {
           </div>
         )}
 
-        <section className="flex min-h-0 flex-col gap-6 xl:col-span-4 xl:h-[calc(100vh-12rem)]">
-          <div className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
-                Сегодня
-              </h2>
-              <Link
-                to="/tasks"
-                className="text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
-              >
-                Все
-              </Link>
-            </div>
-
-            {todayTasks.length > 0 ? (
-              <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2">
-                {todayTasks.map((task) => (
-                  <ReadOnlyTaskCard key={task.id} task={task} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                На сегодня нет активных задач.
-              </p>
-            )}
-          </div>
-
-          <div className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
-            <h2 className="mb-5 font-display text-2xl font-black text-slate-900 dark:text-slate-100">
-              Недавно добавлено
-            </h2>
-            {aiTasks.length > 0 ? (
-              <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2">
-                {aiTasks.map((task) => (
-                  <ReadOnlyTaskCard key={task.id} task={task} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Сегодня нет задач, подтверждённых в Разгрузке мыслей.
-              </p>
-            )}
-          </div>
-        </section>
+        <div className="flex min-h-0 flex-col xl:col-span-4 xl:h-[calc(100vh-12rem)]">
+          {isDesktopLayout ? renderFocusSection() : renderTodaySection()}
+        </div>
       </div>
     </div>
   );

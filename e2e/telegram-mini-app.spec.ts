@@ -46,6 +46,17 @@ const prepareMiniApp = async (
         body: JSON.stringify({ code: "TELEGRAM_REGISTRATION_REQUIRED" }),
       });
     }
+    if (path === "/api/auth/me" && registrationRequired) {
+      return route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({
+          message: "Пользователь не авторизован",
+          code: "AUTH_UNAUTHORIZED",
+          requestId: "018f07a2-7b6c-7d85-a2de-89efb6c124e1",
+        }),
+      });
+    }
     if (path === "/api/telegram/mini-app/session" || path === "/api/auth/me") {
       return fulfill(route, user);
     }
@@ -112,7 +123,7 @@ for (const width of [320, 360, 390, 430]) {
     await page.setViewportSize({ width, height: 780 });
     await page.goto("/telegram");
 
-    await expect(page.getByRole("heading", { name: "Создать аккаунт Glowy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Начать путь с Glowy" })).toBeVisible();
     const overflow = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth,

@@ -25,7 +25,6 @@ import AiApi, {
   type MindHubMessage,
   type MindHubMode,
 } from "../../api/AiApi";
-import type { Task } from "../../types";
 import { useTaskStore } from "../../store/useTaskStore";
 import { trackProductEvent } from "../../utils/analytics";
 import useTypewriter from "../../hooks/useTypewriter";
@@ -182,30 +181,6 @@ const ChatMessageBubble = ({
       </button>
     </div>
   );
-};
-
-const saveAiCreatedTaskIds = (tasks: Task[]) => {
-  try {
-    const saved = JSON.parse(
-      localStorage.getItem("glowy-ai-created-task-ids") || "[]"
-    );
-    const previousIds = Array.isArray(saved)
-      ? saved.filter((id): id is number => typeof id === "number")
-      : [];
-    const newIds = tasks.map((task) => task.id);
-    const updatedIds = Array.from(new Set([...newIds, ...previousIds])).slice(
-      0,
-      20
-    );
-
-    localStorage.setItem(
-      "glowy-ai-created-task-ids",
-      JSON.stringify(updatedIds)
-    );
-    window.dispatchEvent(new Event("glowy-ai-created-task-ids-updated"));
-  } catch (error) {
-    console.error("Failed to save AI-created task ids", error);
-  }
 };
 
 const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
@@ -478,7 +453,6 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       throw new Error("Не удалось сохранить задачу. Попробуй ещё раз.");
     }
 
-    saveAiCreatedTaskIds([createdTask]);
     dismissDraft(localId);
     trackProductEvent("ai_draft_confirmed");
     appendMessage({

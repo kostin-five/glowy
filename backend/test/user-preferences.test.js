@@ -62,7 +62,7 @@ test("updates a prepared avatar and respectful communication tone", async () => 
   const { app, authorization } = createFixture({
     plan: "focus",
     subscriptionStatus: "active",
-    planExpiresAt: new Date("2026-09-01T00:00:00.000Z"),
+    planExpiresAt: new Date("2099-09-01T00:00:00.000Z"),
   });
   const response = await request(app)
     .patch("/api/user/preferences")

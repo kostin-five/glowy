@@ -8,7 +8,11 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useTaskStore } from "../store/useTaskStore";
 import DashboardPage from "./DashboardPage";
 
-vi.mock("../hooks/useMediaQuery", () => ({ default: () => false }));
+const mocks = vi.hoisted(() => ({ isDesktopLayout: false }));
+
+vi.mock("../hooks/useMediaQuery", () => ({
+  default: () => mocks.isDesktopLayout,
+}));
 vi.mock("../components/layout/EnergySlider", () => ({ EnergySlider: () => null }));
 vi.mock("../components/mind/MindHubChat", () => ({ default: () => null }));
 
@@ -19,6 +23,7 @@ const today = () => {
 
 beforeEach(() => {
   localStorage.clear();
+  mocks.isDesktopLayout = false;
   useAuthStore.setState({ name: "Тест", currentEnergy: 60 });
   useTaskStore.setState({
     userLevel: 3,
@@ -56,5 +61,24 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("button", { name: "Отметить задачу выполненной" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Удалить задачу" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Редактировать задачу" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
+    ).toEqual(["Фокус дня", "Сегодня"]);
+  });
+
+  it("shows Today before the full-height focus column on desktop", () => {
+    mocks.isDesktopLayout = true;
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
+    ).toEqual(["Сегодня", "Фокус дня"]);
+    expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
   });
 });

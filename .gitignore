@@ -11,7 +11,10 @@ node_modules
 dist
 dist-ssr
 dev-dist
+build
+coverage
 *.local
+*.tmp
 playwright-report
 test-results
 

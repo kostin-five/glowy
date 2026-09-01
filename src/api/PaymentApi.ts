@@ -1,4 +1,8 @@
 import axios from "axios";
+import {
+  paymentCheckoutSchema,
+  paymentPlanStateSchema,
+} from "@glowy/contracts";
 import { API_BASE_URL } from "./config";
 
 export const PaymentApi = {
@@ -8,12 +12,12 @@ export const PaymentApi = {
       undefined,
       { withCredentials: true }
     );
-    return data;
+    return paymentCheckoutSchema.parse(data);
   },
   getCurrentPlan: async () => {
     const { data } = await axios.get(`${API_BASE_URL}/payments/current-plan`, {
       withCredentials: true,
     });
-    return data;
+    return paymentPlanStateSchema.parse(data);
   },
 };

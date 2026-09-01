@@ -23,22 +23,26 @@ test("add creates only a pending AI draft under the shared limit", async () => {
       },
       task: { create: async () => { throw new Error("must not create"); } },
     },
-    previewAiLimit: async (userId) => { events.push(["preview", userId]); return { allowed: true }; },
+    reserveAiRequest: async (userId) => {
+      events.push(["reserve", userId]);
+      return {
+        allowed: true,
+        reservation: { userId, cost: 1, resetAt: "2026-08-27T12:00:00.000Z" },
+      };
+    },
     generateDraft: async (text, context) => {
       events.push(["generate", text, context.userId]);
       return { title: "Купить хлеб", date: "", priority: "⚡️ P2", energyLevel: "low", category: "Личное" };
     },
-    consumeAiRequest: async (userId) => { events.push(["consume", userId]); return { allowed: true }; },
   });
 
   await worker.processUpdate(messageUpdate({ text: "/add купить хлеб" }), "10");
-  assert.deepEqual(events.slice(0, 3), [
-    ["preview", 42],
+  assert.deepEqual(events.slice(0, 2), [
+    ["reserve", 42],
     ["generate", "купить хлеб", 42],
-    ["consume", 42],
   ]);
-  assert.equal(events[3][0], "draft");
-  assert.equal(events[3][1].sourceUpdateId, "10");
+  assert.equal(events[2][0], "draft");
+  assert.equal(events[2][1].sourceUpdateId, "10");
   assert.match(recorder.calls.at(-1)[1].text, /Черновик задачи/);
 });
 
@@ -51,7 +55,7 @@ test("add respects an exhausted AI limit without provider use", async () => {
       telegramConnection: { findUnique: async () => linkedConnection },
       telegramTaskDraft: { findUnique: async () => null },
     },
-    previewAiLimit: async () => ({ allowed: false }),
+    reserveAiRequest: async () => ({ allowed: false }),
     generateDraft: async () => { generated = true; },
   });
   await worker.processUpdate(messageUpdate({ text: "/add купить хлеб" }), "10");

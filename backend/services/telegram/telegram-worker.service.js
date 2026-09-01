@@ -1,8 +1,8 @@
 import { prisma } from "../../lib/prisma.js";
 import { logger } from "../../lib/logger.js";
 import {
-  consumeAuthenticatedAiRequest,
-  getAuthenticatedAiRequestLimit,
+  releaseAuthenticatedAiRequest,
+  reserveAuthenticatedAiRequest,
 } from "../ai/ai-limits.service.js";
 import { generateTaskDraftFromText } from "../ai/note-task-draft.service.js";
 import { getCoachReply } from "../ai/mind-hub.service.js";
@@ -58,8 +58,8 @@ export const createTelegramWorker = ({
   api = createTelegramApiClient(),
   links = createTelegramLinkService({ db }),
   updates = createTelegramUpdateService({ db }),
-  previewAiLimit = getAuthenticatedAiRequestLimit,
-  consumeAiRequest = consumeAuthenticatedAiRequest,
+  reserveAiRequest = reserveAuthenticatedAiRequest,
+  releaseAiRequest = releaseAuthenticatedAiRequest,
   generateDraft = generateTaskDraftFromText,
   answerAi = getCoachReply,
   createTask = createTaskForUser,
@@ -73,6 +73,20 @@ export const createTelegramWorker = ({
   let cleanupTimer = null;
   let running = false;
   let draining = false;
+
+  const releaseReservation = async (reservation) => {
+    if (!reservation) return;
+
+    try {
+      await releaseAiRequest(reservation);
+    } catch (error) {
+      logger.error("telegram.ai_limit.release_failed", {
+        error,
+        statusCode: 500,
+        errorCode: "AI_LIMIT_RELEASE_FAILED",
+      });
+    }
+  };
 
   const send = (chatId, text, extra = {}) =>
     api.sendMessage({ chat_id: chatId, text, ...extra });
@@ -140,8 +154,8 @@ export const createTelegramWorker = ({
       return;
     }
 
-    const preview = await previewAiLimit(connection.userId);
-    if (!preview.allowed) {
+    const reserved = await reserveAiRequest(connection.userId);
+    if (!reserved.allowed) {
       await send(actor.chatId, "Лимит AI-запросов исчерпан. Попробуй после обновления лимита.", withMiniApp("tasks", "Открыть задачи"));
       return;
     }
@@ -154,14 +168,9 @@ export const createTelegramWorker = ({
         "Telegram task draft"
       );
     } catch (error) {
+      await releaseReservation(reserved.reservation);
       if (isRetryable(error)) throw error;
       await send(actor.chatId, "Не удалось подготовить черновик. Попробуй немного позже.", withMiniApp("tasks", "Открыть задачи"));
-      return;
-    }
-
-    const usage = await consumeAiRequest(connection.userId);
-    if (!usage.allowed) {
-      await send(actor.chatId, "Лимит AI-запросов исчерпан. Задача не создана.", withMiniApp("tasks", "Открыть задачи"));
       return;
     }
 
@@ -193,8 +202,8 @@ export const createTelegramWorker = ({
       );
       return;
     }
-    const preview = await previewAiLimit(connection.userId);
-    if (!preview.allowed) {
+    const reserved = await reserveAiRequest(connection.userId);
+    if (!reserved.allowed) {
       await send(actor.chatId, "Лимит AI-запросов исчерпан. Попробуй после обновления лимита.", withMiniApp("ai", "Открыть Glowy AI"));
       return;
     }
@@ -202,13 +211,9 @@ export const createTelegramWorker = ({
     try {
       reply = await answerAi(text, [], undefined, { userId: connection.userId });
     } catch (error) {
+      await releaseReservation(reserved.reservation);
       if (isRetryable(error)) throw error;
       await send(actor.chatId, "Glowy AI пока не ответил. Попробуй немного позже.", withMiniApp("ai", "Открыть Glowy AI"));
-      return;
-    }
-    const usage = await consumeAiRequest(connection.userId);
-    if (!usage.allowed) {
-      await send(actor.chatId, "Лимит AI-запросов исчерпан. Ответ не сохранён.", withMiniApp("ai", "Открыть Glowy AI"));
       return;
     }
     await send(actor.chatId, String(reply || "Я рядом. Попробуй сформулировать вопрос ещё раз.").slice(0, 4_000), withMiniApp("ai", "Продолжить в Glowy AI"));

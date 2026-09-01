@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  subTaskCreateRequestSchema,
+  subTaskSchema,
+  subTaskUpdateRequestSchema,
+  taskDeleteResponseSchema,
+} from "@glowy/contracts";
 import { useAuthStore } from "../store/useAuthStore";
 import type { SubTask } from "../types";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
@@ -24,29 +30,38 @@ attachUnauthorizedInterceptor(api);
 export const SubTaskApi = {
   async fetchSubTasks(taskId: number): Promise<SubTask[]> {
     const response = await api.get(`/${taskId}`);
-    return response.data;
+    return subTaskSchema.array().parse(response.data);
   },
 
   async createSubTask(taskId: number, title: string): Promise<SubTask> {
-    const response = await api.post("/", { taskId, title });
-    return response.data;
+    const response = await api.post(
+      "/",
+      subTaskCreateRequestSchema.parse({ taskId, title })
+    );
+    return subTaskSchema.parse(response.data);
   },
 
   async toggleSubTask(id: number, completed: boolean): Promise<SubTask> {
-    const response = await api.put(`/${id}`, { completed });
-    return response.data;
+    const response = await api.put(
+      `/${id}`,
+      subTaskUpdateRequestSchema.parse({ completed })
+    );
+    return subTaskSchema.parse(response.data);
   },
 
   async updateSubTask(
     id: number,
     data: Partial<Pick<SubTask, "title" | "completed" | "position">>
   ): Promise<SubTask> {
-    const response = await api.put(`/${id}`, data);
-    return response.data;
+    const response = await api.put(
+      `/${id}`,
+      subTaskUpdateRequestSchema.parse(data)
+    );
+    return subTaskSchema.parse(response.data);
   },
 
   async deleteSubTask(id: number) {
     const response = await api.delete(`/${id}`);
-    return response.data;
+    return taskDeleteResponseSchema.parse(response.data);
   },
 };

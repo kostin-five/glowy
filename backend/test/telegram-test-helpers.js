@@ -53,8 +53,18 @@ export const createWorkerFixture = ({ db, api, ...overrides }) =>
       ...overrides.links,
     },
     updates: overrides.updates || {},
-    previewAiLimit: overrides.previewAiLimit || (async () => ({ allowed: true })),
-    consumeAiRequest: overrides.consumeAiRequest || (async () => ({ allowed: true })),
+    reserveAiRequest:
+      overrides.reserveAiRequest ||
+      (async (userId) => ({
+        allowed: true,
+        reservation: {
+          userId,
+          cost: 1,
+          resetAt: "2026-08-27T12:00:00.000Z",
+        },
+      })),
+    releaseAiRequest:
+      overrides.releaseAiRequest || (async () => ({ released: true })),
     generateDraft:
       overrides.generateDraft ||
       (async () => ({

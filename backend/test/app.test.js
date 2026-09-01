@@ -56,10 +56,34 @@ test("returns a generic response for an unhandled server error", async () => {
   const response = await request(app).get("/api/__test__/error");
 
   assert.equal(response.status, 500);
-  assert.deepEqual(response.body, {
-    error: "Внутренняя ошибка сервера. Попробуйте ещё раз позже.",
-  });
+  assert.equal(
+    response.body.error,
+    "Внутренняя ошибка сервера. Попробуйте ещё раз позже."
+  );
+  assert.equal(response.body.code, "INTERNAL_SERVER_ERROR");
+  assert.equal(response.body.requestId, response.headers["x-request-id"]);
   assert.match(response.headers["x-request-id"], /^[\da-f-]{36}$/i);
+});
+
+test("completion log correlates route, status and request identifier", async () => {
+  const originalConsoleLog = console.log;
+  const records = [];
+  console.log = (line) => records.push(JSON.parse(line));
+
+  let response;
+  try {
+    response = await request(createApp()).get("/api/health");
+  } finally {
+    console.log = originalConsoleLog;
+  }
+
+  const completed = records.find((record) => record.event === "request.completed");
+  assert.ok(completed);
+  assert.equal(completed.requestId, response.headers["x-request-id"]);
+  assert.equal(completed.method, "GET");
+  assert.equal(completed.route, "/api/health");
+  assert.equal(completed.statusCode, 200);
+  assert.equal(Number.isFinite(completed.durationMs), true);
 });
 
 test("browser CSRF bypass remains limited to the exact Telegram webhook", async () => {

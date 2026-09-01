@@ -1,8 +1,17 @@
 import express from "express";
 import { body, validationResult } from "express-validator";
+import { z } from "zod";
+import {
+  taskCreateRequestSchema,
+  taskDeleteResponseSchema,
+  taskSchema,
+  taskUpdateRequestSchema,
+  taskUpdateResponseSchema,
+} from "@glowy/contracts";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { buildErrorEnvelope } from "../middleware/error.middleware.js";
 import { createTaskForUser } from "../services/tasks/task-write.service.js";
 import {
   buildUserProgress,
@@ -18,10 +27,6 @@ import {
   normalizeOptionalMinutes,
   parsePositiveId,
 } from "../utils/validation.utils.js";
-
-const router = express.Router();
-
-router.use(authMiddleware);
 
 const taskInclude = {
   subtasks: {
@@ -44,6 +49,9 @@ const minutesValidator = (value) => {
   throw new Error("Время должно быть целым числом от 1 до 1440 минут");
 };
 
+const buildTaskError = (req, error, code) =>
+  buildErrorEnvelope(req, error, code);
+
 export const isAcceptableCompletionDate = (value, now = new Date()) => {
   if (!isDateOnly(value)) return false;
 
@@ -52,16 +60,27 @@ export const isAcceptableCompletionDate = (value, now = new Date()) => {
   return value <= latestLocalDate;
 };
 
+export const createTaskRouter = ({
+  db = prisma,
+  authenticate = authMiddleware,
+  createTask = createTaskForUser,
+} = {}) => {
+const router = express.Router();
+
+router.use(authenticate);
+
 router.get("/", async (req, res) => {
   try {
-    const tasks = await prisma.task.findMany({
+    const tasks = await db.task.findMany({
       where: { userId: req.user.id },
       include: taskInclude,
     });
-    res.json(tasks);
+    res.json(z.array(taskSchema).parse(tasks));
   } catch (e) {
     logger.error("tasks.list.failed", { req, error: e, statusCode: 500 });
-    res.status(500).json({ error: "Не удалось загрузить задачи" });
+    res
+      .status(500)
+      .json(buildTaskError(req, "Не удалось загрузить задачи", "TASK_LIST_FAILED"));
   }
 });
 
@@ -80,20 +99,35 @@ router.post(
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res
+          .status(400)
+          .json(buildTaskError(req, "Проверьте данные задачи", "TASK_INVALID_INPUT"));
       }
-      const newTask = await createTaskForUser({
+      const requestResult = taskCreateRequestSchema.safeParse(req.body);
+      if (!requestResult.success) {
+        return res
+          .status(400)
+          .json(buildTaskError(req, "Проверьте данные задачи", "TASK_INVALID_INPUT"));
+      }
+      const newTask = await createTask({
+        db,
         userId: req.user.id,
-        input: req.body,
+        input: requestResult.data,
         include: taskInclude,
       });
 
-      return res.status(201).json(newTask);
+      return res.status(201).json(taskSchema.parse(newTask));
     } catch (e) {
       logger.error("tasks.create.failed", { req, error: e, statusCode: e?.status || 500 });
-      return res.status(e?.status || 500).json({
-        error: e?.status === 400 ? e.message : "Ошибка при создании",
-      });
+      return res
+        .status(e?.status || 500)
+        .json(
+          buildTaskError(
+            req,
+            e?.status === 400 ? e.message : "Ошибка при создании",
+            e?.status === 400 ? "TASK_INVALID_INPUT" : "TASK_CREATE_FAILED"
+          )
+        );
     }
   }
 );
@@ -115,12 +149,22 @@ router.put(
     try {
       const taskId = parsePositiveId(req.params.id);
       if (!taskId) {
-        return res.status(400).json({ error: "Некорректный ID задачи" });
+        return res
+          .status(400)
+          .json(buildTaskError(req, "Некорректный ID задачи", "TASK_INVALID_ID"));
       }
 
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        return res
+          .status(400)
+          .json(buildTaskError(req, "Проверьте данные задачи", "TASK_INVALID_INPUT"));
+      }
+      const requestResult = taskUpdateRequestSchema.safeParse(req.body);
+      if (!requestResult.success) {
+        return res
+          .status(400)
+          .json(buildTaskError(req, "Проверьте данные задачи", "TASK_INVALID_INPUT"));
       }
       const {
         title,
@@ -133,19 +177,25 @@ router.put(
         estimatedMinutes,
         actualMinutes,
         subtasks,
-      } = req.body;
-    const uniqueTask = await prisma.task.findUnique({
+      } = requestResult.data;
+    const uniqueTask = await db.task.findUnique({
       where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
-      return res.status(403).json({ error: "Нет доступа к этой задаче" });
+      return res
+        .status(403)
+        .json(buildTaskError(req, "Нет доступа к этой задаче", "TASK_FORBIDDEN"));
     }
 
     const isCompleting = completed === true && !uniqueTask.completed;
     if (isCompleting && !isAcceptableCompletionDate(completedOn)) {
-      return res.status(400).json({
-        error: "При выполнении задачи укажите текущую дату в формате YYYY-MM-DD",
-      });
+      return res.status(400).json(
+        buildTaskError(
+          req,
+          "При выполнении задачи укажите текущую дату в формате YYYY-MM-DD",
+          "TASK_COMPLETION_DATE_INVALID"
+        )
+      );
     }
 
     const normalizedEstimate = normalizeOptionalMinutes(estimatedMinutes).value;
@@ -168,7 +218,7 @@ router.put(
           .filter((sub) => Number.isInteger(sub.id) && sub.id > 0)
       : [];
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       let xpReward = 0;
       let xpOutcome = null;
       let updatedUser = null;
@@ -267,10 +317,12 @@ router.put(
       };
     });
 
-    res.json(result);
+    res.json(taskUpdateResponseSchema.parse(result));
   } catch (e) {
     logger.error("tasks.update.failed", { req, error: e, statusCode: 500 });
-    res.status(500).json({ error: "Ошибка при обновлении" });
+    res
+      .status(500)
+      .json(buildTaskError(req, "Ошибка при обновлении", "TASK_UPDATE_FAILED"));
   }
 });
 
@@ -278,23 +330,32 @@ router.delete("/:id", async (req, res) => {
   try {
     const taskId = parsePositiveId(req.params.id);
     if (!taskId) {
-      return res.status(400).json({ error: "Некорректный ID задачи" });
+      return res
+        .status(400)
+        .json(buildTaskError(req, "Некорректный ID задачи", "TASK_INVALID_ID"));
     }
 
-    const uniqueTask = await prisma.task.findUnique({
+    const uniqueTask = await db.task.findUnique({
       where: { id: taskId },
     });
     if (!uniqueTask || uniqueTask.userId !== req.user.id) {
-      return res.status(403).json({ error: "Нет доступа к этой задаче" });
+      return res
+        .status(403)
+        .json(buildTaskError(req, "Нет доступа к этой задаче", "TASK_FORBIDDEN"));
     }
-    await prisma.task.delete({
+    await db.task.delete({
       where: { id: taskId },
     });
-    res.json({ message: "Удалено" });
+    res.json(taskDeleteResponseSchema.parse({ message: "Удалено" }));
   } catch (e) {
     logger.error("tasks.delete.failed", { req, error: e, statusCode: 500 });
-    res.status(500).json({ error: "Ошибка при удалении" });
+    res
+      .status(500)
+      .json(buildTaskError(req, "Ошибка при удалении", "TASK_DELETE_FAILED"));
   }
 });
 
-export default router;
+return router;
+};
+
+export default createTaskRouter();

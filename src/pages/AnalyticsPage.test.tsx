@@ -64,7 +64,7 @@ beforeEach(() => {
   vi.mocked(AnalyticsApi.requestInsight).mockResolvedValue({
     insight: "## Итог\n\n**Две** задачи выполнены.",
     cost: 5,
-    usage: { limit: 100, remaining: 95, resetAt: "2026-08-29T00:00:00Z" },
+    usage: { limit: 70, remaining: 65, resetAt: "2026-08-29T00:00:00Z" },
   });
   Object.defineProperty(navigator, "clipboard", {
     configurable: true,

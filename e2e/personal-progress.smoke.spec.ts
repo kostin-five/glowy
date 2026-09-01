@@ -112,6 +112,8 @@ const prepareAuthenticatedApp = async (page: Page) => {
         id: 1,
         name: "Тест",
         email: "test@example.com",
+        xp: 120,
+        level: 2,
         avatarId: "orbit-indigo",
         aiTone: "calm",
       });
@@ -163,8 +165,8 @@ const prepareAuthenticatedApp = async (page: Page) => {
         insight: "Ритм устойчивый: фактическое время немного ниже плана.",
         cost: 5,
         usage: {
-          limit: 100,
-          remaining: 92,
+          limit: 70,
+          remaining: 62,
           resetAt: "2026-08-17T00:00:00.000Z",
         },
       });

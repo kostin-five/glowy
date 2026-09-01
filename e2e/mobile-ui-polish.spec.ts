@@ -75,6 +75,8 @@ const prepareApp = async (page: Page) => {
         id: activeUserId,
         name: `Тест ${activeUserId}`,
         email: `test-${activeUserId}@example.com`,
+        xp: 0,
+        level: 1,
         avatarId: "orbit-indigo",
         aiTone: "calm",
       });
@@ -107,7 +109,7 @@ const prepareApp = async (page: Page) => {
       return fulfillJson(route, {
         insight: "## Итог\n\n- **Ритм** сохраняется",
         cost: 5,
-        usage: { limit: 100, remaining: 95, resetAt: "2026-08-29T00:00:00Z" },
+        usage: { limit: 70, remaining: 65, resetAt: "2026-08-29T00:00:00Z" },
       });
     }
     return fulfillJson(route, {});

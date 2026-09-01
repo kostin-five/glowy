@@ -47,7 +47,7 @@ test("ai respects the shared limit and does not call the provider", async () => 
   const worker = createWorkerFixture({
     api: recorder.api,
     db: { telegramConnection: { findUnique: async () => linkedConnection } },
-    previewAiLimit: async () => ({ allowed: false }),
+    reserveAiRequest: async () => ({ allowed: false }),
     answerAi: async () => { providerCalled = true; },
   });
 
@@ -60,9 +60,11 @@ test("ai respects the shared limit and does not call the provider", async () => 
 test("provider failure is controlled and ai answers are not persisted by the bot", async () => {
   const recorder = createApiRecorder();
   const db = { telegramConnection: { findUnique: async () => linkedConnection } };
+  let released;
   const worker = createWorkerFixture({
     api: recorder.api,
     db,
+    releaseAiRequest: async (reservation) => { released = reservation; },
     answerAi: async () => { throw Object.assign(new Error("provider text"), { code: "BAD_REPLY" }); },
   });
 
@@ -70,4 +72,9 @@ test("provider failure is controlled and ai answers are not persisted by the bot
 
   assert.match(recorder.calls[0][1].text, /пока не ответил/);
   assert.equal(Object.keys(db).includes("chat"), false);
+  assert.deepEqual(released, {
+    userId: 42,
+    cost: 1,
+    resetAt: "2026-08-27T12:00:00.000Z",
+  });
 });

@@ -1,9 +1,15 @@
 import express from "express";
-import { validationResult, check } from "express-validator";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import {
+  authLoginRequestSchema,
+  authLogoutResponseSchema,
+  authRegisterRequestSchema,
+  safeUserSchema,
+} from "@glowy/contracts";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { buildErrorEnvelope } from "../middleware/error.middleware.js";
 import {
   createUserWithCredentials,
   CredentialsError,
@@ -18,10 +24,22 @@ import {
   toSafeUser,
 } from "../services/auth/auth-session.service.js";
 
+const buildAuthError = (req, error, code) =>
+  buildErrorEnvelope(req, error, code);
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { error: "Слишком много попыток входа. Пожалуйста, попробуйте позже." },
+  handler: (req, res) =>
+    res
+      .status(429)
+      .json(
+        buildAuthError(
+          req,
+          "Слишком много попыток входа. Пожалуйста, попробуйте позже.",
+          "AUTH_RATE_LIMITED"
+        )
+      ),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) =>
@@ -31,22 +49,20 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
-  message: { error: "Слишком много регистраций. Пожалуйста, попробуйте позже." },
+  handler: (req, res) =>
+    res
+      .status(429)
+      .json(
+        buildAuthError(
+          req,
+          "Слишком много регистраций. Пожалуйста, попробуйте позже.",
+          "AUTH_RATE_LIMITED"
+        )
+      ),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => ipKeyGenerator(req.ip),
 });
-
-const registerValidators = [
-  check("name", "Имя пользователя не может быть пустым").notEmpty(),
-  check("email", "Укажите корректную почту").custom((_, { req }) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeAuthEmail(req.body))
-  ),
-  check("password", "Пароль должен быть не короче 8 символов").isLength({
-    min: 8,
-    max: 20,
-  }),
-];
 
 export const createAuthRouter = ({
   db = prisma,
@@ -54,58 +70,86 @@ export const createAuthRouter = ({
 } = {}) => {
   const router = express.Router();
 
-  router.post("/register", registerLimiter, registerValidators, async (req, res) => {
+  router.post("/register", registerLimiter, async (req, res) => {
     try {
-      if (!validationResult(req).isEmpty()) {
-        return res.status(400).json({ error: "Некорректные данные" });
+      const requestResult = authRegisterRequestSchema.safeParse({
+        name: req.body?.name,
+        email: normalizeAuthEmail(req.body),
+        password: req.body?.password,
+      });
+      if (!requestResult.success) {
+        return res
+          .status(400)
+          .json(
+            buildAuthError(
+              req,
+              "Некорректные данные",
+              "AUTH_INVALID_INPUT"
+            )
+          );
       }
       const user = await createUserWithCredentials({
         db,
-        input: {
-          name: req.body.name,
-          email: normalizeAuthEmail(req.body),
-          password: req.body.password,
-        },
+        input: requestResult.data,
       });
       setAuthCookie(res, createAuthToken(user.id));
-      return res.status(201).json(toSafeUser(user));
+      return res.status(201).json(safeUserSchema.parse(toSafeUser(user)));
     } catch (error) {
       const status = error instanceof CredentialsError ? error.status : 400;
       logger.error("auth.register.failed", { req, error, statusCode: status });
-      return res.status(status).json({
-        error:
+      return res.status(status).json(
+        buildAuthError(
+          req,
           error instanceof CredentialsError
             ? error.message
             : "Не удалось создать аккаунт",
-      });
+          error instanceof CredentialsError
+            ? error.code
+            : "AUTH_REGISTER_FAILED"
+        )
+      );
     }
   });
 
   router.post("/login", loginLimiter, async (req, res) => {
     try {
-      if (!normalizeAuthEmail(req.body)) {
-        return res.status(400).json({ error: "Укажите почту" });
+      const email = normalizeAuthEmail(req.body);
+      if (!email) {
+        return res
+          .status(400)
+          .json(buildAuthError(req, "Укажите почту", "AUTH_INVALID_INPUT"));
       }
+      const requestResult = authLoginRequestSchema.safeParse({
+        email,
+        password: req.body?.password,
+      });
       const user = await verifyUserCredentials({
         db,
-        email: normalizeAuthEmail(req.body),
-        password: req.body.password,
+        email: requestResult.success ? requestResult.data.email : email,
+        password: requestResult.success
+          ? requestResult.data.password
+          : req.body?.password,
       });
       setAuthCookie(res, createAuthToken(user.id));
-      return res.status(200).json(toSafeUser(user));
+      return res.status(200).json(safeUserSchema.parse(toSafeUser(user)));
     } catch (error) {
       const status = error instanceof CredentialsError ? error.status : 400;
       logger.error("auth.login.failed", { req, error, statusCode: status });
-      return res.status(status).json({
-        error:
+      return res.status(status).json(
+        buildAuthError(
+          req,
           error instanceof CredentialsError ? error.message : "Ошибка при входе",
-      });
+          error instanceof CredentialsError ? error.code : "AUTH_LOGIN_FAILED"
+        )
+      );
     }
   });
 
   router.post("/logout", (_req, res) => {
     clearAuthCookie(res);
-    return res.status(200).json({ message: "Выход выполнен" });
+    return res
+      .status(200)
+      .json(authLogoutResponseSchema.parse({ message: "Выход выполнен" }));
   });
 
   router.get("/me", authenticate, async (req, res) => {
@@ -114,11 +158,25 @@ export const createAuthRouter = ({
         where: { id: req.user.id },
         select: SAFE_USER_SELECT,
       });
-      if (!user) return res.status(404).json({ error: "Пользователь не найден" });
-      return res.json(user);
+      if (!user) {
+        return res
+          .status(404)
+          .json(
+            buildAuthError(req, "Пользователь не найден", "AUTH_USER_NOT_FOUND")
+          );
+      }
+      return res.json(safeUserSchema.parse(user));
     } catch (error) {
       logger.error("auth.profile.fetch_failed", { req, error, statusCode: 500 });
-      return res.status(500).json({ error: "Ошибка при получении профиля" });
+      return res
+        .status(500)
+        .json(
+          buildAuthError(
+            req,
+            "Ошибка при получении профиля",
+            "AUTH_PROFILE_FAILED"
+          )
+        );
     }
   });
 

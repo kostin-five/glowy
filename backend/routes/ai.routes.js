@@ -1,6 +1,11 @@
 import express from "express";
-import { rateLimit } from "express-rate-limit";
+import {
+  aiUsageSchema,
+  mindHubRequestSchema,
+  mindHubResponseSchema,
+} from "@glowy/contracts";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { buildErrorEnvelope } from "../middleware/error.middleware.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { generateContentWithAiProvider } from "../services/ai/ai-provider.service.js";
@@ -12,9 +17,9 @@ import {
   stringifyActiveTasks,
 } from "../services/ai/mind-hub.service.js";
 import {
-  consumeAuthenticatedAiRequest,
-  getAuthenticatedAiRequestLimit,
   getAuthenticatedAiUsage,
+  releaseAuthenticatedAiRequest,
+  reserveAuthenticatedAiRequest,
 } from "../services/ai/ai-limits.service.js";
 import { formatDateDDMMYYYY } from "../utils/ai-date.utils.js";
 import {
@@ -22,21 +27,6 @@ import {
   getMindHubErrorResponse,
   isExpectedAiUnavailableError,
 } from "../utils/ai-errors.utils.js";
-
-const router = express.Router();
-
-const demoMindHubLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000,
-  max: 3,
-  statusCode: 429,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipFailedRequests: true,
-  message: {
-    error:
-      "Превышен лимит демо-запросов (3/3). Пожалуйста, зарегистрируйтесь, чтобы получить больше запросов.",
-  },
-});
 
 const EMOTIONAL_KEYWORDS = [
   "устал", "устала", "нет сил", "тяжело", "сложно", "тревожно", "тревога", 
@@ -57,97 +47,94 @@ const ensureMixedInputReply = (message, drafts, reply) => {
   return "Я подготовил черновик. Проверь и отредактируй его перед сохранением.";
 };
 
-const getMindHubRequestPayload = (body) => {
-  const message = typeof body?.message === "string" ? body.message.trim() : "";
-  const hubMode =
-    body?.hubMode === "chat" ||
-    body?.hubMode === "parse" ||
-    body?.hubMode === "auto"
-      ? body.hubMode
-      : "auto";
-  const messages = Array.isArray(body?.messages) ? body.messages : [];
-  const rawCurrentEnergy = Number(body?.currentEnergy);
-  const currentEnergy = Number.isFinite(rawCurrentEnergy)
-    ? Math.min(100, Math.max(0, rawCurrentEnergy))
-    : null;
+const buildAiError = (req, error, code, extra = {}) =>
+  buildErrorEnvelope(req, error, code, extra);
 
-  return { message, hubMode, messages, currentEnergy };
-};
+const getSafeValidationDetails = (issues) =>
+  issues.map((issue) => ({
+    path: issue.path,
+    message: issue.message,
+    code: issue.code,
+  }));
 
-const buildValidationError = (message, hubMode) => {
-  if (!message) return "Сообщение не может быть пустым";
-  if (!hubMode) return "Некорректный режим Разгрузки мыслей";
+const sendMindHubResponse = (req, res, payload) => {
+  const result = mindHubResponseSchema.safeParse(payload);
 
-  return null;
-};
-
-router.post("/mind-hub/public", demoMindHubLimiter, async (req, res) => {
-  try {
-    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
-    const validationError = buildValidationError(message, hubMode);
-
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    if (hubMode === "chat") {
-      const reply = await getCoachReply(message, messages);
-      return res.json({ drafts: [], reply });
-    }
-
-    const today = formatDateDDMMYYYY(new Date());
-    const parsedResult = await parseMindHubDrafts(
-      message,
-      today,
-      [],
-      currentEnergy,
-      messages
-    );
-
-    const reply = ensureMixedInputReply(
-      message,
-      parsedResult.drafts,
-      parsedResult.reply
-    );
-
-    return res.json({
-      drafts: parsedResult.drafts,
-      reply:
-        reply ||
-        "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.",
+  if (!result.success) {
+    logger.error("ai.mind_hub.response_contract_failed", {
+      req,
+      error: new Error("Mind Hub response contract failed"),
+      statusCode: 500,
+      errorCode: "AI_RESPONSE_INVALID",
     });
+    return res
+      .status(500)
+      .json(
+        buildAiError(
+          req,
+          "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",
+          "AI_RESPONSE_INVALID"
+        )
+      );
+  }
+
+  return res.json(result.data);
+};
+
+export const createAiRouter = ({
+  db = prisma,
+  authenticate = authMiddleware,
+  generateContent = generateContentWithAiProvider,
+  coachReply = getCoachReply,
+  parseDrafts = parseMindHubDrafts,
+  getUsage = getAuthenticatedAiUsage,
+  reserveRequest = reserveAuthenticatedAiRequest,
+  releaseRequest = releaseAuthenticatedAiRequest,
+} = {}) => {
+const router = express.Router();
+const releaseReservation = async (req, reservation) => {
+  if (!reservation) return null;
+
+  try {
+    return await releaseRequest(reservation);
   } catch (error) {
-    logger.error("ai.public_mind_hub.failed", {
+    logger.error("ai.limit.release_failed", {
       req,
       error,
-      statusCode: error?.status || 500,
+      statusCode: 500,
+      errorCode: "AI_LIMIT_RELEASE_FAILED",
     });
-
-    if (isExpectedAiUnavailableError(error)) {
-      return res.json(buildGracefulMindHubUnavailablePayload(error));
-    }
-
-    const { status: errStatus, body } = getMindHubErrorResponse(error);
-    return res.status(errStatus).json(body);
+    return null;
   }
-});
+};
 
-router.use(authMiddleware);
+router.use((req, _res, next) =>
+  req.path === "/mind-hub/public" ? next("router") : next()
+);
+router.use(authenticate);
 
 router.get("/usage", async (req, res) => {
   try {
-    const usage = await getAuthenticatedAiUsage(req.user.id);
-    return res.json(usage);
+    const usage = await getUsage(req.user.id);
+    return res.json(aiUsageSchema.parse(usage));
   } catch (error) {
     logger.error("ai.usage.fetch_failed", { req, error, statusCode: 500 });
 
-    return res.status(500).json({ error: "Не удалось загрузить AI usage" });
+    return res
+      .status(500)
+      .json(
+        buildAiError(
+          req,
+          "Не удалось загрузить статистику запросов к AI",
+          "AI_USAGE_FAILED"
+        )
+      );
   }
 });
 
 router.post("/analyze", async (req, res) => {
   try {
-    const tasks = await prisma.task.findMany({
+    const tasks = await db.task.findMany({
       where: { userId: req.user.id },
       include: {
         subtasks: true,
@@ -162,12 +149,12 @@ router.post("/analyze", async (req, res) => {
       });
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: req.user.id },
     });
     const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
-    const { text } = await generateContentWithAiProvider(
+    const { text } = await generateContent(
       buildTaskAnalysisPrompt(tasksString, currentEnergy, user?.aiTone),
       "Task analysis",
       { userId: req.user.id }
@@ -201,15 +188,25 @@ router.post("/analyze", async (req, res) => {
 });
 
 router.post("/mind-hub", async (req, res) => {
+  let reservation = null;
+  let reservedLimit = null;
   try {
-    const { message, hubMode, messages, currentEnergy } = getMindHubRequestPayload(req.body);
-    const validationError = buildValidationError(message, hubMode);
+    const requestResult = mindHubRequestSchema.safeParse(req.body);
 
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
+    if (!requestResult.success) {
+      return res.status(400).json(
+        buildAiError(
+          req,
+          "Проверь сообщение и параметры запроса.",
+          "AI_REQUEST_INVALID",
+          { details: getSafeValidationDetails(requestResult.error.issues) }
+        )
+      );
     }
 
-    const activeTasks = await prisma.task.findMany({
+    const { message, hubMode, messages, currentEnergy } = requestResult.data;
+
+    const activeTasks = await db.task.findMany({
       where: { userId: req.user.id, completed: false },
       select: {
         id: true,
@@ -223,7 +220,7 @@ router.post("/mind-hub", async (req, res) => {
       },
       take: 10,
     });
-    const userEnergy = await prisma.user.findUnique({
+    const userEnergy = await db.user.findUnique({
       where: { id: req.user.id },
       select: { currentEnergy: true, aiTone: true },
     });
@@ -231,34 +228,35 @@ router.post("/mind-hub", async (req, res) => {
       typeof userEnergy?.currentEnergy === "number"
         ? userEnergy.currentEnergy
         : currentEnergy;
-    const aiLimitPreview = await getAuthenticatedAiRequestLimit(req.user.id);
+    const aiLimit = await reserveRequest(req.user.id);
 
-    if (!aiLimitPreview.allowed) {
+    if (!aiLimit.allowed) {
       return res.status(429).json({
         error: "Лимит запросов исчерпан.",
-        limit: aiLimitPreview.limit,
+        code: "AI_LIMIT_EXHAUSTED",
+        requestId: req.requestId,
+        limit: aiLimit.limit,
       });
     }
+    reservation = aiLimit.reservation;
+    reservedLimit = aiLimit.limit;
 
     if (hubMode === "chat") {
       try {
-        const reply = await getCoachReply(
+        const reply = await coachReply(
           message,
           messages,
           userEnergy?.aiTone,
           { userId: req.user.id }
         );
-        const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
-
-        if (!aiLimit.allowed) {
-          return res.status(429).json({
-            error: "Лимит запросов исчерпан.",
-            limit: aiLimit.limit,
-          });
-        }
-
-        return res.json({ drafts: [], reply, limit: aiLimit.limit });
+        return sendMindHubResponse(req, res, {
+          drafts: [],
+          reply,
+          limit: reservedLimit,
+        });
       } catch (error) {
+        const released = await releaseReservation(req, reservation);
+        reservation = null;
         logger.error("ai.mind_hub.chat_failed", {
           req,
           error,
@@ -266,20 +264,31 @@ router.post("/mind-hub", async (req, res) => {
         });
 
         if (isExpectedAiUnavailableError(error)) {
-          return res.json(
+          return sendMindHubResponse(
+            req,
+            res,
             buildGracefulMindHubUnavailablePayload(error, {
-              limit: aiLimitPreview.limit,
+              limit: released?.limit ?? reservedLimit,
             })
           );
         }
 
         const { status: errStatus, body } = getMindHubErrorResponse(error);
-        return res.status(errStatus).json(body);
+        return res
+          .status(errStatus)
+          .json(
+            buildAiError(
+              req,
+              body.error,
+              "AI_PROVIDER_UNAVAILABLE",
+              { retryable: Boolean(body.retryable) }
+            )
+          );
       }
     }
 
     const today = formatDateDDMMYYYY(new Date());
-    const parsedResult = await parseMindHubDrafts(
+    const parsedResult = await parseDrafts(
       message,
       today,
       activeTasks,
@@ -300,29 +309,22 @@ router.post("/mind-hub", async (req, res) => {
       : parsedResult.drafts.filter(
           (draft) => !isDuplicateTask(draft, activeTasks)
         );
-    const aiLimit = await consumeAuthenticatedAiRequest(req.user.id);
-
-    if (!aiLimit.allowed) {
-      return res.status(429).json({
-        error: "Лимит запросов исчерпан.",
-        limit: aiLimit.limit,
-      });
-    }
-
     const duplicateReply =
       drafts.length === 0 && duplicates.length > 0
         ? `Такая задача уже есть: «${duplicates[0].title}».`
         : null;
 
-    return res.json({
+    return sendMindHubResponse(req, res, {
       drafts,
       reply:
         duplicateReply ||
         ensureMixedInputReply(message, drafts, parsedResult.reply) ||
         "Я рядом. Можешь продолжить мысль, и мы спокойно разберём её вместе.",
-      limit: aiLimit.limit,
+      limit: reservedLimit,
     });
   } catch (error) {
+    const released = await releaseReservation(req, reservation);
+    reservation = null;
     logger.error("ai.mind_hub.failed", {
       req,
       error,
@@ -330,13 +332,28 @@ router.post("/mind-hub", async (req, res) => {
     });
 
     if (isExpectedAiUnavailableError(error)) {
-      return res.json(buildGracefulMindHubUnavailablePayload(error));
+      return sendMindHubResponse(
+        req,
+        res,
+        buildGracefulMindHubUnavailablePayload(error, {
+          ...(released?.limit ? { limit: released.limit } : {}),
+        })
+      );
     }
 
-    res.status(500).json({
-      error: "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",
-    });
+    return res
+      .status(500)
+      .json(
+        buildAiError(
+          req,
+          "Glowy не смог обработать сообщение. Попробуй отправить ещё раз.",
+          "AI_REQUEST_FAILED"
+        )
+      );
   }
 });
 
-export default router;
+return router;
+};
+
+export default createAiRouter();

@@ -4,8 +4,8 @@ import { logger } from "../lib/logger.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { parsePositiveId, isDateOnly } from "../utils/validation.utils.js";
 import {
-  consumeAuthenticatedAiRequest,
-  getAuthenticatedAiRequestLimit,
+  releaseAuthenticatedAiRequest,
+  reserveAuthenticatedAiRequest,
 } from "../services/ai/ai-limits.service.js";
 import { generateNoteTaskDraft } from "../services/ai/note-task-draft.service.js";
 import {
@@ -50,10 +50,24 @@ export const createNotesRouter = ({
   db = prisma,
   authenticate = authMiddleware,
   generateDraft = generateNoteTaskDraft,
-  previewAiLimit = getAuthenticatedAiRequestLimit,
-  consumeAiRequest = consumeAuthenticatedAiRequest,
+  reserveAiRequest = reserveAuthenticatedAiRequest,
+  releaseAiRequest = releaseAuthenticatedAiRequest,
 } = {}) => {
 const router = express.Router();
+const releaseReservation = async (req, reservation) => {
+  if (!reservation) return;
+
+  try {
+    await releaseAiRequest(reservation);
+  } catch (error) {
+    logger.error("notes.ai_limit.release_failed", {
+      req,
+      error,
+      statusCode: 500,
+      errorCode: "AI_LIMIT_RELEASE_FAILED",
+    });
+  }
+};
 router.use(authenticate);
 
 const getOwnedNote = (id, userId) =>
@@ -162,6 +176,7 @@ router.delete("/:id/task-links/:taskId", async (req, res) => {
 });
 
 router.post("/:id/task-draft", async (req, res) => {
+  let reservation = null;
   try {
     const noteId = parsePositiveId(req.params.id);
     const fragment = typeof req.body?.fragment === "string" ? req.body.fragment.trim() : "";
@@ -173,15 +188,13 @@ router.post("/:id/task-draft", async (req, res) => {
     if (!note.content.includes(fragment)) {
       return res.status(400).json({ error: "Сначала сохраните выбранный фрагмент заметки" });
     }
-    const preview = await previewAiLimit(req.user.id);
-    if (!preview.allowed) return res.status(429).json({ error: "Лимит запросов исчерпан.", limit: preview.limit });
+    const reserved = await reserveAiRequest(req.user.id);
+    if (!reserved.allowed) return res.status(429).json({ error: "Лимит запросов исчерпан.", limit: reserved.limit });
+    reservation = reserved.reservation;
     const draft = await generateDraft(fragment, { userId: req.user.id });
-    const usage = await consumeAiRequest(req.user.id);
-    if (!usage.allowed) {
-      return res.status(429).json({ error: "Лимит запросов исчерпан.", limit: usage.limit });
-    }
-    return res.json({ draft, limit: usage.limit });
+    return res.json({ draft, limit: reserved.limit });
   } catch (error) {
+    await releaseReservation(req, reservation);
     logger.error("notes.task_draft.failed", { req, error, statusCode: error?.status || 500 });
     if (isExpectedAiUnavailableError(error)) {
       const payload = buildGracefulMindHubUnavailablePayload(error);

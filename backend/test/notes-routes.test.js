@@ -33,14 +33,47 @@ test("returns an AI draft without creating a task", async () => {
     note: { findFirst: async () => ({ id: 3, content: "Нужно записаться к врачу" }) },
     $transaction: async () => { transactionCalled = true; },
   }, {
-    previewAiLimit: async () => ({ allowed: true, limit: { remaining: 9 } }),
-    consumeAiRequest: async () => ({ allowed: true, limit: { remaining: 8 } }),
+    reserveAiRequest: async () => ({
+      allowed: true,
+      reservation: { userId: 42, cost: 1, resetAt: "2026-09-01T12:00:00.000Z" },
+      limit: { remaining: 9 },
+    }),
     generateDraft: async () => ({ title: "Записаться к врачу", date: "", priority: "⚡️ P2", energyLevel: "med", category: "Здоровье" }),
   })).post("/api/notes/3/task-draft").send({ fragment: "записаться к врачу" });
 
   assert.equal(response.status, 200);
   assert.equal(response.body.draft.title, "Записаться к врачу");
   assert.equal(transactionCalled, false);
+});
+
+test("denied note AI reservation skips the provider", async () => {
+  let generated = false;
+  const response = await request(createApp({
+    note: { findFirst: async () => ({ id: 3, content: "Нужно записаться к врачу" }) },
+  }, {
+    reserveAiRequest: async () => ({ allowed: false, limit: { remaining: 0 } }),
+    generateDraft: async () => { generated = true; },
+  })).post("/api/notes/3/task-draft").send({ fragment: "записаться к врачу" });
+
+  assert.equal(response.status, 429);
+  assert.equal(generated, false);
+});
+
+test("note AI provider failure releases the reservation", async () => {
+  const token = { userId: 42, cost: 1, resetAt: "2026-09-01T12:00:00.000Z" };
+  let released;
+  const response = await request(createApp({
+    note: { findFirst: async () => ({ id: 3, content: "Нужно записаться к врачу" }) },
+  }, {
+    reserveAiRequest: async () => ({ allowed: true, reservation: token, limit: { remaining: 9 } }),
+    releaseAiRequest: async (reservation) => { released = reservation; },
+    generateDraft: async () => {
+      throw Object.assign(new Error("provider unavailable"), { code: "AI_PROVIDER_TIMEOUT" });
+    },
+  })).post("/api/notes/3/task-draft").send({ fragment: "записаться к врачу" });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(released, token);
 });
 
 test("creates one task and link in the confirmation transaction", async () => {

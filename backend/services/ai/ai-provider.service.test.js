@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  createAiCircuitBreaker,
+  createProviderBudget,
   generateContentWithAiProvider,
   resetAiProviderStateForTests,
 } from "./ai-provider.service.js";
@@ -98,7 +100,7 @@ test("falls back once to GigaChat after primary rate limiting", async () => {
   ]);
 });
 
-test("falls back after the primary request timeout", async () => {
+test("primary timeout exhausts the shared budget before fallback", async () => {
   configureDirectProviders();
   process.env.AI_PROVIDER_TIMEOUT_MS = "5";
   const calls = [];
@@ -115,25 +117,55 @@ test("falls back after the primary request timeout", async () => {
         });
       });
     }
-    if (requestUrl.endsWith("/oauth")) {
-      return jsonResponse({
-        access_token: "timeout-fallback-token",
-        expires_at: Date.now() + 30 * 60 * 1000,
-      });
-    }
-    return jsonResponse({
-      choices: [{ message: { content: "fallback after timeout" } }],
-    });
+    throw new Error("fallback fetch must not start after the deadline");
   };
 
-  const result = await generateContentWithAiProvider("hello", "provider test");
+  await assert.rejects(
+    generateContentWithAiProvider("hello", "provider test"),
+    (error) =>
+      error.code === "AI_PROVIDERS_UNAVAILABLE" &&
+      error.cause?.code === "AI_PROVIDER_TIMEOUT"
+  );
+  assert.deepEqual(calls, ["https://deepseek.test/chat/completions"]);
+});
 
-  assert.equal(result.text, "fallback after timeout");
-  assert.deepEqual(calls, [
-    "https://deepseek.test/chat/completions",
-    "https://gigachat.test/oauth",
-    "https://gigachat.test/v1/chat/completions",
-  ]);
+test("one provider budget is consumed across primary and fallback work", () => {
+  let currentTime = 1_000;
+  const budget = createProviderBudget({
+    timeoutMs: 30_000,
+    now: () => currentTime,
+  });
+
+  assert.equal(budget.remaining(), 30_000);
+  currentTime += 21_000;
+  assert.equal(budget.remaining(), 9_000);
+  budget.exhaust();
+  assert.equal(budget.remaining(), 0);
+  currentTime += 9_001;
+  assert.equal(budget.remaining(), 0);
+});
+
+test("circuit opens after three retryable failures and one probe closes it", () => {
+  let currentTime = 0;
+  const circuit = createAiCircuitBreaker({
+    now: () => currentTime,
+    failureThreshold: 3,
+    openMs: 30_000,
+  });
+
+  for (let failure = 0; failure < 3; failure += 1) {
+    assert.equal(circuit.beforeRequest().allowed, true);
+    circuit.recordFailure(true);
+  }
+  assert.equal(circuit.getState().state, "open");
+  assert.equal(circuit.beforeRequest().allowed, false);
+
+  currentTime = 30_000;
+  assert.deepEqual(circuit.beforeRequest(), { allowed: true, probe: true });
+  assert.equal(circuit.beforeRequest().allowed, false);
+  circuit.recordSuccess();
+  assert.equal(circuit.getState().state, "closed");
+  assert.equal(circuit.beforeRequest().allowed, true);
 });
 
 test("does not call fallback after a non-retryable primary rejection", async () => {

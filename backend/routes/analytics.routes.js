@@ -4,8 +4,8 @@ import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
 import { generateContentWithAiProvider } from "../services/ai/ai-provider.service.js";
 import {
-  consumeAuthenticatedAiRequest,
-  getAuthenticatedAiRequestLimit,
+  releaseAuthenticatedAiRequest,
+  reserveAuthenticatedAiRequest,
 } from "../services/ai/ai-limits.service.js";
 import {
   buildAnalyticsInsightPrompt,
@@ -22,11 +22,25 @@ export const createAnalyticsRouter = ({
   db = prisma,
   authenticate = authMiddleware,
   loadSnapshot = loadAnalyticsSnapshot,
-  getRequestLimit = getAuthenticatedAiRequestLimit,
+  reserveRequest = reserveAuthenticatedAiRequest,
+  releaseRequest = releaseAuthenticatedAiRequest,
   generateInsight = generateContentWithAiProvider,
-  consumeRequest = consumeAuthenticatedAiRequest,
 } = {}) => {
   const router = express.Router();
+  const releaseReservation = async (req, reservation) => {
+    if (!reservation) return;
+
+    try {
+      await releaseRequest(reservation);
+    } catch (error) {
+      logger.error("analytics.ai_limit.release_failed", {
+        req,
+        error,
+        statusCode: 500,
+        errorCode: "AI_LIMIT_RELEASE_FAILED",
+      });
+    }
+  };
   router.use(authenticate);
 
   router.get("/", async (req, res) => {
@@ -54,6 +68,7 @@ export const createAnalyticsRouter = ({
   });
 
   router.post("/insight", async (req, res) => {
+    let reservation = null;
     const kind = req.body?.period;
     const anchor = req.body?.anchor;
     if (!validatePeriod(kind, anchor)) {
@@ -79,13 +94,14 @@ export const createAnalyticsRouter = ({
       }
 
       const insightCost = getInsightCost(kind);
-      const limitPreview = await getRequestLimit(req.user.id, insightCost);
-      if (!limitPreview.allowed) {
+      const reserved = await reserveRequest(req.user.id, insightCost);
+      if (!reserved.allowed) {
         return res.status(429).json({
           error: `Для этого разбора нужно ${insightCost} AI-запросов. Проверь оставшийся лимит.`,
-          limit: limitPreview.limit,
+          limit: reserved.limit,
         });
       }
+      reservation = reserved.reservation;
 
       const user = await db.user.findUnique({
         where: { id: req.user.id },
@@ -96,10 +112,10 @@ export const createAnalyticsRouter = ({
         "Analytics insight",
         { userId: req.user.id }
       );
-      const usage = await consumeRequest(req.user.id, insightCost);
 
-      return res.json({ insight: text, usage: usage.limit, cost: insightCost });
+      return res.json({ insight: text, usage: reserved.limit, cost: insightCost });
     } catch (error) {
+      await releaseReservation(req, reservation);
       logger.error("analytics.insight.failed", {
         req,
         error,

@@ -1,4 +1,13 @@
 import { z } from "zod";
+import {
+  subTaskDraftSchema as sharedSubTaskDraftSchema,
+  subTaskSchema as sharedSubTaskSchema,
+  taskCompletionOutcomeSchema as sharedTaskCompletionOutcomeSchema,
+  taskDraftSchema as sharedTaskDraftSchema,
+  taskSchema as sharedTaskSchema,
+  taskUpdateResponseSchema as sharedTaskUpdateResponseSchema,
+  userProgressSchema as sharedUserProgressSchema,
+} from "@glowy/contracts";
 import { aiTones, avatarIds } from "../constants/profile";
 
 export type Priority = "🔥 P1" | "⚡️ P2" | "💤 P3";
@@ -13,63 +22,10 @@ export type SortField =
   | null;
 export type SortDirection = "asc" | "desc";
 
-export const schemaSubTask = z.object({
-  id: z.number(),
-  taskId: z.number(),
-  title: z.string().min(1),
-  completed: z.boolean(),
-  position: z.number().default(0),
-});
-
-export const schemaSubTaskDraft = z.object({
-  title: z.string().min(1),
-  completed: z.boolean().default(false),
-  position: z.number().default(0),
-});
-
-export const schemaTask = z.object({
-  id: z.number(),
-  title: z.string().min(1),
-  date: z.string(),
-  priority: z.enum(["🔥 P1", "⚡️ P2", "💤 P3"]),
-  category: z.string(),
-  completed: z.boolean(),
-  completedOn: z.string().nullable().default(null),
-  xpAwarded: z.boolean().default(false),
-  energyLevel: z.enum(["low", "med", "high"]),
-  estimatedMinutes: z.number().int().min(1).max(1440).nullable().default(null),
-  actualMinutes: z.number().int().min(1).max(1440).nullable().default(null),
-  subtasks: z.array(schemaSubTask).default([]),
-  noteLinks: z
-    .array(
-      z.object({
-        id: z.number(),
-        note: z.object({
-          id: z.number(),
-          title: z.string(),
-          archived: z.boolean(),
-        }),
-      })
-    )
-    .optional(),
-});
-
-export const schemaTaskDraft = schemaTask
-  .omit({
-    id: true,
-    completed: true,
-    completedOn: true,
-    actualMinutes: true,
-    subtasks: true,
-    xpAwarded: true,
-    noteLinks: true,
-  })
-  .extend({
-    id: z.number().optional(),
-    completed: z.boolean().default(false),
-    estimatedMinutes: z.number().int().min(1).max(1440).nullable().optional(),
-    subtasks: z.array(schemaSubTaskDraft).default([]),
-  });
+export const schemaSubTask = sharedSubTaskSchema;
+export const schemaSubTaskDraft = sharedSubTaskDraftSchema;
+export const schemaTask = sharedTaskSchema;
+export const schemaTaskDraft = sharedTaskDraftSchema;
 
 export const schemaAuthData = z.object({
   name: z.string(),
@@ -82,23 +38,9 @@ export const schemaLoginData = z.object({
   password: z.string(),
 });
 
-export const schemaUserProgress = z.object({
-  xp: z.number(),
-  level: z.number(),
-});
-
-export const schemaTaskCompletionOutcome = z.object({
-  effect: z.enum(["awarded", "withheld", "deducted", "unchanged"]),
-  amount: z.number().int().nonnegative(),
-  reason: z.enum(["normal", "overdue_blocker", "already_processed"]),
-});
-
-export const schemaTaskUpdateResponse = z.object({
-  task: schemaTask,
-  xpReward: z.number().int(),
-  xpOutcome: schemaTaskCompletionOutcome.nullable().optional(),
-  userProgress: schemaUserProgress.nullable(),
-});
+export const schemaUserProgress = sharedUserProgressSchema;
+export const schemaTaskCompletionOutcome = sharedTaskCompletionOutcomeSchema;
+export const schemaTaskUpdateResponse = sharedTaskUpdateResponseSchema;
 
 export const schemaAvatarId = z.enum(avatarIds);
 export const schemaAiTone = z.enum(aiTones);

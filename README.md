@@ -18,7 +18,8 @@ Glowy помогает пользователю:
 
 ## Текущий релиз
 
-Текущий продуктовый релиз: `v2.6.0`.
+Текущий production-релиз: `v2.8.0`. В feature-ветке готовится `v2.9.0` — «Типы,
+контракты и наблюдаемость»; он ещё не развёрнут в production.
 
 Ключевые изменения:
 
@@ -59,11 +60,12 @@ Glowy помогает пользователю:
 │   ├── components/              # UI и feature-компоненты
 │   ├── pages/                   # Страницы приложения
 │   └── store/                   # Zustand stores
-├── backend/                     # Express backend
+├── backend/                     # Express backend на ESM JavaScript
 │   ├── routes/                  # API routes
 │   ├── services/ai/             # AI provider, Mind Hub, limits
 │   ├── prisma/                  # Prisma schema и migrations
 │   └── server.js
+├── packages/contracts/          # Общие Zod request/response/error contracts
 ├── ai-proxy/                    # Опциональный AI proxy service
 ├── docs/                        # Release notes и operational docs
 └── deploy/                      # VPS/Nginx deployment notes
@@ -73,10 +75,10 @@ Glowy помогает пользователю:
 
 | Тариф | Цена | AI-лимит | Описание |
 | --- | ---: | ---: | --- |
-| Demo | Бесплатно | 3/день | Гостевой демо-доступ |
+| Demo | Бесплатно | Без живых AI-запросов | Безопасное знакомство до регистрации |
 | Start | Бесплатно | 10/день | Базовый тариф зарегистрированного пользователя |
-| Focus | 99 ₽/месяц | 100/день | Платный тариф через ЮKassa, действует 30 дней |
-| Forever | Пока недоступен | 100/день | Пожизненный доступ; новое оформление ещё не открыто |
+| Focus | 99 ₽/месяц | 70/день | Платный тариф через ЮKassa, действует 30 дней |
+| Forever | Пока недоступен | 70/день | Пожизненный доступ; новое оформление ещё не открыто |
 
 Focus активируется после успешного webhook от ЮKassa.
 
@@ -182,11 +184,26 @@ npm run dev
 Полезные проверки:
 
 ```bash
+npm run contracts:build
+npm run contracts:test
 npm run typecheck
 npm run lint
 npm run build
 npm test
+
+cd backend
+npm run typecheck
+npm run test
 ```
+
+Backend остаётся ESM JavaScript и запускается через `backend/server.js`; v2.9.0 не переводит его
+целиком на TypeScript. Строгая TypeScript-проверка распространяется на общий пакет
+`packages/contracts`, а `backend/tsconfig.json` задаёт NodeNext foundation для последующей
+поэтапной миграции. Существующие backend `.js` пока не считаются типобезопасными:
+`checkJs` намеренно выключен до перевода доменов отдельными небольшими slices. Frontend API
+clients проверяют критические ответы общими Zod-контрактами. Реальный список route, auth boundary
+и consumers зафиксирован в
+`specs/012-contracts-observability/contracts/endpoint-inventory.md`.
 
 ## База данных и Prisma
 
@@ -251,7 +268,7 @@ Forever:
 
 1. Значение `forever` остаётся в базе без миграции и отображается как Forever.
 2. Старый endpoint `POST /api/payments/forever/activate` больше не выдаёт тариф и возвращает контролируемый отказ.
-3. Уже назначенный Forever бессрочный и получает лимит 100 AI-запросов в день; новое оформление пока закрыто.
+3. Уже назначенный Forever бессрочный и получает лимит 70 AI-запросов в день; новое оформление пока закрыто.
 
 ## Документация
 

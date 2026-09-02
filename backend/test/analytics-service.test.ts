@@ -5,6 +5,7 @@ import {
   buildAnalyticsInsightPrompt,
   getAnalyticsAccess,
   getAnalyticsPeriod,
+  loadAnalyticsSnapshot,
 } from "../services/analytics/analytics.service.js";
 import type { AnalyticsSnapshot } from "../services/analytics/analytics.service.js";
 
@@ -60,6 +61,39 @@ test("aggregates completion, energy, streak and optional time without task text"
   assert.equal(snapshot.dailyCompleted.length, 7);
   assert.equal(snapshot.dailyCompleted[4]!.completedTasks, 1);
   assert.equal(snapshot.dailyCompleted[6]!.completedTasks, 1);
+});
+
+test("counts legacy completed tasks by their update day when completedOn is missing", async () => {
+  const snapshot = await loadAnalyticsSnapshot({
+    db: {
+      user: {
+        findUnique: async () => ({
+          plan: "start",
+          subscriptionStatus: "inactive",
+          planExpiresAt: null,
+        }),
+      },
+      task: {
+        findMany: async () => [
+          {
+            completedOn: null,
+            updatedAt: new Date("2026-08-14T18:30:00.000Z"),
+            energyLevel: "med",
+            estimatedMinutes: null,
+            actualMinutes: null,
+          },
+        ],
+      },
+      streakRescue: { findMany: async () => [] },
+    } as never,
+    userId: 42,
+    kind: "week",
+    anchor: "2026-08-16",
+  });
+
+  assert.equal(snapshot.completedTasks, 1);
+  assert.equal(snapshot.dailyCompleted[4]!.completedTasks, 1);
+  assert.equal(snapshot.energyDistribution.med, 1);
 });
 
 test("requires premium entitlement for AI insight", () => {

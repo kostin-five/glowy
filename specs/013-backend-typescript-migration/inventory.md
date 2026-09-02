@@ -8,10 +8,11 @@
 
 **Excluded component**: `ai-proxy/server.js` (separate deployable rollback component)
 
-Pre-existing or migration-support TypeScript files outside the 95-file JavaScript baseline are
+Pre-existing, migration-support, or post-migration TypeScript files outside the 95-file JavaScript baseline are
 also declared and checked by the automatic gate:
 
 - `backend/prisma.config.ts`
+- `backend/services/tasks/task-contract.service.ts`
 - `backend/type-tests/contracts.type-test.ts`
 - `backend/types/boundaries.ts`
 - `backend/types/express.d.ts`

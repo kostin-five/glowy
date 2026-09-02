@@ -2,6 +2,7 @@ import { isFocusEntitled } from "../feature-entitlements.service.js";
 import { calculateStreak } from "../progress/progress.service.js";
 import { addDaysToDateOnly, isDateOnly } from "../../utils/validation.utils.js";
 import type { PrismaClient, User } from "@prisma/client";
+import { getLegacyCompletionDate } from "../tasks/task-contract.service.js";
 
 const ENERGY_LEVELS = ["low", "med", "high"] as const;
 export type AnalyticsKind = "week" | "month";
@@ -180,7 +181,7 @@ export const loadAnalyticsSnapshot = async ({
   anchor: string;
 }): Promise<AnalyticsSnapshot> => {
   const period = getAnalyticsPeriod(kind, anchor);
-  const [user, periodTasks, allCompletedTasks, rescues] = await Promise.all([
+  const [user, completedTasks, rescues] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: {
@@ -190,21 +191,14 @@ export const loadAnalyticsSnapshot = async ({
       },
     }),
     db.task.findMany({
-      where: {
-        userId,
-        completed: true,
-        completedOn: { gte: period.from, lte: period.to },
-      },
+      where: { userId, completed: true },
       select: {
         completedOn: true,
+        updatedAt: true,
         energyLevel: true,
         estimatedMinutes: true,
         actualMinutes: true,
       },
-    }),
-    db.task.findMany({
-      where: { userId, completed: true, completedOn: { not: null } },
-      select: { completedOn: true },
     }),
     db.streakRescue.findMany({
       where: { userId },
@@ -213,15 +207,24 @@ export const loadAnalyticsSnapshot = async ({
   ]);
 
   if (!user) throw new Error("USER_NOT_FOUND");
+  const normalizedCompletedTasks = completedTasks.flatMap((task) => {
+    const completedOn = getLegacyCompletionDate(
+      task.completedOn,
+      task.updatedAt
+    );
+    return completedOn ? [{ ...task, completedOn }] : [];
+  });
+  const periodTasks = normalizedCompletedTasks.filter(
+    (task) => task.completedOn >= period.from && task.completedOn <= period.to
+  );
 
   return {
     ...aggregateAnalytics({
       period,
-      periodTasks: periodTasks.filter(
-        (task): task is typeof task & { completedOn: string } =>
-          typeof task.completedOn === "string"
+      periodTasks,
+      allCompletedDates: normalizedCompletedTasks.map(
+        (task) => task.completedOn
       ),
-      allCompletedDates: allCompletedTasks.map((task) => task.completedOn),
       rescueDates: rescues.map((rescue) => rescue.protectedOn),
       anchor,
     }),

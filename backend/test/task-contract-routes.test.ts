@@ -58,6 +58,32 @@ test("task list remains owner-scoped and parses the shared response", async () =
   assert.equal(response.body[0].id, 7);
 });
 
+test("task list normalizes legacy dates and priorities without dropping tasks", async () => {
+  const response = await request(
+    createApp({
+      db: {
+        task: {
+          findMany: async () => [
+            {
+              ...task,
+              date: "31.08.2026",
+              priority: "Важно",
+              completed: true,
+              completedOn: null,
+              updatedAt: new Date("2026-08-30T20:00:00.000Z"),
+            },
+          ],
+        },
+      },
+    })
+  ).get("/api/tasks");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body[0].date, "2026-08-31");
+  assert.equal(response.body[0].priority, "🔥 P1");
+  assert.equal(response.body[0].completedOn, "2026-08-30");
+});
+
 test("invalid task input returns a stable request-ID error before creation", async () => {
   let created = false;
   const response = await request(createApp({

@@ -2,11 +2,9 @@ import express from "express";
 import type { Request, RequestHandler, Response, Router } from "express";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { body, validationResult } from "express-validator";
-import { z } from "zod";
 import {
   taskCreateRequestSchema,
   taskDeleteResponseSchema,
-  taskSchema,
   taskUpdateRequestSchema,
   taskUpdateResponseSchema,
 } from "@glowy/contracts";
@@ -18,6 +16,10 @@ import {
   createTaskForUser,
   TaskWriteError,
 } from "../services/tasks/task-write.service.js";
+import {
+  serializeTaskContract,
+  serializeTaskListContract,
+} from "../services/tasks/task-contract.service.js";
 import {
   buildUserProgress,
   buildCompletionXpOutcome,
@@ -87,7 +89,7 @@ router.get("/", async (req, res) => {
       where: { userId: req.user.id },
       include: taskInclude,
     });
-    res.json(z.array(taskSchema).parse(tasks));
+    res.json(serializeTaskListContract(tasks));
   } catch (e) {
     logger.error("tasks.list.failed", { req, error: e, statusCode: 500 });
     res
@@ -128,7 +130,7 @@ router.post(
         include: taskInclude,
       });
 
-      return res.status(201).json(taskSchema.parse(newTask));
+      return res.status(201).json(serializeTaskContract(newTask));
     } catch (e) {
       const status = e instanceof TaskWriteError ? e.status : 500;
       logger.error("tasks.create.failed", { req, error: e, statusCode: status });
@@ -332,7 +334,12 @@ router.put(
       };
     });
 
-    res.json(taskUpdateResponseSchema.parse(result));
+    res.json(
+      taskUpdateResponseSchema.parse({
+        ...result,
+        task: serializeTaskContract(result.task),
+      })
+    );
   } catch (e) {
     logger.error("tasks.update.failed", { req, error: e, statusCode: 500 });
     res

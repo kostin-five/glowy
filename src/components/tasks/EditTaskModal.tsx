@@ -44,6 +44,14 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAuthStore } from "../../store/useAuthStore";
+import {
+  getTaskFormPreferenceScope,
+  useTaskFormPreferences,
+  type TaskFormMode,
+} from "../../store/useSettingsStore";
+import TaskFormModeControl from "./TaskFormModeControl";
+import { getTaskFormSections } from "./taskFormPresentation";
 
 interface IDialog {
   isOpen: boolean;
@@ -216,7 +224,17 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   });
   const [subTitle, setSubTitle] = useState("");
   const [showAiSoon, setShowAiSoon] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitInFlightRef = useRef(false);
   const subTaskInputRef = useRef<HTMLInputElement>(null);
+  const userId = useAuthStore((state) => state.userId);
+  const isGuest = useAuthStore((state) => state.isGuest);
+  const accountScope = getTaskFormPreferenceScope(userId, isGuest);
+  const preferences = useTaskFormPreferences(accountScope);
+  const [mode, setMode] = useState<TaskFormMode>(preferences.mode);
+  const sections = getTaskFormSections(mode, preferences, detailsExpanded);
 
   const updateTask = useUpdateTask();
   const remove = useDeleteTask();
@@ -239,6 +257,12 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
       },
     })
   );
+
+  const handleClose = () => {
+    if (submitInFlightRef.current) return;
+    setError("");
+    onClose();
+  };
 
   const refreshSubtasks = (taskId: number) => {
     const updated = useTaskStore
@@ -335,9 +359,11 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
 
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (submitInFlightRef.current) return;
+    setError("");
 
     if (!(values.title || "").trim()) {
-      alert("Название задачи не может быть пустым!");
+      setError("Название задачи не может быть пустым.");
       return;
     }
 
@@ -346,18 +372,37 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
       category: (values.category || "").trim(),
     });
     if (parsedValues.success) {
-      const updatedTask = await updateTask(values.id, parsedValues.data);
-      if (!updatedTask) return;
+      try {
+        submitInFlightRef.current = true;
+        setIsSubmitting(true);
+        const updatedTask = await updateTask(values.id, parsedValues.data);
+        if (!updatedTask) {
+          setError("Не удалось сохранить задачу. Попробуй ещё раз.");
+          return;
+        }
 
-      const pendingSubTitle = subTitle.trim();
-      if (pendingSubTitle) {
-        const createdSubTask = await addSubTask(values.id, pendingSubTitle);
-        if (!createdSubTask) return;
+        const pendingSubTitle = subTitle.trim();
+        if (pendingSubTitle) {
+          const createdSubTask = await addSubTask(values.id, pendingSubTitle);
+          if (!createdSubTask) {
+            setError("Задача сохранена, но подзадачу добавить не удалось.");
+            return;
+          }
+        }
+
+        onClose();
+      } catch (saveError) {
+        setError(
+          saveError instanceof Error
+            ? saveError.message
+            : "Не удалось сохранить задачу. Попробуй ещё раз."
+        );
+      } finally {
+        submitInFlightRef.current = false;
+        setIsSubmitting(false);
       }
-
-      onClose();
     } else {
-      alert("Поле не может быть пустым!");
+      setError("Проверь заполненные поля.");
     }
   };
 
@@ -367,32 +412,53 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={"Редактировать задачу"}>
+    <Modal isOpen={isOpen} onClose={handleClose} title={"Редактировать задачу"}>
       <form onSubmit={handleSave} className="space-y-4">
+        <TaskFormModeControl mode={mode} onChange={setMode} />
+        <label htmlFor="edit-task-title" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          Название задачи
+        </label>
         <input
+          id="edit-task-title"
+          autoFocus
+          data-autofocus
+          aria-invalid={Boolean(error && !(values.title || "").trim())}
+          aria-describedby={error ? "edit-task-error" : undefined}
           type="text"
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
           value={values.title}
           onChange={(e) => setValues({ ...values, title: e.target.value })}
         />
+        {mode === "compact" && !detailsExpanded && (
+          <button
+            type="button"
+            onClick={() => setDetailsExpanded(true)}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
+          >
+            Показать детали
+          </button>
+        )}
+        {sections.details && <>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          {sections.date && <div>
+            <label htmlFor="edit-task-date" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Дата задачи
             </label>
             <input
+              id="edit-task-date"
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               type="date"
               value={values.date}
               onChange={(e) => setValues({ ...values, date: e.target.value })}
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          </div>}
+          {sections.priority && <div>
+            <label htmlFor="edit-task-priority" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Приоритет
             </label>
             <div className="relative">
               <select
+                id="edit-task-priority"
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-10"
                 value={values.priority}
                 onChange={(e) =>
@@ -407,10 +473,10 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                 ▼
               </div>
             </div>
-          </div>
+          </div>}
         </div>
 
-        <div className="space-y-2">
+        {sections.energy && <div className="space-y-2">
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
             Энергозатратность:
           </p>
@@ -434,13 +500,14 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          {sections.estimatedMinutes && <div>
+            <label htmlFor="edit-task-estimate" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               План, мин
             </label>
             <input
+              id="edit-task-estimate"
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               type="number"
               min="1"
@@ -457,12 +524,13 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                 })
               }
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          </div>}
+          {sections.actualMinutes && <div>
+            <label htmlFor="edit-task-actual" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Фактически, мин
             </label>
             <input
+              id="edit-task-actual"
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               type="number"
               min="1"
@@ -479,10 +547,14 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
                 })
               }
             />
-          </div>
+          </div>}
         </div>
         <div className="relative">
+          <label htmlFor="edit-task-category" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+            Категория
+          </label>
           <input
+            id="edit-task-category"
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             value={values.category || ""}
             onChange={(e) => setValues({ ...values, category: e.target.value })}
@@ -497,7 +569,7 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
           ))}
         </datalist>
 
-        <div className="mt-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+        {sections.subtasks && <div className="mt-2 border-t border-slate-200 pt-4 dark:border-slate-800">
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
               Подзадачи
@@ -561,30 +633,39 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
               </SortableContext>
             </DndContext>
           )}
-        </div>
+        </div>}
+        </>}
 
         <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
           <button
             className="px-4 py-2 text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-            onClick={() => onClose()}
+            onClick={handleClose}
+            disabled={isSubmitting}
             type="button"
           >
             Отмена
           </button>
           <button
-            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-xl transition-colors"
+            className="rounded-xl bg-indigo-500 px-4 py-2 font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
             type="submit"
+            disabled={isSubmitting}
           >
-            Сохранить
+            {isSubmitting ? "Сохраняю..." : "Сохранить задачу"}
           </button>
           <button
             onClick={deleteTask}
             type="button"
+            disabled={isSubmitting}
             className="text-red-400 hover:text-red-300 cursor-pointer p-2 transition-colors"
           >
             Удалить
           </button>
         </div>
+        {error && (
+          <p id="edit-task-error" role="alert" className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+            {error}
+          </p>
+        )}
       </form>
     </Modal>
   );

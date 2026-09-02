@@ -1,10 +1,12 @@
 import {
   Dialog,
   DialogPanel,
+  DialogTitle,
   Transition,
   TransitionChild,
 } from "@headlessui/react";
 import { Fragment } from "react/jsx-runtime";
+import { X } from "lucide-react";
 
 interface ICreateModal {
   isOpen: boolean;
@@ -24,7 +26,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "md" }: ICreateMod
       <Dialog
         as="div"
         onClose={onClose}
-        className="relative z-50"
+        className="fixed inset-0 z-50"
         onPointerDown={stopDragPropagation}
         onMouseDown={stopDragPropagation}
         onTouchStart={stopDragPropagation}
@@ -43,25 +45,37 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "md" }: ICreateMod
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto z-50">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className="flex min-h-full items-end justify-center pt-4 text-center sm:items-center sm:p-4">
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
+              enterFrom="translate-y-full opacity-0 sm:translate-y-0 sm:scale-95"
+              enterTo="translate-y-0 opacity-100 sm:scale-100"
               leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              leaveFrom="translate-y-0 opacity-100 sm:scale-100"
+              leaveTo="translate-y-full opacity-0 sm:translate-y-0 sm:scale-95"
             >
               <DialogPanel
+                data-testid="modal-panel"
                 className={
-                  `w-full ${maxWidth === "2xl" ? "max-w-2xl" : "max-w-md"} transform flex flex-col max-h-[90vh] rounded-2xl border border-slate-200 bg-white p-6 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900`
+                  `flex max-h-[calc(100dvh-1rem)] w-full ${maxWidth === "2xl" ? "max-w-2xl" : "max-w-md"} transform flex-col rounded-t-3xl border border-b-0 border-slate-200 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:border-b sm:p-6`
                 }
               >
-                <h2 className="mb-6 shrink-0 font-display text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {title}
-                </h2>
-                <div className="overflow-y-auto flex-1 pr-2 -mr-2">
+                <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700 sm:hidden" aria-hidden="true" />
+                <div className="mb-4 flex shrink-0 items-start justify-between gap-4 sm:mb-6">
+                  <DialogTitle className="font-display text-xl font-bold text-slate-900 dark:text-slate-100 sm:text-2xl">
+                    {title}
+                  </DialogTitle>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Закрыть"
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="-mr-1 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 sm:-mr-2 sm:pr-2">
                   {children}
                 </div>
               </DialogPanel>

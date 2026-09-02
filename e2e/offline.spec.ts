@@ -286,10 +286,11 @@ test("keeps an offline task through reload and syncs it after reconnect", async 
   await expect(page.getByText("Нет сети.")).toBeVisible();
   await page.getByRole("button", { name: "Добавить задачу" }).click();
   await page.getByPlaceholder("Введите задачу").fill(taskTitle);
+  await page.getByRole("button", { name: "Полно" }).click();
   await page
     .getByPlaceholder("Что нужно сделать?")
     .fill("Открыть сохранённые материалы");
-  await page.getByRole("button", { name: "Сохранить" }).click();
+  await page.getByRole("button", { name: "Сохранить задачу" }).click();
   await expect(page.getByText(taskTitle)).toBeVisible();
   await expect(page.getByPlaceholder("Введите задачу")).toHaveCount(0);
   expect(await readOfflineState(page)).toMatchObject({

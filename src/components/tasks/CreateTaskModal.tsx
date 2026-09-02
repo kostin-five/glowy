@@ -29,6 +29,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import FirstUsePopover from "../onboarding/FirstUsePopover";
+import { useAuthStore } from "../../store/useAuthStore";
+import {
+  getTaskFormPreferenceScope,
+  useTaskFormPreferences,
+  type TaskFormMode,
+} from "../../store/useSettingsStore";
+import TaskFormModeControl from "./TaskFormModeControl";
+import { getTaskFormSections } from "./taskFormPresentation";
 
 interface ICreateModal {
   isOpen: boolean;
@@ -175,7 +183,7 @@ const SortableSubTask = ({
 const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [values, setValues] = useState<TaskDraft>({
     title: "",
-    date: new Date().toISOString().split("T")[0],
+    date: "",
     priority: "⚡️ P2",
     category: "",
     completed: false,
@@ -190,7 +198,15 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAiSoon, setShowAiSoon] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const subTaskInputRef = useRef<HTMLInputElement>(null);
+  const submitInFlightRef = useRef(false);
+  const userId = useAuthStore((state) => state.userId);
+  const isGuest = useAuthStore((state) => state.isGuest);
+  const accountScope = getTaskFormPreferenceScope(userId, isGuest);
+  const preferences = useTaskFormPreferences(accountScope);
+  const [mode, setMode] = useState<TaskFormMode>(preferences.mode);
+  const sections = getTaskFormSections(mode, preferences, detailsExpanded);
   const categories = useAllCategories();
   const setFilter = useSetFilter();
   const sensors = useSensors(
@@ -223,6 +239,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
     setSubTitle("");
     setError("");
     setShowAiSoon(false);
+    setDetailsExpanded(false);
+  };
+
+  const handleClose = () => {
+    if (submitInFlightRef.current) return;
+    clean();
+    onClose();
   };
 
   const create = useCreateTask();
@@ -286,6 +309,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
   const sendTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitInFlightRef.current) return;
     setError("");
 
     if (!(values.title || "").trim()) {
@@ -319,6 +343,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
 
     if (parsedValues.success) {
       try {
+        submitInFlightRef.current = true;
         setIsSubmitting(true);
         const createdTask = await create(parsedValues.data);
         if (!createdTask) {
@@ -336,6 +361,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
             : "Не удалось создать задачу. Попробуй ещё раз."
         );
       } finally {
+        submitInFlightRef.current = false;
         setIsSubmitting(false);
       }
     } else {
@@ -344,13 +370,23 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Создать задачу">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Создать задачу">
       <form
         className="flex w-full flex-col gap-4"
         onSubmit={sendTask}
       >
+        <TaskFormModeControl mode={mode} onChange={setMode} />
+
         <div className="relative">
+          <label htmlFor="create-task-title" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+            Название задачи
+          </label>
           <input
+            id="create-task-title"
+            autoFocus
+            data-autofocus
+            aria-invalid={Boolean(error && !(values.title || "").trim())}
+            aria-describedby={error ? "create-task-error" : undefined}
             className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             type="text"
             placeholder="Введите задачу"
@@ -362,24 +398,37 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
             действительно помогают спланировать задачу.
           </FirstUsePopover>
         </div>
+        {mode === "compact" && !detailsExpanded && (
+          <button
+            type="button"
+            onClick={() => setDetailsExpanded(true)}
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200 dark:hover:bg-indigo-500/20"
+          >
+            Добавить детали
+          </button>
+        )}
+        {sections.details && (
+          <>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          {sections.date && <div>
+            <label htmlFor="create-task-date" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Дата задачи
             </label>
             <input
+              id="create-task-date"
               className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
               type="date"
               value={values.date}
               onChange={(e) => setValues({ ...values, date: e.target.value })}
             />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+          </div>}
+          {sections.priority && <div>
+            <label htmlFor="create-task-priority" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
               Приоритет
             </label>
             <div className="relative">
               <select
+                id="create-task-priority"
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all appearance-none cursor-pointer pr-10"
                 value={values.priority}
                 onChange={(e) =>
@@ -394,10 +443,10 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
                 ▼
               </div>
             </div>
-          </div>
+          </div>}
         </div>
 
-        <div className="space-y-2">
+        {sections.energy && <div className="space-y-2">
           <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
             Энергозатратность:
           </p>
@@ -421,12 +470,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               </button>
             ))}
           </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+        </div>}
+        {sections.estimatedMinutes && <div>
+          <label htmlFor="create-task-estimate" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
             Планируемое время, мин
           </label>
           <input
+            id="create-task-estimate"
             className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             type="number"
             min="1"
@@ -443,9 +493,13 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               })
             }
           />
-        </div>
+        </div>}
         <div className="relative">
+          <label htmlFor="create-task-category" className="mb-1.5 block text-xs font-medium text-slate-600 dark:text-slate-400">
+            Категория
+          </label>
           <input
+            id="create-task-category"
             className="w-full rounded-lg border border-slate-200 bg-white p-2.5 text-slate-900 transition-colors focus:border-indigo-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             value={values.category || ""}
             onChange={(e) => setValues({ ...values, category: e.target.value })}
@@ -460,7 +514,7 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
           ))}
         </datalist>
 
-        <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800">
+        {sections.subtasks && <div className="space-y-2 border-t border-slate-200 pt-2 dark:border-slate-800">
           <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
             <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
               Подзадачи
@@ -523,17 +577,29 @@ const CreateTaskForm = ({ isOpen, onClose }: ICreateModal) => {
               </SortableContext>
             </DndContext>
           )}
-        </div>
+        </div>}
+          </>
+        )}
 
-        <button
-          className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:bg-indigo-500/40 disabled:cursor-not-allowed text-white rounded-lg p-2.5 font-medium transition-colors w-full mt-2 cursor-pointer"
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Сохраняю..." : "Сохранить"}
-        </button>
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="min-h-11 flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Отмена
+          </button>
+          <button
+            className="min-h-11 flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-indigo-500 active:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-500/40"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Сохраняю..." : "Сохранить задачу"}
+          </button>
+        </div>
         {error && (
-          <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+          <p id="create-task-error" role="alert" className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-300">
             {error}
           </p>
         )}

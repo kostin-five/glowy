@@ -40,8 +40,14 @@ const SortMenu = () => {
     <label className="relative flex h-10 w-full md:min-w-52 items-center">
       <span className="sr-only">Сортировка задач</span>
       <select
+        aria-label="Сортировка задач"
         value={selectedValue}
         onChange={(event) => {
+          if (!event.target.value) {
+            setSort(null, "asc");
+            return;
+          }
+
           const [field, direction] = event.target.value.split(":") as [
             Exclude<SortField, null>,
             SortDirection
@@ -50,9 +56,7 @@ const SortMenu = () => {
         }}
         className="h-full w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all hover:bg-slate-100 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30 dark:border-slate-700/50 dark:bg-slate-800/50 dark:text-slate-300 dark:shadow-none dark:hover:bg-slate-800"
       >
-        <option value="" disabled>
-          Сортировка
-        </option>
+        <option value="">Без сортировки</option>
         {sortOptions.map((option) => {
           const value = `${option.field}:${option.direction}`;
 

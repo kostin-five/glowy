@@ -4,6 +4,12 @@ import { createJSONStorage, persist } from "zustand/middleware";
 export type TaskViewMode = "list" | "grid";
 export type ThemeMode = "light" | "dark" | "system";
 export type StartRoute = "/dashboard" | "/tasks" | "/ai";
+export type TaskFormMode = "compact" | "medium" | "full";
+export type TaskFormField = "energy" | "priority";
+export interface TaskFormPreferences {
+  mode: TaskFormMode;
+  fields: Record<TaskFormField, boolean>;
+}
 export type OnboardingHintId =
   | "taskCreation"
   | "progressNavigation"
@@ -20,6 +26,7 @@ interface SettingsStore {
   dailyEnergyLimit: number;
   shownOnboardingHints: OnboardingHintId[];
   isSidebarCollapsed: boolean;
+  taskFormPreferencesByAccount: Record<string, TaskFormPreferences>;
   toggleDarkMode: () => void;
   setDarkMode: (isDarkMode: boolean) => void;
   setThemeMode: (themeMode: ThemeMode) => void;
@@ -29,7 +36,69 @@ interface SettingsStore {
   markOnboardingHintShown: (hintId: OnboardingHintId) => void;
   resetOnboardingHints: () => void;
   toggleSidebarCollapsed: () => void;
+  setTaskFormMode: (accountScope: string, mode: TaskFormMode) => void;
+  setTaskFormFieldVisible: (
+    accountScope: string,
+    field: TaskFormField,
+    isVisible: boolean
+  ) => void;
 }
+
+export const DEFAULT_TASK_FORM_PREFERENCES: TaskFormPreferences = {
+  mode: "medium",
+  fields: { energy: true, priority: true },
+};
+
+const isTaskFormMode = (value: unknown): value is TaskFormMode =>
+  value === "compact" || value === "medium" || value === "full";
+
+export const normalizeTaskFormPreferences = (
+  value: unknown
+): TaskFormPreferences => {
+  if (!value || typeof value !== "object") {
+    return DEFAULT_TASK_FORM_PREFERENCES;
+  }
+
+  const candidate = value as Partial<TaskFormPreferences>;
+  const fields =
+    candidate.fields && typeof candidate.fields === "object"
+      ? candidate.fields
+      : undefined;
+
+  return {
+    mode: isTaskFormMode(candidate.mode)
+      ? candidate.mode
+      : DEFAULT_TASK_FORM_PREFERENCES.mode,
+    fields: {
+      energy:
+        typeof fields?.energy === "boolean"
+          ? fields.energy
+          : DEFAULT_TASK_FORM_PREFERENCES.fields.energy,
+      priority:
+        typeof fields?.priority === "boolean"
+          ? fields.priority
+          : DEFAULT_TASK_FORM_PREFERENCES.fields.priority,
+    },
+  };
+};
+
+const normalizeTaskFormPreferencesMap = (
+  value: unknown
+): Record<string, TaskFormPreferences> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).map(([scope, preferences]) => [
+      scope,
+      normalizeTaskFormPreferences(preferences),
+    ])
+  );
+};
+
+export const getTaskFormPreferenceScope = (
+  userId: number | null,
+  isGuest: boolean
+) => (userId !== null ? `user:${userId}` : isGuest ? "guest" : "anonymous");
 
 export const useSettingsStore = create<SettingsStore>()(
   persist(
@@ -41,6 +110,7 @@ export const useSettingsStore = create<SettingsStore>()(
       dailyEnergyLimit: 100,
       shownOnboardingHints: [],
       isSidebarCollapsed: false,
+      taskFormPreferencesByAccount: {},
       toggleDarkMode: () =>
         set((state) => ({
           isDarkMode: !state.isDarkMode,
@@ -69,6 +139,37 @@ export const useSettingsStore = create<SettingsStore>()(
       resetOnboardingHints: () => set({ shownOnboardingHints: [] }),
       toggleSidebarCollapsed: () =>
         set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+      setTaskFormMode: (accountScope, mode) =>
+        set((state) => ({
+          taskFormPreferencesByAccount: {
+            ...state.taskFormPreferencesByAccount,
+            [accountScope]: {
+              ...normalizeTaskFormPreferences(
+                state.taskFormPreferencesByAccount[accountScope]
+              ),
+              mode,
+            },
+          },
+        })),
+      setTaskFormFieldVisible: (accountScope, field, isVisible) =>
+        set((state) => {
+          const preferences = normalizeTaskFormPreferences(
+            state.taskFormPreferencesByAccount[accountScope]
+          );
+
+          return {
+            taskFormPreferencesByAccount: {
+              ...state.taskFormPreferencesByAccount,
+              [accountScope]: {
+                ...preferences,
+                fields: {
+                  ...preferences.fields,
+                  [field]: isVisible,
+                },
+              },
+            },
+          };
+        }),
     }),
     {
       name: "glowy-settings",
@@ -90,6 +191,9 @@ export const useSettingsStore = create<SettingsStore>()(
             : currentState.shownOnboardingHints,
           isSidebarCollapsed:
             persisted?.isSidebarCollapsed ?? currentState.isSidebarCollapsed,
+          taskFormPreferencesByAccount: normalizeTaskFormPreferencesMap(
+            persisted?.taskFormPreferencesByAccount
+          ),
         };
       },
     }
@@ -129,3 +233,13 @@ export const useIsSidebarCollapsed = () =>
   useSettingsStore((state) => state.isSidebarCollapsed);
 export const useToggleSidebarCollapsed = () =>
   useSettingsStore((state) => state.toggleSidebarCollapsed);
+export const useTaskFormPreferences = (accountScope: string) =>
+  useSettingsStore(
+    (state) =>
+      state.taskFormPreferencesByAccount[accountScope] ??
+      DEFAULT_TASK_FORM_PREFERENCES
+  );
+export const useSetTaskFormMode = () =>
+  useSettingsStore((state) => state.setTaskFormMode);
+export const useSetTaskFormFieldVisible = () =>
+  useSettingsStore((state) => state.setTaskFormFieldVisible);

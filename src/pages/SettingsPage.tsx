@@ -28,6 +28,12 @@ import {
   type ThemeMode,
   useResetOnboardingHints,
   type StartRoute,
+  getTaskFormPreferenceScope,
+  useTaskFormPreferences,
+  useSetTaskFormFieldVisible,
+  useSetTaskFormMode,
+  type TaskFormField,
+  type TaskFormMode,
 } from "../store/useSettingsStore";
 import {
   GUEST_REQUEST_LIMIT,
@@ -42,6 +48,7 @@ import { ProfileAvatar } from "../components/profile/AvatarPicker";
 import ProfilePreferencesPanel from "../components/profile/ProfilePreferencesPanel";
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 import TelegramConnectionPanel from "../components/settings/TelegramConnectionPanel";
+import TaskFormModeControl from "../components/tasks/TaskFormModeControl";
 
 const themeOptions: Array<{
   value: ThemeMode;
@@ -108,6 +115,11 @@ const SettingsPage = () => {
   const setStartRoute = useSetStartRoute();
   const resetOnboardingHints = useResetOnboardingHints();
   const avatarId = useAuthStore((state) => state.avatarId);
+  const userId = useAuthStore((state) => state.userId);
+  const taskFormScope = getTaskFormPreferenceScope(userId, isGuest);
+  const taskFormPreferences = useTaskFormPreferences(taskFormScope);
+  const setTaskFormMode = useSetTaskFormMode();
+  const setTaskFormFieldVisible = useSetTaskFormFieldVisible();
 
   const showSettingsSavedToast = () => {
     if (savedToastTimerRef.current) {
@@ -219,6 +231,20 @@ const SettingsPage = () => {
 
   const handleStartRouteChange = (route: StartRoute) => {
     setStartRoute(route);
+    showSettingsSavedToast();
+  };
+
+  const handleTaskFormModeChange = (mode: TaskFormMode) => {
+    setTaskFormMode(taskFormScope, mode);
+    showSettingsSavedToast();
+  };
+
+  const handleTaskFormFieldChange = (field: TaskFormField) => {
+    setTaskFormFieldVisible(
+      taskFormScope,
+      field,
+      !taskFormPreferences.fields[field]
+    );
     showSettingsSavedToast();
   };
 
@@ -445,6 +471,60 @@ const SettingsPage = () => {
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
+          <h3 className="font-display text-lg font-bold text-slate-950 dark:text-slate-100">
+            Форма задачи
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            Выбери обычную подробность и оставь только полезные поля. Старые
+            значения задач при скрытии сохраняются.
+          </p>
+
+          <div className="mt-4">
+            <TaskFormModeControl
+              mode={taskFormPreferences.mode}
+              onChange={handleTaskFormModeChange}
+            />
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["energy", "Показывать энергию"],
+                ["priority", "Показывать приоритет"],
+              ] as const
+            ).map(([field, label]) => {
+              const isVisible = taskFormPreferences.fields[field];
+
+              return (
+                <button
+                  key={field}
+                  type="button"
+                  role="switch"
+                  aria-checked={isVisible}
+                  aria-label={label}
+                  onClick={() => handleTaskFormFieldChange(field)}
+                  className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-bold text-slate-700 transition-colors hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:border-indigo-500/50"
+                >
+                  <span>{label}</span>
+                  <span
+                    aria-hidden="true"
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                      isVisible ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                        isVisible ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 

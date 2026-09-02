@@ -50,3 +50,64 @@ describe("useSettingsStore onboarding hints", () => {
     });
   });
 });
+
+describe("useSettingsStore task form preferences", () => {
+  it("uses compatible defaults and isolates accounts", async () => {
+    const {
+      DEFAULT_TASK_FORM_PREFERENCES,
+      getTaskFormPreferenceScope,
+      useSettingsStore,
+    } = await loadStore();
+    const firstAccount = getTaskFormPreferenceScope(10, false);
+    const secondAccount = getTaskFormPreferenceScope(20, false);
+
+    expect(
+      useSettingsStore.getState().taskFormPreferencesByAccount[firstAccount] ??
+        DEFAULT_TASK_FORM_PREFERENCES
+    ).toEqual({
+      mode: "medium",
+      fields: { energy: true, priority: true },
+    });
+
+    useSettingsStore.getState().setTaskFormMode(firstAccount, "compact");
+    useSettingsStore
+      .getState()
+      .setTaskFormFieldVisible(firstAccount, "energy", false);
+
+    expect(
+      useSettingsStore.getState().taskFormPreferencesByAccount[firstAccount]
+    ).toEqual({
+      mode: "compact",
+      fields: { energy: false, priority: true },
+    });
+    expect(
+      useSettingsStore.getState().taskFormPreferencesByAccount[secondAccount]
+    ).toBeUndefined();
+  });
+
+  it("normalizes each damaged persisted preference independently", async () => {
+    localStorage.setItem(
+      "glowy-settings",
+      JSON.stringify({
+        state: {
+          taskFormPreferencesByAccount: {
+            "user:10": {
+              mode: "unknown",
+              fields: { energy: false, priority: "yes" },
+            },
+          },
+        },
+        version: 0,
+      })
+    );
+
+    const { useSettingsStore } = await loadStore();
+
+    expect(
+      useSettingsStore.getState().taskFormPreferencesByAccount["user:10"]
+    ).toEqual({
+      mode: "medium",
+      fields: { energy: false, priority: true },
+    });
+  });
+});

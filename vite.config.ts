@@ -56,6 +56,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       devOptions: {
         enabled: true,
+        // Dev modules change frequently and must always come from Vite.
+        // Caching them can preserve an HTML fallback under a .ts/.tsx URL.
+        disableRuntimeConfig: true,
         navigateFallbackAllowlist: [/^\/(?!api(?:\/|$)).*/],
       },
       includeAssets: [

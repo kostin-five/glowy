@@ -55,11 +55,9 @@ export default defineConfig({
       strategies: "generateSW",
       registerType: "autoUpdate",
       devOptions: {
-        enabled: true,
-        // Dev modules change frequently and must always come from Vite.
-        // Caching them can preserve an HTML fallback under a .ts/.tsx URL.
-        disableRuntimeConfig: true,
-        navigateFallbackAllowlist: [/^\/(?!api(?:\/|$)).*/],
+        // A development worker can retain Vite modules between code changes.
+        // Production PWA behavior is still generated and verified by `npm run build`.
+        enabled: false,
       },
       includeAssets: [
         "Glowy.png",

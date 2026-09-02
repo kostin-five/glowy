@@ -10,6 +10,7 @@ const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefin
 
 afterEach(() => {
   consoleError.mockClear();
+  vi.useRealTimers();
 });
 
 describe("AppErrorBoundary", () => {
@@ -27,7 +28,9 @@ describe("AppErrorBoundary", () => {
     expect(
       screen.getByRole("heading", { name: "Не удалось загрузить этот экран" })
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Попробовать снова" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Перезагрузить экран" })
+    ).toBeInTheDocument();
   });
 
   it("retries rendering when the user chooses recovery", () => {
@@ -50,8 +53,35 @@ describe("AppErrorBoundary", () => {
 
     render(<RecoveryScreen />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Попробовать снова" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Перезагрузить экран" })
+    );
 
     expect(screen.getByText("Экран снова доступен")).toBeInTheDocument();
+  });
+
+  it("shows reload progress and reloads the page after a route failure", () => {
+    vi.useFakeTimers();
+    const reloadPage = vi.fn();
+    const BrokenScreen = () => {
+      throw new Error("Controlled route failure");
+    };
+
+    render(
+      <AppErrorBoundary reloadPage={reloadPage}>
+        <BrokenScreen />
+      </AppErrorBoundary>
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Перезагрузить экран" })
+    );
+
+    expect(screen.getByRole("button", { name: "Перезагружаю…" })).toBeDisabled();
+    expect(reloadPage).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(100);
+
+    expect(reloadPage).toHaveBeenCalledOnce();
   });
 });

@@ -3,25 +3,42 @@ import { Component, type ReactNode } from "react";
 interface AppErrorBoundaryProps {
   children: ReactNode;
   onRetry?: () => void;
+  reloadPage?: () => void;
 }
 
 interface AppErrorBoundaryState {
   hasError: boolean;
+  isReloading: boolean;
 }
 
 class AppErrorBoundary extends Component<
   AppErrorBoundaryProps,
   AppErrorBoundaryState
 > {
-  state: AppErrorBoundaryState = { hasError: false };
+  state: AppErrorBoundaryState = { hasError: false, isReloading: false };
+  private reloadTimer: number | null = null;
 
   static getDerivedStateFromError(): AppErrorBoundaryState {
-    return { hasError: true };
+    return { hasError: true, isReloading: false };
+  }
+
+  componentWillUnmount() {
+    if (this.reloadTimer !== null) window.clearTimeout(this.reloadTimer);
   }
 
   handleRetry = () => {
-    this.props.onRetry?.();
-    this.setState({ hasError: false });
+    if (this.state.isReloading) return;
+
+    if (this.props.onRetry) {
+      this.props.onRetry();
+      this.setState({ hasError: false, isReloading: false });
+      return;
+    }
+
+    this.setState({ isReloading: true });
+    this.reloadTimer = window.setTimeout(() => {
+      (this.props.reloadPage ?? (() => window.location.reload()))();
+    }, 100);
   };
 
   render() {
@@ -40,9 +57,10 @@ class AppErrorBoundary extends Component<
           <button
             type="button"
             onClick={this.handleRetry}
-            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-indigo-500 px-5 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+            disabled={this.state.isReloading}
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-indigo-500 px-5 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-80 dark:focus-visible:ring-offset-slate-950"
           >
-            Попробовать снова
+            {this.state.isReloading ? "Перезагружаю…" : "Перезагрузить экран"}
           </button>
         </section>
       );

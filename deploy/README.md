@@ -145,6 +145,17 @@ migrations, это нужно делать отдельной задачей:
 
 ## 9. Запустить backend через PM2
 
+Начиная с v2.10.0 перед переключением PM2 требуется собрать TypeScript artifact. Это изменение
+production entrypoint выполняется только после отдельного разрешения владельца и успешного
+release checklist; сама инструкция ничего не переключает.
+
+```bash
+cd /var/www/glowy/backend
+npm run typecheck
+npm run build
+test -f dist/server.js
+```
+
 ```bash
 pm2 start ecosystem.config.cjs
 pm2 status
@@ -159,6 +170,9 @@ pm2 startup
 ```
 
 PM2 выведет команду с `sudo env ...`; её нужно скопировать и выполнить.
+
+Для code-only rollback восстановить предыдущий commit/artifact и прежний PM2 entrypoint, затем
+перезапустить процесс. Миграция v2.10.0 не требует отката PostgreSQL.
 
 ## 10. Настроить Nginx
 

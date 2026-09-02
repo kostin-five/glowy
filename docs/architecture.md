@@ -31,13 +31,14 @@ Telegram Mini App -> existing React routes -> existing Express API
 ### Backend и база
 
 Express принимает запросы, применяет CORS, CSRF-проверку, `requestId` и маршруты. Prisma
-импортируется только из `backend/lib/prisma.js`; это единственный клиент Prisma и пул соединений
+импортируется только из `backend/lib/prisma.ts` (ESM-импорты используют emitted `.js` path); это
+единственный клиент Prisma и пул соединений
 для процесса. PostgreSQL хранит пользователей, задачи, подзадачи, платежи и состояние тарифов.
 
-Backend продолжает запускаться как ESM JavaScript через `backend/server.js`. TypeScript в v2.9.0
-добавлен как foundation, а не как массовая перезапись: `backend/tsconfig.json` задаёт строгие
-NodeNext-настройки для будущих `.ts`-модулей, но при `checkJs: false` не объявляет существующий
-JavaScript типобезопасным. Строго компилируемый общий пакет `packages/contracts` содержит
+Начиная с v2.10.0 исходный backend написан на TypeScript и строго компилируется в
+`backend/dist/`; production artifact запускается обычным Node.js через `dist/server.js`, без
+runtime-loader. `backend/lib/prisma.ts` остаётся единственной точкой создания Prisma client.
+Строго компилируемый общий пакет `packages/contracts` содержит
 Zod-схемы и выводимые из них типы для критических границ auth, tasks, AI и payments. Route
 валидирует вход и формирует совместимый ответ, а соответствующий frontend API client повторно
 проверяет полученный ответ. Полная карта фактических HTTP endpoints хранится в
@@ -45,7 +46,7 @@ Zod-схемы и выводимые из них типы для критиче�
 
 ### AI и Разгрузка мыслей
 
-Маршруты в `backend/routes/ai.routes.js` передают работу в `backend/services/ai/`. Там находятся
+Маршруты в `backend/routes/ai.routes.ts` передают работу в `backend/services/ai/`. Там находятся
 provider, анализ Разгрузки мыслей, fallback и лимиты. Backend напрямую вызывает DeepSeek. Только
 при timeout, сетевой ошибке, HTTP 429 или HTTP 5xx один раз вызывается GigaChat; успешный запрос не
 отправляется двум провайдерам. Короткоживущий OAuth-токен GigaChat кешируется в памяти процесса.
@@ -115,7 +116,7 @@ logout не удаляет `TelegramConnection`: он завершает web-с�
 
 Webhook `/api/telegram/webhook` является единственным исключением browser-CSRF для Telegram,
 проверяет отдельный `X-Telegram-Bot-Api-Secret-Token`, идемпотентно сохраняет update и сразу
-отвечает. Фоновый worker использует эту же PostgreSQL через `backend/lib/prisma.js`; отдельного
+отвечает. Фоновый worker использует эту же PostgreSQL через `backend/lib/prisma.ts`; отдельного
 Redis, пула или базы нет. Payload очищается после обработки, а логи не содержат сообщения,
 callback data, Telegram identifiers, token или коды.
 

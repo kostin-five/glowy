@@ -3,22 +3,28 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "allowJs": true,
-    "checkJs": false,
     "noEmit": true,
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "useUnknownInCatchVariables": true,
     "skipLibCheck": true,
     "types": ["node"]
   },
   "include": [
-    "app.js",
-    "server.js",
-    "contracts/**/*.ts",
-    "lib/**/*.js",
-    "middleware/**/*.js",
-    "routes/**/*.js",
-    "services/**/*.js",
-    "types/**/*.d.ts"
+    "app.ts",
+    "server.ts",
+    "constants/**/*.ts",
+    "lib/**/*.ts",
+    "middleware/**/*.ts",
+    "routes/**/*.ts",
+    "scripts/**/*.ts",
+    "services/**/*.ts",
+    "test/**/*.ts",
+    "type-tests/**/*.ts",
+    "types/**/*.d.ts",
+    "types/**/*.ts",
+    "utils/**/*.ts"
   ],
-  "exclude": ["node_modules", "test", "prisma"]
+  "exclude": ["dist", "node_modules", "prisma"]
 }

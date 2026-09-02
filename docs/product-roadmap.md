@@ -532,7 +532,7 @@ circuit breaker и fallback относятся к backend provider layer.
    критические endpoints: auth, задачи, AI, подписки и платежи.
 3. Подготовить проверяемую TypeScript-сборку backend и переводить JavaScript постепенно по доменам, не
    смешивая перевод с изменением поведения. Каждый перенесённый модуль должен
-   импортировать тот же `backend/lib/prisma.js` и сохранять публичный API.
+   импортировать тот же `backend/lib/prisma.ts` и сохранять публичный API.
 4. Добавить структурные логи с request ID, обработчик необработанных ошибок и
    redaction полей с секретами/личным текстом. Ошибка должна связываться с
    request ID, а не с содержимым задачи или промпта.
@@ -579,18 +579,25 @@ circuit breaker и fallback относятся к backend provider layer.
 **Цель.** Завершить начатую в v2.9.0 TypeScript foundation и сделать весь основной backend
 строго проверяемым без одновременной смены поведения или архитектуры.
 
-Полный перевод backend не входит в release gate v2.9.0 и начинается только после его merge. На
-момент планирования backend содержит 95 JavaScript-файлов: 46 runtime/support и 49 тестовых.
+**Статус на 2026-09-02:** реализация и локальный release gate завершены в feature-ветке;
+production deploy, переключение PM2 и выпуск версии не выполнялись. Основной backend и его тесты
+переведены на TypeScript: inventory 95/95, backend 162/162, frontend 143/143, contracts 13/13 и
+Telegram Mini App Playwright 66/66. Перед выпуском остаются review, commit/merge и отдельно
+согласованный production checklist.
+
+Полный перевод backend не входил в release gate v2.9.0 и начался после его merge. На момент
+планирования backend содержал 95 JavaScript-файлов: 46 runtime/support и 49 тестовых.
 Одновременное переименование запрещено; релиз собирается из небольших domain slices, каждый из
-которых сохраняет поведение и общий `backend/lib/prisma.js`, проходит domain tests, backend
+которых сохраняет поведение и общий `backend/lib/prisma.ts`, проходит domain tests, backend
 typecheck, frontend checks и Playwright.
 
 Порядок slices: общие types/Express augmentation → lib/middleware/utils → auth → tasks → AI →
 payments → analytics/profile/notes → Telegram → backend tests. `ai-proxy/server.js` оценивается
 отдельно как rollback-компонент. Для каждого slice механический перенос типов отделяется от
 изменения поведения; production migration, env и deploy не требуются. Release gate: в основном
-backend не остаётся скрытых непроверяемых `.js`, включена строгая TypeScript-проверка и проходит
-полный набор тестов.
+backend не осталось скрытых непроверяемых `.js`, включена строгая TypeScript-проверка и проходит
+полный набор тестов. `ai-proxy/server.js` остаётся отдельным rollback-компонентом и должен
+оцениваться самостоятельным техническим изменением после v2.10.0.
 
 ---
 

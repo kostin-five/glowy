@@ -1,0 +1,777 @@
+import crypto from "node:crypto";
+import { logger } from "../../lib/logger.js";
+import { recordSuccessfulAiUsageSafely } from "../analytics/ai-usage-accounting.service.js";
+import { isUnknownRecord } from "../../types/boundaries.js";
+
+const DEFAULT_TIMEOUT_MS = 30_000;
+const TOKEN_EXPIRY_SAFETY_MS = 60_000;
+
+interface ProviderBudget {
+  deadline: number;
+  remaining(): number;
+  exhaust(): void;
+}
+
+interface ProviderBudgetOptions {
+  timeoutMs?: number;
+  now?: () => number;
+}
+
+interface CircuitBreakerOptions {
+  now?: () => number;
+  failureThreshold?: number;
+  openMs?: number;
+}
+
+type CircuitState = "closed" | "open" | "half-open";
+
+interface AiProviderErrorOptions {
+  code: string;
+  message: string;
+  status?: number;
+  retryable?: boolean;
+  provider?: string | null;
+  operation?: string | null;
+  providerCode?: string | null;
+  cause?: unknown;
+}
+
+export interface AiProviderError extends Error {
+  code: string;
+  status: number;
+  retryable: boolean;
+  provider: string | null;
+  operation: string | null;
+  providerCode: string | null;
+  cause?: unknown;
+}
+
+interface GigaChatTokenCache {
+  accessToken: string;
+  expiresAt: number;
+}
+
+interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface GenerationConfig {
+  temperature?: number;
+  topP?: number;
+}
+
+interface ProviderRequest {
+  messages: ChatMessage[];
+  generationConfig: GenerationConfig;
+}
+
+export interface ProviderUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
+export interface ProviderResult {
+  text: string;
+  providerUsed: string;
+  modelUsed: string | null;
+  usage: ProviderUsage | null;
+}
+
+interface AccountingContext {
+  userId?: number | null;
+}
+
+interface HistoryPart {
+  text?: unknown;
+}
+
+interface HistoryItem {
+  role?: unknown;
+  parts?: HistoryPart[];
+}
+
+interface MessageInput {
+  prompt?: unknown;
+  message?: unknown;
+  history?: unknown;
+  systemInstruction?: unknown;
+}
+
+let gigaChatTokenCache: GigaChatTokenCache | null = null;
+
+export const createProviderBudget = ({
+  timeoutMs = getTimeoutMs(),
+  now = () => Date.now(),
+}: ProviderBudgetOptions = {}): ProviderBudget => {
+  const deadline = now() + timeoutMs;
+  let exhausted = false;
+  return {
+    deadline,
+    remaining: () => (exhausted ? 0 : Math.max(0, deadline - now())),
+    exhaust: () => {
+      exhausted = true;
+    },
+  };
+};
+
+export const createAiCircuitBreaker = ({
+  now = () => Date.now(),
+  failureThreshold = 3,
+  openMs = 30_000,
+}: CircuitBreakerOptions = {}) => {
+  let state: CircuitState = "closed";
+  let retryableFailures = 0;
+  let openedUntil = 0;
+  let probeInFlight = false;
+
+  const beforeRequest = () => {
+    if (state === "closed") return { allowed: true, probe: false };
+    if (state === "open" && now() >= openedUntil && !probeInFlight) {
+      state = "half-open";
+      probeInFlight = true;
+      return { allowed: true, probe: true };
+    }
+    return {
+      allowed: false,
+      probe: false,
+      retryAfterMs: Math.max(0, openedUntil - now()),
+    };
+  };
+
+  const recordSuccess = () => {
+    state = "closed";
+    retryableFailures = 0;
+    openedUntil = 0;
+    probeInFlight = false;
+  };
+
+  const recordFailure = (retryable: boolean) => {
+    if (!retryable) {
+      if (state === "half-open") recordSuccess();
+      return;
+    }
+
+    retryableFailures += 1;
+    if (state === "half-open" || retryableFailures >= failureThreshold) {
+      state = "open";
+      openedUntil = now() + openMs;
+      probeInFlight = false;
+    }
+  };
+
+  const reset = () => recordSuccess();
+  const getState = () => ({ state, retryableFailures, openedUntil });
+
+  return { beforeRequest, recordSuccess, recordFailure, reset, getState };
+};
+
+const providerCircuit = createAiCircuitBreaker();
+
+export const createAiProviderError = ({
+  code,
+  message,
+  status = 503,
+  retryable = false,
+  provider = null,
+  operation = null,
+  providerCode = null,
+  cause,
+}: AiProviderErrorOptions): AiProviderError => {
+  const error = new Error(message) as AiProviderError;
+  error.code = code;
+  error.status = status;
+  error.retryable = retryable;
+  error.provider = provider;
+  error.operation = operation;
+  error.providerCode = providerCode;
+  error.cause = cause;
+  return error;
+};
+
+const getTimeoutMs = () => {
+  const value = Number(process.env.AI_PROVIDER_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+};
+
+const isAiProviderError = (error: unknown): error is AiProviderError =>
+  error instanceof Error &&
+  isUnknownRecord(error) &&
+  typeof error.code === "string" &&
+  typeof error.retryable === "boolean";
+
+const readProviderCode = (payload: unknown): string | null => {
+  if (!isUnknownRecord(payload)) return null;
+  return typeof payload.code === "string" || typeof payload.code === "number"
+    ? String(payload.code).slice(0, 100)
+    : null;
+};
+
+interface JsonRequest {
+  url: string;
+  init: RequestInit;
+  provider: string;
+  operation: string;
+  budget?: ProviderBudget;
+}
+
+const requestJson = async ({
+  url,
+  init,
+  provider,
+  operation,
+  budget,
+}: JsonRequest): Promise<unknown> => {
+  const timeoutMs = budget?.remaining() ?? getTimeoutMs();
+  if (timeoutMs <= 0) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_TIMEOUT",
+      message: "AI provider request timed out.",
+      status: 503,
+      retryable: true,
+      provider,
+      operation,
+    });
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.max(1, timeoutMs));
+
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    const payload: unknown = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const retryable = response.status === 429 || response.status >= 500;
+      throw createAiProviderError({
+        code: retryable
+          ? "AI_PROVIDER_TEMPORARILY_UNAVAILABLE"
+          : "AI_PROVIDER_REQUEST_REJECTED",
+        message: retryable
+          ? "AI provider is temporarily unavailable."
+          : "AI provider rejected the request.",
+        status: response.status,
+        retryable,
+        provider,
+        operation,
+        providerCode: readProviderCode(payload),
+      });
+    }
+
+    return payload;
+  } catch (error) {
+    if (isAiProviderError(error)) throw error;
+
+    if (error instanceof Error && error.name === "AbortError") {
+      // A request-level abort is the deadline firing for the shared provider
+      // budget. Mark it exhausted so a slightly early timer cannot start the
+      // fallback with a new network call.
+      budget?.exhaust?.();
+      throw createAiProviderError({
+        code: "AI_PROVIDER_TIMEOUT",
+        message: "AI provider request timed out.",
+        status: 503,
+        retryable: true,
+        provider,
+        operation,
+        cause: error,
+      });
+    }
+
+    throw createAiProviderError({
+      code: "AI_PROVIDER_NETWORK_ERROR",
+      message: "AI provider network request failed.",
+      status: 503,
+      retryable: true,
+      provider,
+      operation,
+      cause: error,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const normalizeHistory = (history: unknown = []): ChatMessage[] =>
+  (Array.isArray(history) ? (history as HistoryItem[]) : [])
+    .map((item) => {
+      const role = item?.role === "model" ? "assistant" : item?.role;
+      const content = Array.isArray(item?.parts)
+        ? item.parts
+            .map((part: HistoryPart) =>
+              typeof part?.text === "string" ? part.text : ""
+            )
+            .join("\n")
+            .trim()
+        : "";
+
+      return role === "user" || role === "assistant" ? { role, content } : null;
+    })
+    .filter((item): item is ChatMessage => Boolean(item?.content));
+
+const buildMessages = ({
+  prompt,
+  message,
+  history,
+  systemInstruction,
+}: MessageInput): ChatMessage[] => {
+  const messages: ChatMessage[] = [];
+
+  if (typeof systemInstruction === "string" && systemInstruction) {
+    messages.push({ role: "system", content: systemInstruction });
+  }
+
+  messages.push(...normalizeHistory(history));
+
+  const userContent = typeof prompt === "string" ? prompt : message;
+  if (typeof userContent === "string" && userContent.trim()) {
+    messages.push({ role: "user", content: userContent.trim() });
+  }
+
+  return messages;
+};
+
+const readChatText = (payload: unknown, provider: string): string => {
+  const choices = isUnknownRecord(payload) && Array.isArray(payload.choices)
+    ? payload.choices
+    : [];
+  const choice = choices[0];
+  const message = isUnknownRecord(choice) && isUnknownRecord(choice.message)
+    ? choice.message
+    : null;
+  const text = message?.content;
+
+  if (typeof text !== "string" || !text.trim()) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_EMPTY_RESPONSE",
+      message: "AI provider returned an empty response.",
+      status: 502,
+      retryable: true,
+      provider,
+    });
+  }
+
+  return text.trim();
+};
+
+const readUsage = (payload: unknown): ProviderUsage => {
+  const usage = isUnknownRecord(payload) && isUnknownRecord(payload.usage)
+    ? payload.usage
+    : null;
+  return {
+    promptTokens: Number(usage?.prompt_tokens) || 0,
+    completionTokens: Number(usage?.completion_tokens) || 0,
+    totalTokens: Number(usage?.total_tokens) || 0,
+  };
+};
+
+const readStringField = (
+  payload: unknown,
+  field: string
+): string | undefined => {
+  if (!isUnknownRecord(payload)) return undefined;
+  return typeof payload[field] === "string" ? payload[field] : undefined;
+};
+
+const callDeepSeek = async (
+  { messages, generationConfig }: ProviderRequest,
+  budget: ProviderBudget
+): Promise<ProviderResult> => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_CONFIG_MISSING",
+      message: "DeepSeek is not configured.",
+      status: 500,
+      provider: "deepseek",
+    });
+  }
+
+  const baseUrl = (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com").replace(
+    /\/$/,
+    ""
+  );
+  const model = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+  const payload = await requestJson({
+    url: `${baseUrl}/chat/completions`,
+    provider: "deepseek",
+    operation: "completion",
+    budget,
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        ...(Number.isFinite(generationConfig?.temperature)
+          ? { temperature: generationConfig.temperature }
+          : {}),
+        ...(Number.isFinite(generationConfig?.topP)
+          ? { top_p: generationConfig.topP }
+          : {}),
+      }),
+    },
+  });
+
+  return {
+    text: readChatText(payload, "deepseek"),
+    providerUsed: "deepseek",
+    modelUsed: readStringField(payload, "model") || model,
+    usage: readUsage(payload),
+  };
+};
+
+const isCachedGigaChatTokenValid = () =>
+  Boolean(
+    gigaChatTokenCache?.accessToken &&
+      gigaChatTokenCache.expiresAt > Date.now() + TOKEN_EXPIRY_SAFETY_MS
+  );
+
+interface GigaChatTokenOptions {
+  forceRefresh?: boolean;
+  budget?: ProviderBudget;
+}
+
+const getGigaChatAccessToken = async ({
+  forceRefresh = false,
+  budget,
+}: GigaChatTokenOptions = {}): Promise<string> => {
+  if (!forceRefresh && isCachedGigaChatTokenValid()) {
+    return gigaChatTokenCache!.accessToken;
+  }
+
+  const authorizationKey = process.env.GIGACHAT_AUTH_KEY;
+  if (!authorizationKey) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_CONFIG_MISSING",
+      message: "GigaChat is not configured.",
+      status: 500,
+      provider: "gigachat",
+    });
+  }
+
+  const authUrl =
+    process.env.GIGACHAT_AUTH_URL ||
+    "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
+  const scope = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
+  const payload = await requestJson({
+    url: authUrl,
+    provider: "gigachat",
+    operation: "oauth",
+    budget,
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${authorizationKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        RqUID: crypto.randomUUID(),
+      },
+      body: new URLSearchParams({ scope }).toString(),
+    },
+  });
+
+  const accessToken = readStringField(payload, "access_token");
+  if (!accessToken) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_AUTH_FAILED",
+      message: "GigaChat authentication returned no access token.",
+      status: 502,
+      provider: "gigachat",
+    });
+  }
+
+  const expiresAt = Number(
+    isUnknownRecord(payload) ? payload.expires_at : undefined
+  );
+  gigaChatTokenCache = {
+    accessToken,
+    expiresAt: Number.isFinite(expiresAt)
+      ? expiresAt
+      : Date.now() + 29 * 60 * 1000,
+  };
+
+  return gigaChatTokenCache.accessToken;
+};
+
+const requestGigaChatCompletion = async ({
+  messages,
+  generationConfig,
+  token,
+  budget,
+}: ProviderRequest & {
+  token: string;
+  budget: ProviderBudget;
+}): Promise<ProviderResult> => {
+  const baseUrl = (process.env.GIGACHAT_BASE_URL || "https://api.giga.chat").replace(
+    /\/$/,
+    ""
+  );
+  const model = process.env.GIGACHAT_MODEL || "GigaChat";
+  const payload = await requestJson({
+    url: `${baseUrl}/v1/chat/completions`,
+    provider: "gigachat",
+    operation: "completion",
+    budget,
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: false,
+        ...(Number.isFinite(generationConfig?.temperature)
+          ? { temperature: generationConfig.temperature }
+          : {}),
+        ...(Number.isFinite(generationConfig?.topP)
+          ? { top_p: generationConfig.topP }
+          : {}),
+      }),
+    },
+  });
+
+  return {
+    text: readChatText(payload, "gigachat"),
+    providerUsed: "gigachat",
+    modelUsed: readStringField(payload, "model") || model,
+    usage: readUsage(payload),
+  };
+};
+
+const callGigaChat = async (
+  request: ProviderRequest,
+  budget: ProviderBudget
+): Promise<ProviderResult> => {
+  const token = await getGigaChatAccessToken({ budget });
+
+  try {
+    return await requestGigaChatCompletion({ ...request, token, budget });
+  } catch (error) {
+    if (!isAiProviderError(error) || error.status !== 401) throw error;
+
+    gigaChatTokenCache = null;
+    const refreshedToken = await getGigaChatAccessToken({
+      forceRefresh: true,
+      budget,
+    });
+    return requestGigaChatCompletion({
+      ...request,
+      token: refreshedToken,
+      budget,
+    });
+  }
+};
+
+const callAiProxy = async (
+  request: ProviderRequest,
+  budget: ProviderBudget
+): Promise<ProviderResult> => {
+  const baseUrl = (process.env.AI_PROXY_URL || "").replace(/\/$/, "");
+  const secret = process.env.AI_PROXY_SECRET;
+
+  if (!baseUrl || !secret) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_CONFIG_MISSING",
+      message: "AI proxy is not configured.",
+      status: 500,
+      provider: "proxy",
+    });
+  }
+
+  const payload = await requestJson({
+    url: `${baseUrl}/v1/chat/completions`,
+    provider: "proxy",
+    operation: "completion",
+    budget,
+    init: {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  });
+
+  const text = readStringField(payload, "text");
+  if (!text?.trim()) {
+    throw createAiProviderError({
+      code: "AI_PROVIDER_EMPTY_RESPONSE",
+      message: "AI proxy returned an empty response.",
+      status: 502,
+      retryable: true,
+      provider: "proxy",
+    });
+  }
+
+  return {
+    text: text.trim(),
+    providerUsed: readStringField(payload, "providerUsed") || "proxy",
+    modelUsed: readStringField(payload, "modelUsed") || null,
+    usage: isUnknownRecord(payload) && isUnknownRecord(payload.usage)
+      ? {
+          promptTokens: Number(payload.usage.promptTokens) || 0,
+          completionTokens: Number(payload.usage.completionTokens) || 0,
+          totalTokens: Number(payload.usage.totalTokens) || 0,
+        }
+      : null,
+  };
+};
+
+const runDirectProviders = async (
+  request: ProviderRequest,
+  contextLabel: string,
+  budget: ProviderBudget
+): Promise<ProviderResult> => {
+  try {
+    return await callDeepSeek(request, budget);
+  } catch (primaryError) {
+    if (!isAiProviderError(primaryError) || !primaryError.retryable) {
+      throw primaryError;
+    }
+
+    logger.info("ai.provider.fallback_started", {
+      context: contextLabel,
+      code: primaryError.code,
+      status: primaryError.status,
+    });
+
+    try {
+      return await callGigaChat(request, budget);
+    } catch (fallbackError) {
+      const typedFallbackError = isAiProviderError(fallbackError)
+        ? fallbackError
+        : null;
+      logger.info("ai.provider.fallback_failed", {
+        context: contextLabel,
+        provider: typedFallbackError?.provider || "gigachat",
+        operation: typedFallbackError?.operation || "unknown",
+        providerCode: typedFallbackError?.providerCode || null,
+        code: typedFallbackError?.code || "AI_PROVIDER_UNKNOWN_ERROR",
+        status: typedFallbackError?.status || 503,
+        retryable: Boolean(typedFallbackError?.retryable),
+      });
+
+      throw createAiProviderError({
+        code: "AI_PROVIDERS_UNAVAILABLE",
+        message: "All configured AI providers are unavailable.",
+        status: 503,
+        retryable: Boolean(typedFallbackError?.retryable),
+        provider: "gigachat",
+        cause: fallbackError,
+      });
+    }
+  }
+};
+
+const runProviderRequest = async (
+  request: ProviderRequest,
+  contextLabel: string,
+  accountingContext?: AccountingContext | null
+): Promise<ProviderResult> => {
+  const startedAt = Date.now();
+  const circuitPermission = providerCircuit.beforeRequest();
+  if (!circuitPermission.allowed) {
+    logger.info("ai.provider.circuit_rejected", {
+      code: "AI_PROVIDER_CIRCUIT_OPEN",
+      status: providerCircuit.getState().state,
+      retryable: true,
+      durationMs: 0,
+    });
+    throw createAiProviderError({
+      code: "AI_PROVIDER_CIRCUIT_OPEN",
+      message: "AI provider circuit is open.",
+      status: 503,
+      retryable: true,
+      operation: "circuit",
+    });
+  }
+  const budget = createProviderBudget();
+  let result;
+
+  try {
+    result =
+      (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
+        ? await callAiProxy(request, budget)
+        : await runDirectProviders(request, contextLabel, budget);
+    providerCircuit.recordSuccess();
+  } catch (error) {
+    const typedError = isAiProviderError(error) ? error : null;
+    providerCircuit.recordFailure(Boolean(typedError?.retryable));
+    logger.info("ai.provider.failed", {
+      provider: typedError?.provider || "unknown",
+      operation: typedError?.operation || "unknown",
+      code: typedError?.code || "AI_PROVIDER_UNKNOWN_ERROR",
+      statusCode: typedError?.status || 503,
+      status: providerCircuit.getState().state,
+      retryable: Boolean(typedError?.retryable),
+      durationMs: Date.now() - startedAt,
+      remaining: budget.remaining(),
+    });
+    throw error;
+  }
+
+  logger.info("ai.provider.completed", {
+    context: contextLabel,
+    provider: result.providerUsed,
+    model: result.modelUsed,
+    durationMs: Date.now() - startedAt,
+    promptTokens: result.usage?.promptTokens || 0,
+    completionTokens: result.usage?.completionTokens || 0,
+    totalTokens: result.usage?.totalTokens || 0,
+  });
+
+  await recordSuccessfulAiUsageSafely(accountingContext, result);
+
+  return result;
+};
+
+export const generateContentWithAiProvider = async (
+  prompt: string,
+  contextLabel: string,
+  accountingContext?: AccountingContext | null
+): Promise<ProviderResult> =>
+  runProviderRequest(
+    { messages: buildMessages({ prompt }), generationConfig: {} },
+    contextLabel,
+    accountingContext
+  );
+
+export const chatWithAiProvider = async ({
+  message,
+  history,
+  systemInstruction,
+  generationConfig,
+  contextLabel,
+  accountingContext,
+}: {
+  message: string;
+  history?: unknown;
+  systemInstruction?: string;
+  generationConfig?: GenerationConfig;
+  contextLabel: string;
+  accountingContext?: AccountingContext | null;
+}): Promise<ProviderResult> =>
+  runProviderRequest(
+    {
+      messages: buildMessages({ message, history, systemInstruction }),
+      generationConfig: generationConfig || {},
+    },
+    contextLabel,
+    accountingContext
+  );
+
+export const isRetryableAiProviderError = (error: unknown): boolean =>
+  isAiProviderError(error) && error.retryable;
+
+export const resetAiProviderStateForTests = () => {
+  gigaChatTokenCache = null;
+  providerCircuit.reset();
+};

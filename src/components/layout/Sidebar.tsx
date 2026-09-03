@@ -8,7 +8,6 @@ import {
   NotebookPen,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
   Settings,
   Trophy,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import {
 } from "../../store/useSettingsStore";
 import { useLogout } from "../../hooks/useLogout";
 import { ProfileAvatar } from "../profile/AvatarPicker";
-import { openTaskCreateLauncher } from "../tasks/taskCreateLauncher";
 
 const SidebarContent = ({
   location,
@@ -69,16 +67,6 @@ const SidebarContent = ({
           </h2>
         )}
       </Link>
-      <button
-        type="button"
-        onClick={openTaskCreateLauncher}
-        aria-label="Новая задача"
-        title="Новая задача"
-        className={`mb-8 flex min-h-11 items-center rounded-xl bg-indigo-600 font-bold text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${isCollapsed ? "justify-center px-0" : "gap-2 px-4"}`}
-      >
-        <Plus size={20} strokeWidth={2.5} />
-        {!isCollapsed && <span>Новая задача</span>}
-      </button>
       {!isCollapsed && <nav className="flex flex-col gap-2">
         {menuItems.map((item) => (
           <Link

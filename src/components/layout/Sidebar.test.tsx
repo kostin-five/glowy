@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import Sidebar from "./Sidebar";
@@ -37,20 +37,6 @@ describe("Sidebar", () => {
     expect(chatLink).toHaveClass("text-indigo-400", "bg-indigo-500/10");
   });
 
-  it("opens task capture from the expanded navigation", () => {
-    const listener = vi.fn();
-    window.addEventListener("glowy:open-task-create", listener);
-    render(
-      <MemoryRouter initialEntries={["/dashboard"]}>
-        <Sidebar />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Новая задача" }));
-    expect(listener).toHaveBeenCalledOnce();
-    window.removeEventListener("glowy:open-task-create", listener);
-  });
-
   it("removes route links from the collapsed state", () => {
     settings.collapsed = true;
     render(
@@ -62,8 +48,7 @@ describe("Sidebar", () => {
     expect(screen.queryByRole("link", { name: "Главная" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Твои задачи" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Показать навигацию" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Новая задача" })).toBeVisible();
-    expect(screen.getByRole("button", { name: "Новая задача" })).toHaveAttribute("title", "Новая задача");
+    expect(screen.queryByRole("button", { name: "Новая задача" })).not.toBeInTheDocument();
     expect(screen.getByAltText("Логотип Glowy")).toHaveClass("h-16", "w-16");
   });
 });

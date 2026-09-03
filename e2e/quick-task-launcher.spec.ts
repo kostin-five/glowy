@@ -44,20 +44,20 @@ const prepareApp = async (page: Page) => {
   return created;
 };
 
-test("creates a task from the desktop navigation without leaving the route", async ({ page }) => {
+test("creates a task from the tasks action without leaving the route", async ({ page }) => {
   const created = await prepareApp(page);
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/dashboard");
+  await page.goto("/tasks");
 
-  await page.getByRole("button", { name: "Новая задача" }).click();
+  await page.getByRole("button", { name: "Добавить задачу" }).click();
   const dialog = page.getByRole("dialog", { name: "Создать задачу" });
   await expect(dialog).toHaveCount(1);
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/tasks$/);
   await page.getByLabel("Название задачи").fill("Записать идею из аналитики");
   await page.getByRole("button", { name: "Сохранить задачу" }).click();
 
   await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/tasks$/);
   expect(created).toHaveLength(1);
 });
 

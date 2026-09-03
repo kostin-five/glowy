@@ -30,37 +30,56 @@ export default function NotesPage() {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [draft, setDraft] = useState<TaskDraft | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
+  const [newNoteOpen, setNewNoteOpen] = useState(false);
   const requestRevision = useRef(0);
+  const loadRevision = useRef(0);
+  const selectedIdRef = useRef<number | null>(null);
+  const mobileEditorOpen = Boolean(noteId) || newNoteOpen;
 
   const loadNotes = useCallback(async () => {
+    const revision = ++loadRevision.current;
     setLoading(true); setListError(null);
     try {
       const result = await NoteApi.list(query, archived);
+      if (revision !== loadRevision.current) return;
       setNotes(result);
       if (noteId) {
         const requested = result.find((note) => note.id === Number(noteId)) ?? await NoteApi.get(Number(noteId));
-        setSelected(requested); setTitle(requested.title); setContent(requested.content); setStatus("idle");
+        if (revision !== loadRevision.current) return;
+        if (selectedIdRef.current !== requested.id) {
+          selectedIdRef.current = requested.id;
+          setSelected(requested); setTitle(requested.title); setContent(requested.content); setStatus("idle");
+        }
       } else {
         setSelected((current) =>
           current && !result.some((note) => note.id === current.id) ? null : current
         );
       }
     } catch (error) {
-      setListError(errorMessage(error, "Не удалось загрузить заметки"));
-    } finally { setLoading(false); }
+      if (revision === loadRevision.current) setListError(errorMessage(error, "Не удалось загрузить заметки"));
+    } finally { if (revision === loadRevision.current) setLoading(false); }
   }, [archived, noteId, query]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadNotes(), 250);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); loadRevision.current += 1; };
   }, [loadNotes]);
 
   const choose = (note: Note) => {
+    selectedIdRef.current = note.id;
     setSelected(note); setTitle(note.title); setContent(note.content); setStatus("idle");
+    setNewNoteOpen(false);
     navigate(`/notes/${note.id}`);
   };
+  const resetEditor = () => {
+    requestRevision.current += 1;
+    selectedIdRef.current = null;
+    setSelected(null); setTitle(""); setContent(""); setStatus("idle");
+  };
   const createBlank = () => {
-    setSelected(null); setTitle(""); setContent(""); setStatus("idle"); navigate("/notes");
+    resetEditor();
+    navigate("/notes");
+    setNewNoteOpen(true);
   };
   const changeTitle = (value: string) => {
     requestRevision.current += 1;
@@ -71,8 +90,11 @@ export default function NotesPage() {
     setContent(value); setStatus("dirty");
   };
 
-  const save = useCallback(async () => {
-    if (!title.trim() && !content.trim()) return;
+  const save = useCallback(async (): Promise<boolean> => {
+    if (!title.trim() && !content.trim()) {
+      if (selected) setStatus("error");
+      return selected === null;
+    }
     const revision = ++requestRevision.current;
     const isCreating = selected === null;
     setStatus("saving");
@@ -82,17 +104,23 @@ export default function NotesPage() {
         : await NoteApi.create({ title, content });
       if (revision !== requestRevision.current) {
         if (isCreating) {
+          selectedIdRef.current = saved.id;
           setSelected(saved);
           setNotes((current) => [saved, ...current.filter((note) => note.id !== saved.id)]);
           navigate(`/notes/${saved.id}`, { replace: true });
-          setStatus("dirty");
         }
-        return;
+        setStatus("dirty");
+        return false;
       }
+      selectedIdRef.current = saved.id;
       setSelected(saved); setTitle(saved.title); setContent(saved.content); setStatus("saved");
       setNotes((current) => [saved, ...current.filter((note) => note.id !== saved.id)]);
       navigate(`/notes/${saved.id}`, { replace: true });
-    } catch { if (revision === requestRevision.current) setStatus("error"); }
+      return true;
+    } catch {
+      if (revision === requestRevision.current) setStatus("error");
+      return false;
+    }
   }, [content, navigate, selected, title]);
 
   useEffect(() => {
@@ -105,8 +133,18 @@ export default function NotesPage() {
     if (!selected) return;
     try {
       await NoteApi.update(selected.id, { archived: !selected.archived });
-      createBlank(); await loadNotes();
+      setNotes((current) => current.filter((note) => note.id !== selected.id));
+      resetEditor();
+      setNewNoteOpen(false);
+      navigate("/notes");
     } catch (error) { setListError(errorMessage(error, "Не удалось изменить архив")); }
+  };
+  const returnToList = async () => {
+    if (status === "saving") return;
+    if ((status === "dirty" || status === "error") && !(await save())) return;
+    resetEditor();
+    setNewNoteOpen(false);
+    navigate("/notes");
   };
   const refreshSelected = async () => {
     if (!selected) return;
@@ -137,11 +175,11 @@ export default function NotesPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <div><h1 className="font-display text-3xl font-bold">Умные заметки</h1><p className="mt-1 text-sm text-slate-500">Место для мыслей, к которым хочется вернуться.</p></div>
+      <div className={mobileEditorOpen ? "hidden lg:block" : "block"}><h1 className="font-display text-3xl font-bold">Умные заметки</h1><p className="mt-1 text-sm text-slate-500">Место для мыслей, к которым хочется вернуться.</p></div>
       {listError && <div role="alert" className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{listError}</div>}
       <div className="flex min-h-0 flex-col gap-4 lg:h-[calc(100dvh-13rem)] lg:flex-row">
-        <NoteList notes={notes} selectedId={selected?.id ?? null} query={query} archived={archived} loading={loading} error={null} onQueryChange={setQuery} onArchivedChange={(value) => { setArchived(value); createBlank(); }} onSelect={choose} onCreate={createBlank} />
-        <NoteEditor note={selected} title={title} content={content} status={status} tasks={tasks} onTitle={changeTitle} onContent={changeContent} onSave={() => void save()} onArchive={() => void archiveNote()} onLink={(taskId) => selected && void NoteApi.linkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось связать задачу")))} onUnlink={(taskId) => selected && void NoteApi.unlinkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось убрать связь")))} onDraft={(fragment) => void requestDraft(fragment)} />
+        <NoteList hiddenOnMobile={mobileEditorOpen} notes={notes} selectedId={selected?.id ?? null} query={query} archived={archived} loading={loading} error={null} onQueryChange={setQuery} onArchivedChange={(value) => { setArchived(value); resetEditor(); setNewNoteOpen(false); navigate("/notes"); }} onSelect={choose} onCreate={createBlank} />
+        <NoteEditor hiddenOnMobile={!mobileEditorOpen} loading={Boolean(noteId) && selected?.id !== Number(noteId)} note={selected} title={title} content={content} status={status} tasks={tasks} onTitle={changeTitle} onContent={changeContent} onSave={() => void save()} onBack={() => void returnToList()} onArchive={() => void archiveNote()} onLink={(taskId) => selected && void NoteApi.linkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось связать задачу")))} onUnlink={(taskId) => selected && void NoteApi.unlinkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось убрать связь")))} onDraft={(fragment) => void requestDraft(fragment)} />
       </div>
       <NoteTaskDraftDialog draft={draft} busy={draftBusy} onChange={setDraft} onClose={() => setDraft(null)} onConfirm={() => void confirmDraft()} />
     </div>

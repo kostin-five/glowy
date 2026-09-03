@@ -12,12 +12,13 @@ type Props = {
   onArchivedChange: (value: boolean) => void;
   onSelect: (note: Note) => void;
   onCreate: () => void;
+  hiddenOnMobile?: boolean;
 };
 
 export default function NoteList(props: Props) {
   const empty = !props.loading && !props.error && props.notes.length === 0;
   return (
-    <aside className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white/70 p-3 dark:border-slate-800 dark:bg-slate-900/50 lg:w-80">
+    <aside data-testid="notes-list-surface" className={`${props.hiddenOnMobile ? "hidden" : "flex"} min-h-0 flex-col rounded-3xl border border-slate-200 bg-white/70 p-3 dark:border-slate-800 dark:bg-slate-900/50 lg:flex lg:w-80`}>
       <button type="button" onClick={props.onCreate} className="mb-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-4 font-bold text-white hover:bg-indigo-600">
         <Plus size={18} /> Новая заметка
       </button>

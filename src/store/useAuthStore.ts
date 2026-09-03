@@ -264,6 +264,7 @@ export const useAuthStore = create<AuthStore>()(
 export const useIsAuthenticated = () =>
   useAuthStore((state) => state.isAuthenticated);
 export const useIsGuest = () => useAuthStore((state) => state.isGuest);
+export const useUserId = () => useAuthStore((state) => state.userId);
 export const useName = () => useAuthStore((state) => state.name);
 export const useEmail = () => useAuthStore((state) => state.email);
 export const useAvatarId = () => useAuthStore((state) => state.avatarId);

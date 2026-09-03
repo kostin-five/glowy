@@ -8,8 +8,11 @@ import {
   type MutableRefObject,
 } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import {
   Check,
+  ArrowDown,
+  ArrowRight,
   Copy,
   Info,
   Mic,
@@ -19,6 +22,7 @@ import {
   X,
   Trash2,
   Plus,
+  ListTodo,
 } from "lucide-react";
 import { openTaskCreateLauncher } from "../tasks/taskCreateLauncher";
 import AiApi, {
@@ -37,6 +41,7 @@ import {
   useGuestRequestsCount,
   useGuestRequestsResetDate,
   useIsGuest,
+  useUserId,
 } from "../../store/useAuthStore";
 import {
   type MindHubChatMessage,
@@ -48,6 +53,26 @@ import {
 const WELCOME_MESSAGE =
   "Выгрузи мысли или вопросы. Я отвечу и предложу черновик задачи — сохранять решаешь ты.";
 const VOICE_SILENCE_TIMEOUT_MS = 7_000;
+const STARTER_PROMPTS = [
+  {
+    title: "Собрать план на день",
+    description: "Выбрать главное и не перегрузить расписание",
+    prompt:
+      "Помоги собрать спокойный план на день: выбери три главных шага и объясни, с чего лучше начать.",
+  },
+  {
+    title: "Разобрать перегруз",
+    description: "Разложить мысли и найти один следующий шаг",
+    prompt:
+      "У меня накопилось слишком много дел. Помоги разобрать перегруз и выбрать один реалистичный следующий шаг.",
+  },
+  {
+    title: "Подготовить задачу",
+    description: "Превратить мысль в проверяемый черновик",
+    prompt:
+      "Помоги превратить мою мысль в понятную задачу с реалистичными подзадачами: ",
+  },
+] as const;
 
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
@@ -103,6 +128,18 @@ const joinVoiceText = (...parts: string[]) =>
     .filter(Boolean)
     .join(" ");
 
+const formatMessageTime = (createdAt?: string) => {
+  if (!createdAt) return null;
+
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 interface ChatMessageBubbleProps {
   message: MindHubChatMessage;
   shouldType: boolean;
@@ -122,6 +159,7 @@ const ChatMessageBubble = ({
     38
   );
   const displayedText = shouldType ? typedText : message.text;
+  const messageTime = formatMessageTime(message.createdAt);
 
   useEffect(() => {
     if (!shouldType) return;
@@ -159,15 +197,45 @@ const ChatMessageBubble = ({
       }`}
     >
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 ${
+        className={`mb-1 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 ${
+          message.role === "user" ? "self-end" : "self-start"
+        }`}
+      >
+        <span>{message.role === "user" ? "Ты" : "Glowy"}</span>
+        {messageTime && <time dateTime={message.createdAt}>{messageTime}</time>}
+      </div>
+      <div
+        className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[85%] ${
           message.role === "user"
             ? "self-end bg-indigo-600 text-white rounded-br-md"
             : "rounded-bl-md border border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-700/70 dark:bg-slate-800/80 dark:text-slate-100 dark:shadow-none"
         }`}
       >
-        {displayedText}
+        <p className="whitespace-pre-wrap">{displayedText}</p>
         {shouldType && displayedText.length < message.text.length && (
           <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-indigo-300" />
+        )}
+        {message.linkedTask && (
+          <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-slate-900 dark:border-indigo-400/25 dark:bg-indigo-500/10 dark:text-slate-100">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                <ListTodo size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+                  Задача сохранена
+                </p>
+                <p className="truncate font-semibold">{message.linkedTask.title}</p>
+              </div>
+            </div>
+            <Link
+              to={`/tasks?task=${message.linkedTask.id}`}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-indigo-300 px-3 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-indigo-400/30 dark:text-indigo-200 dark:hover:bg-indigo-500/15"
+            >
+              Перейти к задачам
+              <ArrowRight size={15} />
+            </Link>
+          </div>
         )}
       </div>
       <button
@@ -187,8 +255,14 @@ const ChatMessageBubble = ({
 
 const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const hubMode: MindHubMode = "auto";
-  const messages = useMindHubMessages();
-  const pendingDrafts = usePendingMindHubDrafts();
+  const isGuest = useIsGuest();
+  const userId = useUserId();
+  const accountScope = userId !== null ? `user:${userId}` : isGuest ? "guest" : "anonymous";
+  const messages = useMindHubMessages(accountScope);
+  const pendingDrafts = usePendingMindHubDrafts(accountScope);
+  const claimLegacyConversation = useMindHubStore(
+    (state) => state.claimLegacyConversation
+  );
   const appendMessage = useMindHubStore((state) => state.appendMessage);
   const addDrafts = useMindHubStore((state) => state.addDrafts);
   const updateDraft = useMindHubStore((state) => state.updateDraft);
@@ -202,13 +276,14 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const [voiceInputError, setVoiceInputError] = useState<string | null>(null);
   const [typedMessageIds, setTypedMessageIds] = useState<Set<number>>(() => {
     return new Set(
-      useMindHubStore
-        .getState()
-        .messages.filter((message) => message.role === "assistant")
+      messages.filter((message) => message.role === "assistant")
         .map((message) => message.id)
     );
   });
   const [isPromptHelpOpen, setIsPromptHelpOpen] = useState(false);
+  const [isClearConfirmationOpen, setIsClearConfirmationOpen] =
+    useState(false);
+  const [isJumpToLatestVisible, setIsJumpToLatestVisible] = useState(false);
   const [registeredAiLimit, setRegisteredAiLimit] =
     useState<MindHubLimit | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -222,7 +297,6 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const voiceSessionFinalTextRef = useRef("");
   const voiceSessionInterimTextRef = useRef("");
   const isOnline = useNetworkStatus();
-  const isGuest = useIsGuest();
   const guestRequestsCount = useGuestRequestsCount();
   const guestRequestsResetDate = useGuestRequestsResetDate();
 
@@ -242,6 +316,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const shouldShowAiLimit =
     Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
 
+  useEffect(() => {
+    claimLegacyConversation(accountScope);
+  }, [accountScope, claimLegacyConversation]);
+
   const isNearChatBottom = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return true;
@@ -253,7 +331,9 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   }, []);
 
   const handleMessagesScroll = useCallback(() => {
-    shouldAutoScrollRef.current = isNearChatBottom();
+    const isNearBottom = isNearChatBottom();
+    shouldAutoScrollRef.current = isNearBottom;
+    setIsJumpToLatestVisible(!isNearBottom);
   }, [isNearChatBottom]);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -265,6 +345,18 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     container.scrollTo({
       top: container.scrollHeight,
       behavior,
+    });
+  }, []);
+
+  const jumpToLatest = useCallback(() => {
+    shouldAutoScrollRef.current = true;
+    setIsJumpToLatestVisible(false);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
     });
   }, []);
 
@@ -441,8 +533,15 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     [inputRef]
   );
 
+  const applyStarterPrompt = (prompt: string) => {
+    setText((current) =>
+      current.trim() ? `${current.trimEnd()}\n${prompt}` : prompt
+    );
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  };
+
   const dismissDraft = (localId: string) => {
-    removeDraft(localId);
+    removeDraft(accountScope, localId);
   };
 
   const confirmDraft = async (
@@ -457,9 +556,13 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
     dismissDraft(localId);
     trackProductEvent("ai_draft_confirmed");
-    appendMessage({
+    appendMessage(accountScope, {
       role: "assistant",
       text: `Задача «${createdTask.title}» сохранена.`,
+      linkedTask: {
+        id: createdTask.id,
+        title: createdTask.title,
+      },
     });
   };
 
@@ -482,7 +585,10 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     );
 
     shouldAutoScrollRef.current = true;
-    appendMessage({ role: userMessage.role, text: userMessage.text });
+    appendMessage(accountScope, {
+      role: userMessage.role,
+      text: userMessage.text,
+    });
     setText("");
     setIsSending(true);
 
@@ -494,7 +600,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       );
       setRegisteredAiLimit(result.limit ?? null);
 
-      appendMessage({
+      appendMessage(accountScope, {
         role: "assistant",
         text:
           result.reply ||
@@ -502,7 +608,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
       });
 
       if (result.drafts.length > 0) {
-        addDrafts(result.drafts);
+        addDrafts(accountScope, result.drafts);
       }
     } catch (error) {
       console.error(error);
@@ -511,7 +617,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
           ? error.response.data.error
           : null;
 
-      appendMessage({
+      appendMessage(accountScope, {
         role: "assistant",
         text:
           serverError ||
@@ -552,14 +658,12 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                   <Plus size={20} strokeWidth={2.5} />
                 </button>
               )}
-              {messages.length > 0 && (
+              {(messages.length > 0 || pendingDrafts.length > 0) && (
                 <button
                   type="button"
-                  onClick={() => {
-                    clearConversation();
-                    setTypedMessageIds(new Set());
-                  }}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500"
+                  onClick={() => setIsClearConfirmationOpen(true)}
+                  disabled={isSending}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 disabled:cursor-not-allowed disabled:opacity-40"
                   title="Очистить историю"
                   aria-label="Очистить историю"
                 >
@@ -571,28 +675,86 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
             {WELCOME_MESSAGE}
           </p>
+          {isClearConfirmationOpen && (
+            <div
+              role="dialog"
+              aria-label="Подтверждение очистки истории"
+              className="mt-4 rounded-2xl border border-rose-300 bg-rose-50 p-4 dark:border-rose-400/25 dark:bg-rose-500/10"
+            >
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Очистить этот диалог?
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                На этом устройстве исчезнут сообщения и несохранённые черновики. Уже созданные задачи останутся.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsClearConfirmationOpen(false)}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearConversation(accountScope);
+                    setTypedMessageIds(new Set());
+                    setIsClearConfirmationOpen(false);
+                    setIsJumpToLatestVisible(false);
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl bg-rose-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                >
+                  Очистить
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      <div
-        ref={messagesContainerRef}
-        onScroll={handleMessagesScroll}
-        className={`mind-hub-scrollbar flex-1 overflow-y-auto bg-slate-100/60 dark:bg-slate-950/35 ${
-          variant === "quick" ? "px-4 py-4" : "px-5 py-5"
-        }`}
-      >
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className={`mind-hub-scrollbar h-full overflow-y-auto bg-slate-100/60 dark:bg-slate-950/35 ${
+            variant === "quick" ? "px-4 py-4" : "px-5 py-5"
+          }`}
+        >
         <div className="flex flex-col gap-3">
           {!messages.length && (
-            <ChatMessageBubble
-              message={{
-                id: 0,
-                role: "assistant",
-                text: WELCOME_MESSAGE,
-              }}
-              shouldType={false}
-              onTypeComplete={handleTypeComplete}
-              onTextUpdate={() => scrollToBottom("auto")}
-            />
+            <div className="mx-auto w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/70 dark:bg-slate-900/80 dark:shadow-none sm:p-5">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <Sparkles size={19} />
+                </span>
+                <div>
+                  <p className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
+                    С чего начнём?
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    Выбери сценарий или напиши своими словами. Перед отправкой всё можно изменить.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {STARTER_PROMPTS.map((starter) => (
+                  <button
+                    key={starter.title}
+                    type="button"
+                    onClick={() => applyStarterPrompt(starter.prompt)}
+                    className="min-h-24 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-slate-700 dark:bg-slate-950/50 dark:hover:border-indigo-400/40 dark:hover:bg-indigo-500/10"
+                  >
+                    <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {starter.title}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                      {starter.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           {messages.map((message) => {
@@ -629,7 +791,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
               key={draft.localId}
               draft={draft}
               onChange={(editedDraft) =>
-                updateDraft(draft.localId, editedDraft)
+                updateDraft(accountScope, draft.localId, editedDraft)
               }
               onDismiss={() => dismissDraft(draft.localId)}
               onConfirm={(editedDraft) =>
@@ -637,8 +799,19 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
               }
             />
           ))}
-
         </div>
+        </div>
+        {isJumpToLatestVisible && (
+          <button
+            type="button"
+            onClick={jumpToLatest}
+            className="absolute bottom-4 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 shadow-lg transition hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-indigo-400/30 dark:bg-slate-900 dark:text-indigo-200 dark:hover:bg-slate-800"
+            aria-label="Перейти к новым сообщениям"
+          >
+            <ArrowDown size={16} />
+            К новым сообщениям
+          </button>
+        )}
       </div>
 
       <form

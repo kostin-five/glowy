@@ -1,12 +1,14 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
 import useMediaQuery from "../hooks/useMediaQuery";
-import type { Task } from "../types";
 import ReadOnlyTaskCard from "../components/tasks/ReadOnlyTaskCard";
+import DayPlanReviewDialog from "../components/dashboard/DayPlanReviewDialog";
+import { buildDayPlan } from "../dashboard/dayPlan";
+import { trackProductEvent } from "../utils/analytics";
 
 const getTodayLocalDate = () => {
   const today = new Date();
@@ -17,73 +19,23 @@ const getTodayLocalDate = () => {
   return `${year}-${month}-${day}`;
 };
 
-const getFocusHint = (currentEnergy: number) => {
-  if (currentEnergy <= 30) {
-    return "Заряд низкий, поэтому лучше взять короткий шаг и не давить на себя.";
-  }
-
-  if (currentEnergy <= 70) {
-    return "Средний заряд: начни спокойно, а сложное оставь после первого разгона.";
-  }
-
-  return "Заряда хватает: можно взять задачу посложнее и закрыть заметный кусок дня.";
-};
-
-const getEnergyOrder = (currentEnergy: number): Task["energyLevel"][] => {
-  if (currentEnergy <= 25) return ["low", "med", "high"];
-  if (currentEnergy <= 60) return ["med", "low", "high"];
-  if (currentEnergy <= 80) return ["med", "high", "low"];
-  return ["high", "med", "low"];
-};
-
-const getPriorityOrder = (currentEnergy: number) => {
-  if (currentEnergy <= 25) return ["P3", "P2", "P1"];
-  if (currentEnergy <= 60) return ["P2", "P3", "P1"];
-  if (currentEnergy <= 80) return ["P2", "P1", "P3"];
-  return ["P1", "P2", "P3"];
-};
-
-const getPriorityRank = (priority: string, order: string[]) => {
-  const normalizedPriority = priority || "P2";
-  const index = order.findIndex((value) => normalizedPriority.includes(value));
-  return index === -1 ? order.indexOf("P2") : index;
-};
-
 const DashboardPage = () => {
   const currentLevel = useTaskStore((state) => state.userLevel);
   const userName = useAuthStore((state) => state.name);
   const currentEnergy = useAuthStore((state) => state.currentEnergy);
   const tasks = useTaskStore((state) => state.tasks);
+  const updateTask = useTaskStore((state) => state.updateTask);
+  const [isPlanOpen, setIsPlanOpen] = useState(false);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
 
-  const { todayTasks, focusTasks } = useMemo(() => {
+  const { todayTasks, dayPlan } = useMemo(() => {
     const active = tasks.filter((t) => !t.completed);
     const todayStr = getTodayLocalDate();
     const today = active.filter((t) => t.date === todayStr);
-    const focusCandidates = today.length ? today : active;
-
-    const preferredEnergy = getEnergyOrder(currentEnergy);
-    const preferredPriority = getPriorityOrder(currentEnergy);
-    const recommendedFocusTasks = [...focusCandidates]
-      .sort(
-        (a, b) => {
-          const energyDiff =
-            preferredEnergy.indexOf(a.energyLevel) -
-            preferredEnergy.indexOf(b.energyLevel);
-          if (energyDiff !== 0) return energyDiff;
-
-          const priorityDiff =
-            getPriorityRank(a.priority, preferredPriority) -
-            getPriorityRank(b.priority, preferredPriority);
-          if (priorityDiff !== 0) return priorityDiff;
-
-          return a.title.localeCompare(b.title, "ru");
-        }
-      )
-      .slice(0, 2);
 
     return {
       todayTasks: today,
-      focusTasks: recommendedFocusTasks,
+      dayPlan: buildDayPlan(active, currentEnergy, todayStr),
     };
   }, [tasks, currentEnergy]);
   const mindHubInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -102,9 +54,44 @@ const DashboardPage = () => {
     window.requestAnimationFrame(() => mindHubInputRef.current?.focus());
   };
 
+  const openPlan = () => {
+    setPlanNotice(null);
+    setIsPlanOpen(true);
+    trackProductEvent("day_plan_opened");
+  };
+
+  const applyPlan = async (selectedTaskIds: number[]) => {
+    const today = getTodayLocalDate();
+    const tasksById = new Map(tasks.map((task) => [task.id, task]));
+    const failedIds: number[] = [];
+
+    await Promise.all(selectedTaskIds.map(async (taskId) => {
+      const task = tasksById.get(taskId);
+      if (!task || task.completed) {
+        failedIds.push(taskId);
+        return;
+      }
+      if (task.date === today) return;
+
+      try {
+        const updated = await updateTask(taskId, { date: today });
+        if (!updated) failedIds.push(taskId);
+      } catch {
+        failedIds.push(taskId);
+      }
+    }));
+
+    return failedIds;
+  };
+
+  const finishPlan = () => {
+    setPlanNotice("План на сегодня готов. Начни с первого спокойного шага.");
+    trackProductEvent("day_plan_applied");
+  };
+
   const renderFocusSection = () => (
     <section className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
-      <div>
+      <div className="custom-scrollbar min-h-0 overflow-y-auto pr-1">
         <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
           Фокус дня
         </h2>
@@ -112,16 +99,35 @@ const DashboardPage = () => {
           Лучше начать с
         </p>
 
-        {focusTasks.length > 0 ? (
+        {dayPlan.length > 0 ? (
           <>
             <div className="space-y-3">
-              {focusTasks.map((task) => (
-                <ReadOnlyTaskCard key={task.id} task={task} />
+              {dayPlan.map((candidate, index) => (
+                <div key={candidate.task.id}>
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-indigo-500">
+                    {index === 0 ? "Следующий шаг" : "Потом"}
+                  </p>
+                  <ReadOnlyTaskCard task={candidate.task} />
+                  {index === 0 && (
+                    <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                      {candidate.reason}
+                    </p>
+                  )}
+                </div>
               ))}
             </div>
-            <div className="mt-5 hidden rounded-2xl border border-indigo-400/20 bg-indigo-500/10 px-4 py-3 text-sm leading-6 text-indigo-100/90 xl:block">
-              {getFocusHint(currentEnergy)}
-            </div>
+            {planNotice && (
+              <p aria-live="polite" className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm leading-5 text-emerald-700 dark:text-emerald-200">
+                {planNotice}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={openPlan}
+              className="mt-4 min-h-11 w-full rounded-xl border border-indigo-400/50 bg-indigo-500/10 px-4 py-2.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-500/15 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-indigo-200"
+            >
+              Настроить план
+            </button>
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
@@ -207,6 +213,16 @@ const DashboardPage = () => {
           {isDesktopLayout ? renderFocusSection() : renderTodaySection()}
         </div>
       </div>
+
+      {isPlanOpen && (
+        <DayPlanReviewDialog
+          isOpen
+          candidates={dayPlan}
+          onClose={() => setIsPlanOpen(false)}
+          onApply={applyPlan}
+          onApplied={finishPlan}
+        />
+      )}
     </div>
   );
 };

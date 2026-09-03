@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store/useAuthStore";
@@ -9,6 +9,7 @@ import { useTaskStore } from "../store/useTaskStore";
 import DashboardPage from "./DashboardPage";
 
 const mocks = vi.hoisted(() => ({ isDesktopLayout: false }));
+const updateTask = vi.fn();
 
 vi.mock("../hooks/useMediaQuery", () => ({
   default: () => mocks.isDesktopLayout,
@@ -23,6 +24,11 @@ const today = () => {
 
 beforeEach(() => {
   localStorage.clear();
+  updateTask.mockReset();
+  updateTask.mockImplementation(async (id, data) => {
+    const current = useTaskStore.getState().tasks.find((task) => task.id === id);
+    return current ? { ...current, ...data } : undefined;
+  });
   mocks.isDesktopLayout = false;
   useAuthStore.setState({ name: "Тест", currentEnergy: 60 });
   useTaskStore.setState({
@@ -44,6 +50,7 @@ beforeEach(() => {
         { id: 2, taskId: 1, title: "Расставить приоритеты", completed: false, position: 1 },
       ],
     }],
+    updateTask,
   });
 });
 
@@ -80,5 +87,36 @@ describe("DashboardPage", () => {
       screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
     ).toEqual(["Сегодня", "Фокус дня"]);
     expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
+  });
+
+  it("reviews the plan and updates only a selected task outside today", async () => {
+    useTaskStore.setState((state) => ({
+      tasks: [
+        ...state.tasks,
+        {
+          ...state.tasks[0],
+          id: 2,
+          title: "Подготовить следующий шаг",
+          date: "2099-01-01",
+        },
+      ],
+    }));
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Настроить план" }));
+    expect(screen.getByRole("dialog", { name: "План на сегодня" })).toBeVisible();
+    expect(updateTask).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подготовить план недели/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Добавить в план" }));
+
+    await waitFor(() => expect(updateTask).toHaveBeenCalledOnce());
+    expect(updateTask).toHaveBeenCalledWith(2, { date: today() });
+    expect(await screen.findByText(/План на сегодня готов/)).toBeVisible();
   });
 });

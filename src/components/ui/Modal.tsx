@@ -45,7 +45,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "md" }: ICreateMod
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto z-50">
-          <div className="flex min-h-full items-end justify-center pt-4 text-center sm:items-center sm:p-4">
+          <div className="flex h-full items-end justify-center pt-4 text-center sm:items-center sm:p-4">
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
@@ -58,7 +58,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "md" }: ICreateMod
               <DialogPanel
                 data-testid="modal-panel"
                 className={
-                  `flex max-h-[calc(100dvh-1rem)] w-full ${maxWidth === "2xl" ? "max-w-2xl" : "max-w-md"} transform flex-col rounded-t-3xl border border-b-0 border-slate-200 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:border-b sm:p-6`
+                  `flex max-h-[calc(100%-1rem)] w-full ${maxWidth === "2xl" ? "max-w-2xl" : "max-w-md"} transform flex-col rounded-t-3xl border border-b-0 border-slate-200 bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-left align-middle shadow-xl transition-all dark:border-slate-800 dark:bg-slate-900 sm:max-h-[90vh] sm:rounded-2xl sm:border-b sm:p-6`
                 }
               >
                 <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-700 sm:hidden" aria-hidden="true" />

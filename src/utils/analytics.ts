@@ -13,6 +13,8 @@ const allowedEvents = [
   "habit_created",
   "rescue_used",
   "task_time_recorded",
+  "day_plan_opened",
+  "day_plan_applied",
 ] as const;
 
 const allowedParameterKeys = [

@@ -104,4 +104,25 @@ describe("product analytics", () => {
       );
     }
   );
+
+  it.each(["day_plan_opened", "day_plan_applied"] as const)(
+    "records %s without task metadata",
+    (event) => {
+      localStorage.setItem(ANALYTICS_CONSENT_KEY, "accepted");
+      window.ym = metrika;
+      window.__YANDEX_METRIKA_INITIALIZED__ = true;
+
+      expect(trackProductEvent(event, {
+        taskId: "42",
+        taskTitle: "Личная задача",
+        date: "2026-09-04",
+      })).toBe(true);
+      expect(metrika).toHaveBeenLastCalledWith(
+        expect.any(Number),
+        "reachGoal",
+        event,
+        {}
+      );
+    }
+  );
 });

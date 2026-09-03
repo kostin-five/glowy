@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import CreateTaskForm from "../components/tasks/CreateTaskModal";
 import TaskControls from "../components/tasks/TaskControls";
 import TaskList from "../components/tasks/TaskList";
+import { openTaskCreateLauncher } from "../components/tasks/taskCreateLauncher";
 
 const TaskPage = () => {
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
   const [searchParams] = useSearchParams();
 
@@ -27,23 +26,17 @@ const TaskPage = () => {
         Твои задачи
       </h1>
       <TaskControls 
-        onCreateClick={() => setIsCreateOpen(true)} 
+        onCreateClick={openTaskCreateLauncher}
         isBulkSelectMode={isBulkSelectMode} 
         setIsBulkSelectMode={setIsBulkSelectMode} 
       />
       <TaskList 
-        onEmptyClick={() => setIsCreateOpen(true)} 
+        onEmptyClick={openTaskCreateLauncher}
         groupByDate 
         isBulkSelectMode={isBulkSelectMode}
         setIsBulkSelectMode={setIsBulkSelectMode}
       />
 
-      {isCreateOpen && (
-        <CreateTaskForm
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-        />
-      )}
     </div>
   );
 };

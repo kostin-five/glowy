@@ -6,6 +6,7 @@ import Header from "../components/layout/Header";
 import BottomNav from "../components/layout/BottomNav";
 import OfflineSyncStatus from "../components/OfflineSyncStatus";
 import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
+import GlobalTaskCreateLauncher from "../components/tasks/GlobalTaskCreateLauncher";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -51,6 +52,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </main>
       </div>
       <BottomNav />
+      <GlobalTaskCreateLauncher />
     </div>
   );
 };

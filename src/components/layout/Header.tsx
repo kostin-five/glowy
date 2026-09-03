@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useAvatarId, useName } from "../../store/useAuthStore";
 import { useUserLevel } from "../../store/useTaskStore";
 import { ProfileAvatar } from "../profile/AvatarPicker";
+import { Plus } from "lucide-react";
+import { openTaskCreateLauncher } from "../tasks/taskCreateLauncher";
 
 const Header = () => {
   const name = useName();
@@ -25,6 +27,15 @@ const Header = () => {
       </Link>
 
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={openTaskCreateLauncher}
+          aria-label="Новая задача"
+          title="Новая задача"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm transition-colors hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
+        >
+          <Plus size={21} strokeWidth={2.5} />
+        </button>
         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
           <span className="text-xs font-bold text-indigo-300">
             Уровень: {currentLevel}

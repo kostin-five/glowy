@@ -18,7 +18,9 @@ import {
   Square,
   X,
   Trash2,
+  Plus,
 } from "lucide-react";
+import { openTaskCreateLauncher } from "../tasks/taskCreateLauncher";
 import AiApi, {
   type MindHubDraft,
   type MindHubLimit,
@@ -538,20 +540,33 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                 {variant === "page" ? "Glowy AI" : "Разгрузка мыслей"}
               </h2>
             </div>
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  clearConversation();
-                  setTypedMessageIds(new Set());
-                }}
-                className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
-                title="Очистить историю"
-                aria-label="Очистить историю"
-              >
-                <Trash2 size={18} />
-              </button>
-            )}
+            <div className="flex items-center gap-1">
+              {variant === "page" && (
+                <button
+                  type="button"
+                  onClick={openTaskCreateLauncher}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-indigo-500 transition-colors hover:bg-indigo-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:text-indigo-300"
+                  title="Новая задача"
+                  aria-label="Новая задача"
+                >
+                  <Plus size={20} strokeWidth={2.5} />
+                </button>
+              )}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearConversation();
+                    setTypedMessageIds(new Set());
+                  }}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-500"
+                  title="Очистить историю"
+                  aria-label="Очистить историю"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
+            </div>
           </div>
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
             {WELCOME_MESSAGE}

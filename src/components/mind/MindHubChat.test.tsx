@@ -99,6 +99,12 @@ describe("MindHubChat", () => {
     expect(
       screen.getByRole("heading", { name: "Glowy AI" })
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Новая задача" })).toBeVisible();
+  });
+
+  it("keeps the task launcher out of the compact AI sheet header", () => {
+    render(<MindHubChat variant="quick" />);
+    expect(screen.queryByRole("button", { name: "Новая задача" })).not.toBeInTheDocument();
   });
 
   it("adds recognized Russian speech to the message draft without sending it", () => {

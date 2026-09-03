@@ -140,4 +140,19 @@ describe("TelegramMiniAppBootstrap", () => {
 
     expect(requestSignal?.aborted).toBe(true);
   });
+
+  it("ignores a late successful restore after the bootstrap unmounts", async () => {
+    mocks.bridge = { isTelegramMiniApp: true, webApp: { initData: "synthetic" } };
+    let resolveRestore: ((user: { id: number; name: string; email: string }) => void) | undefined;
+    mocks.restore.mockImplementation(() => new Promise((resolve) => {
+      resolveRestore = resolve;
+    }));
+
+    const { unmount } = renderBootstrap("/telegram?target=tasks");
+    unmount();
+    resolveRestore?.({ id: 1, name: "Анна", email: "anna@example.com" });
+    await Promise.resolve();
+
+    expect(mocks.toLogin).not.toHaveBeenCalled();
+  });
 });

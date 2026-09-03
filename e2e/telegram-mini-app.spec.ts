@@ -134,7 +134,11 @@ for (const width of [320, 360, 390, 430]) {
 
 test("ordinary browser access to /telegram shows a controlled state", async ({ page }) => {
   await page.route("https://telegram.org/js/telegram-web-app.js*", (route) =>
-    route.fulfill({ status: 200, contentType: "application/javascript", body: "" })
+    route.fulfill({
+      status: 200,
+      contentType: "application/javascript",
+      body: `window.Telegram={WebApp:{initData:"",ready:function(){},expand:function(){}}};`,
+    })
   );
   await page.goto("/telegram");
   await expect(page.getByRole("heading", { name: "Откройте Glowy из Telegram" })).toBeVisible();

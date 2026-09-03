@@ -43,7 +43,9 @@ const TelegramMiniAppBootstrap = () => {
     const controller = new AbortController();
     requestRef.current = controller;
     TelegramMiniAppApi.restore(webApp.initData, controller.signal)
-      .then(complete)
+      .then((user) => {
+        if (!controller.signal.aborted) complete(user);
+      })
       .catch((error) => {
         if (controller.signal.aborted) return;
         if (

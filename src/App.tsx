@@ -268,8 +268,8 @@ function App() {
   }
 
   return (
-    <TelegramMiniAppProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <TelegramMiniAppProvider>
         <Routes>
           <Route
             path="/telegram"
@@ -454,8 +454,8 @@ function App() {
         <Route path="*" element={<Navigate to={startRoute} replace />} />
         </Routes>
         <CookieConsent />
-      </BrowserRouter>
-    </TelegramMiniAppProvider>
+      </TelegramMiniAppProvider>
+    </BrowserRouter>
   );
 }
 

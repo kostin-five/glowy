@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import {
@@ -96,6 +96,28 @@ const AnalyticsPage = () => {
   const isGuest = useIsGuest();
   const ownerId = useAuthStore((state) => state.userId);
   const [period, setPeriod] = useState<AnalyticsPeriodKind>("week");
+  const anchor = formatLocalDateOnly();
+
+  // All transient data belongs to one viewing context, even across A → B → A.
+  return (
+    <AnalyticsView
+      key={`${ownerId}:${isGuest}:${period}:${anchor}`}
+      ownerId={ownerId}
+      isGuest={isGuest}
+      period={period}
+      anchor={anchor}
+      changePeriod={setPeriod}
+    />
+  );
+};
+
+const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
+  ownerId: number | null;
+  isGuest: boolean;
+  period: AnalyticsPeriodKind;
+  anchor: string;
+  changePeriod: (period: AnalyticsPeriodKind) => void;
+}) => {
   const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!isGuest);
@@ -106,20 +128,35 @@ const AnalyticsPage = () => {
   const [isInsightLoading, setIsInsightLoading] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isRegenerateConfirmOpen, setIsRegenerateConfirmOpen] = useState(false);
-  const anchor = formatLocalDateOnly();
+  const mounted = useRef(false);
+  const insightPending = useRef(false);
+  const snapshotPending = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  const isCurrentView = useCallback(() => {
+    const auth = useAuthStore.getState();
+    return mounted.current && auth.userId === ownerId && auth.isGuest === isGuest;
+  }, [isGuest, ownerId]);
 
   const retrySnapshot = useCallback(async () => {
-    if (isGuest) return;
+    if (isGuest || snapshotPending.current || !isCurrentView()) return;
+    snapshotPending.current = true;
     setIsLoading(true);
     setError(null);
     try {
-      setSnapshot(await AnalyticsApi.getSnapshot(period, anchor));
+      const data = await AnalyticsApi.getSnapshot(period, anchor);
+      if (isCurrentView()) setSnapshot(data);
     } catch (requestError) {
-      setError(readApiError(requestError, "Не удалось загрузить аналитику."));
+      if (isCurrentView()) setError(readApiError(requestError, "Не удалось загрузить аналитику."));
     } finally {
-      setIsLoading(false);
+      snapshotPending.current = false;
+      if (isCurrentView()) setIsLoading(false);
     }
-  }, [anchor, isGuest, period]);
+  }, [anchor, isGuest, isCurrentView, period]);
 
   useEffect(() => {
     if (isGuest) return;
@@ -127,22 +164,22 @@ const AnalyticsPage = () => {
     let active = true;
     AnalyticsApi.getSnapshot(period, anchor)
       .then((data) => {
-        if (!active) return;
+        if (!active || !isCurrentView()) return;
         setSnapshot(data);
         setError(null);
       })
       .catch((requestError) => {
-        if (!active) return;
+        if (!active || !isCurrentView()) return;
         setError(readApiError(requestError, "Не удалось загрузить аналитику."));
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        if (active && isCurrentView()) setIsLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [anchor, isGuest, period]);
+  }, [anchor, isGuest, isCurrentView, period]);
 
   const chartData = useMemo(
     () =>
@@ -183,28 +220,23 @@ const AnalyticsPage = () => {
     ? reportOverride.text
     : storedInsight;
 
-  const changePeriod = (nextPeriod: AnalyticsPeriodKind) => {
-    if (nextPeriod === period) return;
-    setPeriod(nextPeriod);
-    setCopyFeedback(null);
-    setError(null);
-    setIsLoading(true);
-  };
-
   const requestInsight = async () => {
-    if (!snapshot?.canRequestAiInsight || isInsightLoading) return;
+    if (!snapshot?.canRequestAiInsight || insightPending.current || !isCurrentView()) return;
+    insightPending.current = true;
     setIsInsightLoading(true);
     setError(null);
     try {
       const result = await AnalyticsApi.requestInsight(period, anchor);
+      if (!isCurrentView()) return;
       setReportOverride({ key: reportIdentityKey, text: result.insight });
       if (reportIdentity) saveAnalyticsReport(reportIdentity, result.insight);
     } catch (requestError) {
-      setError(
+      if (isCurrentView()) setError(
         readApiError(requestError, "Glowy не смог подготовить вывод. Попробуй позже.")
       );
     } finally {
-      setIsInsightLoading(false);
+      insightPending.current = false;
+      if (isCurrentView()) setIsInsightLoading(false);
     }
   };
 
@@ -212,13 +244,14 @@ const AnalyticsPage = () => {
     if (!insight) return;
     try {
       await navigator.clipboard.writeText(insight);
-      setCopyFeedback("Отчёт скопирован");
+      if (isCurrentView()) setCopyFeedback("Отчёт скопирован");
     } catch {
-      setCopyFeedback("Не удалось скопировать отчёт");
+      if (isCurrentView()) setCopyFeedback("Не удалось скопировать отчёт");
     }
   };
 
   const deleteInsight = () => {
+    if (insightPending.current) return;
     if (reportIdentity) deleteAnalyticsReport(reportIdentity);
     setReportOverride({ key: reportIdentityKey, text: null });
     setCopyFeedback(null);
@@ -413,6 +446,17 @@ const AnalyticsPage = () => {
               <Sparkles className="mt-0.5 shrink-0 text-indigo-500" size={20} />
               <div className="min-w-0 flex-1">
                 <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
+                {isInsightLoading && (
+                  <div role="status" aria-live="polite" className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    <p className="flex items-center gap-2 font-semibold">
+                      <LoaderCircle size={16} className="shrink-0 animate-spin" />
+                      Готовлю глубокий разбор…
+                    </p>
+                    <p className="mt-1 text-xs leading-5">
+                      Уход со страницы или смена периода не отменяет уже отправленный AI-запрос и его расход лимита.
+                    </p>
+                  </div>
+                )}
                 {insight ? (
                   <div className="mt-3">
                     <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -436,7 +480,8 @@ const AnalyticsPage = () => {
                       <button
                         type="button"
                         onClick={deleteInsight}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-rose-600 dark:text-rose-300"
+                        disabled={isInsightLoading}
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-rose-600 disabled:opacity-50 dark:text-rose-300"
                       >
                         <Trash2 size={16} />
                         Удалить отчёт

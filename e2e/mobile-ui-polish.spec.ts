@@ -188,7 +188,7 @@ test.describe("mobile UI polish", () => {
     await expect(page.getByRole("button", { name: "Разобрать неделю · 5 запросов" })).toBeVisible();
   });
 
-  test("fits compact widths and keeps the desktop chat header clear of the sidebar toggle", async ({ page }) => {
+  test("fits compact widths and keeps the desktop assistant header clear of the sidebar toggle", async ({ page }) => {
     await prepareApp(page);
     for (const width of [320, 360, 390, 430]) {
       await page.setViewportSize({ width, height: 760 });
@@ -200,7 +200,7 @@ test.describe("mobile UI polish", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/ai");
     const toggle = page.getByRole("button", { name: "Скрыть навигацию" });
-    const heading = page.getByRole("heading", { name: "Glowy AI" });
+    const heading = page.getByRole("heading", { name: "Ассистент" });
     await expect(toggle).toBeVisible();
     await expect(heading).toBeVisible();
     const toggleBox = await toggle.boundingBox();

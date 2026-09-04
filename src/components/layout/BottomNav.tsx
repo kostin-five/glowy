@@ -91,7 +91,7 @@ const BottomNav = () => {
                 : "text-slate-700 dark:text-slate-300"
             }`}
           >
-            Glowy AI
+            Ассистент
           </span>
         </div>
 

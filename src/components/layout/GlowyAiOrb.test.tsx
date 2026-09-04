@@ -10,7 +10,7 @@ describe("GlowyAiOrb", () => {
     render(<GlowyAiOrb onClick={vi.fn()} isActive={false} />);
 
     expect(
-      screen.getByRole("button", { name: "Открыть Glowy AI" })
+      screen.getByRole("button", { name: "Открыть ассистента" })
     ).toBeInTheDocument();
     expect(screen.getByTestId("glowy-ai-orbit")).toHaveClass("glowy-ai-orbit");
   });

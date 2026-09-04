@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LockKeyhole } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { NoteApi } from "../api/NoteApi";
 import NoteEditor from "../components/notes/NoteEditor";
@@ -174,10 +175,18 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
-      <div className={mobileEditorOpen ? "hidden lg:block" : "block"}><h1 className="font-display text-3xl font-bold">Умные заметки</h1><p className="mt-1 text-sm text-slate-500">Место для мыслей, к которым хочется вернуться.</p></div>
+    <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5">
+      <header className={`${mobileEditorOpen ? "hidden lg:flex" : "flex"} flex-wrap items-end justify-between gap-3`}>
+        <div>
+          <h1 className="font-display text-3xl font-bold md:text-4xl">Умные заметки</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Место для мыслей, к которым хочется вернуться.</p>
+        </div>
+        <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/50 bg-white/55 px-3 text-xs font-bold text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/35 dark:text-slate-300">
+          <LockKeyhole size={15} className="text-indigo-400" /> Только для меня
+        </span>
+      </header>
       {listError && <div role="alert" className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{listError}</div>}
-      <div className="flex min-h-0 flex-col gap-4 lg:h-[calc(100dvh-13rem)] lg:flex-row">
+      <div className="flex min-h-0 flex-col gap-4 lg:h-[calc(100dvh-12.5rem)] lg:min-h-[38rem] lg:flex-row">
         <NoteList hiddenOnMobile={mobileEditorOpen} notes={notes} selectedId={selected?.id ?? null} query={query} archived={archived} loading={loading} error={null} onQueryChange={setQuery} onArchivedChange={(value) => { setArchived(value); resetEditor(); setNewNoteOpen(false); navigate("/notes"); }} onSelect={choose} onCreate={createBlank} />
         <NoteEditor hiddenOnMobile={!mobileEditorOpen} loading={Boolean(noteId) && selected?.id !== Number(noteId)} note={selected} title={title} content={content} status={status} tasks={tasks} onTitle={changeTitle} onContent={changeContent} onSave={() => void save()} onBack={() => void returnToList()} onArchive={() => void archiveNote()} onLink={(taskId) => selected && void NoteApi.linkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось связать задачу")))} onUnlink={(taskId) => selected && void NoteApi.unlinkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось убрать связь")))} onDraft={(fragment) => void requestDraft(fragment)} />
       </div>

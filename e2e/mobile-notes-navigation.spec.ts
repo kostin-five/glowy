@@ -105,13 +105,14 @@ test("uses one notes surface and saves before returning on compact widths", asyn
   }
 });
 
-test("keeps the existing two-column notes layout on desktop", async ({ page }) => {
+test("keeps the modern notes workspace together on desktop", async ({ page }) => {
   await prepareApp(page);
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/notes");
 
   await expect(page.getByPlaceholder("Поиск по заметкам")).toBeVisible();
   await expect(page.getByLabel("Заголовок заметки")).toBeVisible();
+  await expect(page.getByLabel("Контекст заметки")).toBeVisible();
   await expect(page.getByRole("button", { name: "Назад к заметкам" })).not.toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

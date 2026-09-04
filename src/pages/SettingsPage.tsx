@@ -69,7 +69,7 @@ const startRouteOptions: Array<{
 }> = [
   { value: "/dashboard", label: "Главная", icon: LayoutDashboard },
   { value: "/tasks", label: "Задачи", icon: CheckSquare },
-  { value: "/ai", label: "Чат", icon: MessageCircle },
+  { value: "/ai", label: "Ассистент", icon: MessageCircle },
 ];
 
 const settingsSections = [

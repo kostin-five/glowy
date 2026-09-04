@@ -25,16 +25,16 @@ vi.mock("../../hooks/useLogout", () => ({
 
 describe("Sidebar", () => {
   settings.collapsed = false;
-  it("links the desktop chat item to the full Glowy AI page", () => {
+  it("links the desktop assistant item to the full AI page", () => {
     render(
       <MemoryRouter initialEntries={["/ai"]}>
         <Sidebar />
       </MemoryRouter>
     );
 
-    const chatLink = screen.getByRole("link", { name: "Чат" });
-    expect(chatLink).toHaveAttribute("href", "/ai");
-    expect(chatLink).toHaveClass("text-indigo-400", "bg-indigo-500/10");
+    const assistantLink = screen.getByRole("link", { name: "Ассистент" });
+    expect(assistantLink).toHaveAttribute("href", "/ai");
+    expect(assistantLink).toHaveClass("text-indigo-400", "bg-indigo-500/10");
   });
 
   it("removes route links from the collapsed state", () => {

@@ -632,18 +632,18 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     variant === "quick"
       ? "flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
       : variant === "page"
-        ? "flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
+        ? "flex h-full min-h-0 flex-col overflow-hidden bg-transparent"
         : "flex h-[min(760px,calc(100svh-6rem))] min-h-128 max-h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160 xl:max-h-none";
 
   return (
     <section className={sectionClassName}>
       {variant !== "quick" && (
-        <div className={`sticky top-0 z-10 border-b border-slate-200 bg-white/95 p-5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 ${variant === "page" ? "lg:pl-12" : ""}`}>
+        <div className={`sticky top-0 z-10 border-b p-5 backdrop-blur-xl ${variant === "page" ? "border-white/40 bg-white/65 shadow-sm dark:border-white/10 dark:bg-slate-950/45 lg:pl-12" : "border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900/95"}`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-indigo-300" />
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
-                {variant === "page" ? "Glowy AI" : "Разгрузка мыслей"}
+                {variant === "page" ? "Ассистент" : "Разгрузка мыслей"}
               </h2>
             </div>
             <div className="flex items-center gap-1">
@@ -717,7 +717,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
         <div
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
-          className={`mind-hub-scrollbar h-full overflow-y-auto bg-slate-100/60 dark:bg-slate-950/35 ${
+          className={`mind-hub-scrollbar h-full overflow-y-auto ${variant === "page" ? "bg-white/15 backdrop-blur-[2px] dark:bg-slate-950/10" : "bg-slate-100/60 dark:bg-slate-950/35"} ${
             variant === "quick" ? "px-4 py-4" : "px-5 py-5"
           }`}
         >
@@ -816,7 +816,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
 
       <form
         onSubmit={handleSubmit}
-        className="border-t border-slate-200 bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900/95"
+        className={`border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl ${variant === "page" ? "border-white/40 bg-white/65 dark:border-white/10 dark:bg-slate-950/50" : "border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-900/95"}`}
       >
         {!isOnline && (
           <div className="mb-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm font-semibold text-amber-700 dark:text-amber-200">

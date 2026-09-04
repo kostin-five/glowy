@@ -154,12 +154,12 @@ describe("MindHubChat", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses a full-height surface and Glowy AI heading on the full page", () => {
+  it("uses a transparent full-height assistant surface on the full page", () => {
     const { container } = render(<MindHubChat variant="page" />);
 
-    expect(container.querySelector("section")).toHaveClass("h-full", "min-h-0");
+    expect(container.querySelector("section")).toHaveClass("h-full", "min-h-0", "bg-transparent");
     expect(
-      screen.getByRole("heading", { name: "Glowy AI" })
+      screen.getByRole("heading", { name: "Ассистент" })
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Новая задача" })).toBeVisible();
   });

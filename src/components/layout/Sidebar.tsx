@@ -33,7 +33,7 @@ const SidebarContent = ({
     { to: "/dashboard", label: "Главная", icon: LayoutDashboard },
     { to: "/tasks", label: "Твои задачи", icon: CheckSquare },
     { to: "/notes", label: "Заметки", icon: NotebookPen },
-    { to: "/ai", label: "Чат", icon: MessageCircle },
+    { to: "/ai", label: "Ассистент", icon: MessageCircle },
     { to: "/progress", label: "Мой прогресс", icon: Trophy },
     { to: "/analytics", label: "Аналитика", icon: BarChart3 },
     { to: "/settings", label: "Настройки", icon: Settings },

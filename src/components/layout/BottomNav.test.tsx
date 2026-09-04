@@ -46,7 +46,7 @@ describe("BottomNav", () => {
     expect(actions).toEqual([
       "Главная",
       "Задачи",
-      "Открыть Glowy AI",
+      "Открыть ассистента",
       "Мой прогресс",
       "Ещё",
     ]);
@@ -58,7 +58,7 @@ describe("BottomNav", () => {
   it("opens one quick AI sheet and closes it explicitly", async () => {
     renderNav();
 
-    fireEvent.click(screen.getByRole("button", { name: "Открыть Glowy AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Открыть ассистента" }));
 
     expect(screen.getByRole("dialog", { name: "Быстрая разгрузка" })).toBeInTheDocument();
     expect(screen.getByText("Компактный AI-чат")).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe("BottomNav", () => {
 
   it("closes the quick sheet with Escape", async () => {
     renderNav();
-    fireEvent.click(screen.getByRole("button", { name: "Открыть Glowy AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Открыть ассистента" }));
 
     fireEvent.keyDown(document, { key: "Escape" });
 
@@ -98,7 +98,7 @@ describe("BottomNav", () => {
 
   it("opens the full chat from the quick sheet", async () => {
     renderNav();
-    fireEvent.click(screen.getByRole("button", { name: "Открыть Glowy AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Открыть ассистента" }));
     fireEvent.click(screen.getByRole("button", { name: /Полный чат/ }));
 
     expect(screen.getByLabelText("Текущий маршрут")).toHaveTextContent("/ai");

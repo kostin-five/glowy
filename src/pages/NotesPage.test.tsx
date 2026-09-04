@@ -99,6 +99,7 @@ describe("NotesPage mobile navigation", () => {
     expectMobileSurface("editor");
     expect(screen.getByLabelText("Заголовок заметки")).toHaveProperty("value", "План запуска");
     expect(screen.getByRole("button", { name: "Назад к заметкам" })).toBeTruthy();
+    expect(screen.getByRole("complementary", { name: "Контекст заметки" })).toBeTruthy();
   });
 
   it("does not overwrite fresh edits with a delayed route reload", async () => {

@@ -13,7 +13,7 @@ const GlowyAiOrb = ({ isActive, onClick }: GlowyAiOrbProps) => {
     <button
       type="button"
       onClick={onClick}
-      aria-label="Открыть Glowy AI"
+      aria-label="Открыть ассистента"
       aria-pressed={isActive}
       className={`group relative flex h-16 w-16 items-center justify-center rounded-full border transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-400/40 ${
         isActive

@@ -30,6 +30,6 @@ describe("Modal", () => {
 
     const panel = screen.getByTestId("modal-panel");
     expect(panel).toHaveClass("rounded-t-3xl", "sm:rounded-2xl");
-    expect(panel).toHaveClass("max-h-[calc(100dvh-1rem)]", "sm:max-h-[90vh]");
+    expect(panel).toHaveClass("max-h-[calc(100%-1rem)]", "sm:max-h-[90vh]");
   });
 });

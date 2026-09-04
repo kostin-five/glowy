@@ -58,7 +58,7 @@ test("creates a task from the tasks action without leaving the route", async ({ 
 
   await expect(dialog).toHaveCount(0);
   await expect(page).toHaveURL(/\/tasks$/);
-  expect(created).toHaveLength(1);
+  await expect.poll(() => created.length).toBe(1);
 });
 
 test("keeps the mobile launcher usable at supported widths", async ({ page }) => {

@@ -6,8 +6,9 @@
 
 ## Как пользоваться этим документом
 
-1. Релиз начинается не с кода, а со specification через Spec Kit: описание
-   сценариев, границ, рисков и критериев готовности.
+1. Релиз начинается не с кода, а со specification: описание сценариев, границ,
+   рисков и критериев готовности. До завершения отдельного переходного блока используется
+   текущий Spec Kit; после него единственным активным workflow становится OpenSpec.
 2. Пункты «Где меняем» показывают ожидаемые зоны репозитория. Это ориентир для
    исследования, а не разрешение менять все указанные файлы без необходимости.
 3. Каждый AI-черновик, изменение задачи или публикация данных требуют явного
@@ -134,8 +135,8 @@ BotFather, YooKassa, OAuth- или почтовых кабинетов. Мигр
 | v2.8.0 | Telegram Mini App и бот-пульт | Выпущена и проверена в production 2026-08-30. | Богдан + разработчик |
 | v2.9.0 | Типы, контракты и наблюдаемость | Реализация объединена в локальный `dev`; production не выпускался. | Богдан + разработчик |
 | v2.10.0 | Полный перевод backend на TypeScript | Реализация и локальный gate завершены; production не выпускался. | Разработчик, review Богдана |
-| Автономный этап до v3.0.0 | Надёжный аккаунт, полная админка, измеримость, продуктовый core и подготовка RU/EN | Устойчивый TypeScript backend и контракты v2.9.0. | Разработчик; Богдан только на approval-границах |
-| v3.0.0 | Владелец продукта полностью пересобирает приоритеты и UX | Проверенные автономные блоки и собранная обратная связь. | Богдан, разработчик реализует |
+| Автономный этап до v3.0.0 | Надёжный аккаунт, полная админка, измеримость, продуктовый core, переход на OpenSpec, Glowy Design System и постепенное внедрение TanStack Query | Устойчивый TypeScript backend и контракты v2.9.0. | Разработчик; Богдан только на approval-границах |
+| v3.0.0 | Владелец продукта полностью пересобирает приоритеты и UX на утверждённой технической и дизайн-системной основе | Проверенные автономные блоки, OpenSpec, Glowy Design System, ограниченные server-state slices на TanStack Query и собранная обратная связь. | Богдан, разработчик реализует |
 | v4.0.0 | Adaptive Workspace | Только подтверждённые сценарии задач, AI, календаря, памяти и совместной работы. | Богдан + разработчик |
 
 Исторические версии до `v2.10.0` сохраняют свои номера. Новая автономная очередь не разрешает
@@ -607,6 +608,112 @@ payments → analytics/profile/notes → Telegram → backend tests. `ai-proxy/s
 backend не осталось скрытых непроверяемых `.js`, включена строгая TypeScript-проверка и проходит
 полный набор тестов. `ai-proxy/server.js` остаётся отдельным rollback-компонентом и должен
 оцениваться самостоятельным техническим изменением после v2.10.0.
+
+---
+
+## Утверждённая техническая основа до v3.0.0
+
+**Решение 2026-09-04.** До продуктовой пересборки v3.0.0 выполнить несколько независимых
+инфраструктурных блоков. Они не меняют production автоматически и не дают права смешивать
+процесс, data layer и визуальный redesign в одном изменении.
+
+### OpenSpec вместо Spec Kit
+
+Перевести активный specification workflow с Spec Kit на OpenSpec, потому что для развивающегося
+brownfield-продукта нужен единый актуальный каталог возможностей и отдельные delta-изменения.
+
+- Сохранить `.specify/` и `specs/001...` как исторические артефакты; не переписывать историю задним
+  числом и не удалять её при миграции.
+- Сформировать в `openspec/specs/` актуальные capability-specs как минимум для account/auth,
+  tasks/subtasks, Assistant/AI, notes, progress/analytics, offline sync, Telegram,
+  payments/subscriptions, profile/settings и platform/observability.
+- Новую работу вести через один активный цикл:
+  `explore -> proposal -> delta specs -> design -> tasks -> apply -> verify -> archive`.
+- Перенести обязательные правила конституции и `AGENTS.md` в project context/rules OpenSpec, но не
+  ослаблять исходные approval-, privacy-, security- и verification-границы.
+- До завершения и проверки миграции продолжать применять текущие обязательные правила Spec Kit.
+  После переключения не создавать новые feature-specs одновременно в обеих системах.
+- Отдельно проверить, что archive обновляет canonical capability-specs, а verify покрывает прежние
+  clarify/analyze/converge-гарантии: неоднозначности устранены до design, артефакты согласованы до
+  apply, реализация сверена со specification перед archive.
+
+### Стабильное ядро стека
+
+Сохранить существующую основу: React 19, Vite, TypeScript, React Router, Tailwind CSS, Express 5,
+shared Zod contracts, Prisma и PostgreSQL. Не выполнять framework rewrite ради унификации или
+теоретического выигрыша benchmark.
+
+- Не переводить текущий frontend на OctaneJS: framework и его React-facing bindings пока не дают
+  зрелости, совместимости и пользовательской ценности, достаточных для production-миграции Glowy.
+- Не переносить существующий backend на Fastify, NestJS, Hono или server functions: текущий Express
+  backend уже строго типизирован, покрыт контрактами и тестами и содержит проверенные auth, AI,
+  payment и Telegram flows.
+- Не переходить на TanStack Start или TanStack Router без отдельной подтверждённой проблемы
+  маршрутизации/SSR. Текущий SPA, PWA, Telegram bootstrap и отдельный backend остаются основной
+  архитектурой.
+- Сохранять Axios, Zustand, Recharts и Motion/Framer Motion, пока конкретный профиль, дефект или
+  продуктовый сценарий не докажет необходимость замены.
+
+### TanStack Query для server state
+
+Добавить TanStack Query как отдельный слой удалённого серверного состояния, не как замену всему
+Zustand и не как переписывание приложения за один этап.
+
+- Zustand остаётся для локального UI-state, настроек, auth snapshot, browser-local AI-диалога и
+  других клиентских данных.
+- Первый pilot выбрать среди read-heavy доменов с простой моделью мутаций: profile/settings,
+  progress или notes. Для него зафиксировать query keys, account scope, stale/cache policy,
+  cancellation, invalidation, error mapping и тесты смены аккаунта.
+- После успешного pilot последовательно оценить notes, analytics, habits/achievements и AI.
+- Tasks/subtasks переносить только отдельной последней specification: существующие IndexedDB
+  snapshot, dependency-aware offline queue, временные ID, optimistic XP и синхронизация остаются
+  рабочей архитектурой, пока новый слой не докажет полную совместимость.
+- Не считать `offlineFirst`, persisted query cache или paused mutations заменой предметной offline-
+  очереди Glowy. Не допускать двух конкурирующих источников истины для одной сущности.
+- TanStack Table добавлять только для реального сложного data-grid, прежде всего будущей админки;
+  остальные TanStack-библиотеки подключать только под конкретную задачу.
+
+### Glowy Design System на основе shadcn/ui
+
+Создать собственную дизайн-систему Glowy, используя shadcn/ui как источник открытого кода и
+доступных primitives, а не как готовую визуальную тему приложения.
+
+- Сначала утвердить semantic tokens: background/surface/text, primary/accent/status, typography,
+  spacing, radii, borders, elevation/glow, focus ring, motion и mobile touch targets.
+- Поверх tokens создать ограниченный набор Glowy primitives: Button, IconButton, Input, Textarea,
+  Label/Field, Card, Badge, Dialog, Sheet, Popover, Select, Tabs, Tooltip, Skeleton, EmptyState,
+  Alert и Toast.
+- Выбрать один primitive layer для новых компонентов (предпочтительно Radix-based shadcn) и не
+  смешивать разные реализации одного Dialog/Popover/Select внутри новой системы. Существующий
+  Headless UI выводить постепенно только после функционального и accessibility parity.
+- Сохранить текущие логотипы, фирменную сферу, тёмную атмосферу и русский интерфейс. Стандартные
+  стили shadcn не должны превращать продукт в безликий dashboard.
+- Добавить Storybook для React/Vite как локальный каталог состояний компонентов, вариантов темы,
+  mobile viewport, accessibility и визуальной проверки. Облачный visual-regression service не
+  подключать без отдельного решения владельца.
+- Переводить только новые и затрагиваемые экраны; массовая одномоментная замена компонентов
+  запрещена. `src/pages/LandingPage.tsx` по-прежнему не менять без прямого запроса.
+
+### Native-клиенты
+
+Не включать iOS/Android-клиент в обязательный scope v3.0.0. Сначала измерить использование
+responsive web, установленной PWA и Telegram Mini App. Отдельный native proposal появляется только
+при подтверждённой потребности в системных push/local notifications, виджете фокуса дня, share
+sheet, фоновой работе или другом сценарии, который web/PWA не решает достаточно надёжно.
+
+- Для быстрого web-first выхода в stores сначала оценить Capacitor.
+- Для самостоятельного mobile-first UX и глубокой системной интеграции оценить React Native + Expo.
+- Оба варианта должны переиспользовать текущий backend и contracts и не создавать второй аккаунт,
+  базу, AI-, payment- или subscription-flow.
+
+### Порядок реализации основы
+
+1. Перейти на OpenSpec и проверить один тестовый lifecycle без изменения продукта.
+2. Зафиксировать semantic design tokens и критерии accessibility/visual regression.
+3. Создать минимальные Glowy primitives и Storybook, не заменяя все экраны.
+4. Провести один ограниченный TanStack Query pilot и измерить уменьшение ручного server-state кода.
+5. После review владельца использовать основу только в тех v3.0.0-сценариях, которые он утвердил.
+6. Отдельно решать миграцию tasks/offline, native-клиент и любые production/deploy действия.
 
 ---
 

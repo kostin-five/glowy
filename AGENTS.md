@@ -35,7 +35,9 @@ backend/             Express API and Prisma access
   prisma/            Schema and migration history
 ai-proxy/            Optional server-side AI provider proxy
 docs/                Product, release, payment, and operational documentation
-.specify/            Spec Kit workflow, templates, and Glowy constitution
+openspec/            Active capability specs and change workflow
+specs/               Historical Spec Kit feature artifacts (read-only)
+.specify/            Historical Spec Kit files and the binding Glowy constitution
 ```
 
 ## Local Commands
@@ -49,6 +51,8 @@ npm run typecheck
 npm run lint
 npm run test
 npm run build
+npm run openspec:status
+npm run openspec:validate
 ```
 
 Run the backend independently:
@@ -111,12 +115,18 @@ Backend HTTP tests must stay database-free unless a separate test database is de
 For a small isolated fix, use: inspect -> implement -> run relevant checks -> summarize the diff.
 
 For a new user-facing feature or a change involving multiple modules, data, AI, authentication,
-payments, offline behavior, or deployment, use Spec Kit:
+payments, offline behavior, or deployment, use OpenSpec:
 
 ```text
-$speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
--> $speckit-analyze -> $speckit-implement -> $speckit-converge
+$openspec-explore (when needed) -> $openspec-propose -> user review
+-> $openspec-apply-change -> $openspec-verify-change -> $openspec-archive-change
 ```
+
+`$openspec-propose` creates planning artifacts only. Start apply only after a separate explicit user
+request. Canonical current requirements live in `openspec/specs/`; `.specify/` and root `specs/`
+are historical and must not receive new feature work. Use `$openspec-update-change` to revise an
+active plan and `$openspec-sync-specs` only when main specs deliberately need updating before
+archive.
 
 - Explain intended edits before changing files.
 - Scale verification to risk. Run `typecheck`, `lint`, tests, and build as applicable; add focused
@@ -140,6 +150,8 @@ $speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
 ## Useful References
 
 - `.specify/memory/constitution.md` - non-negotiable project principles.
+- `openspec/specs/` - canonical current product requirements.
+- `openspec/MIGRATION.md` - source hierarchy and mapping from historical Spec Kit artifacts.
 - `docs/handoffs/PROJECT_HANDOFF_2026-09-04.md` - latest local development state and next steps.
 - `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - last verified production release and infrastructure state.
 - `docs/handoffs/NEXT_CHAT_PROMPT.md` - canonical bootstrap prompt for the next main developer.

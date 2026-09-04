@@ -16,6 +16,14 @@ Telegram webhook -> Express backend -> PostgreSQL queue -> Telegram worker -> Bo
 Telegram Mini App -> existing React routes -> existing Express API
 ```
 
+### Specifications и изменения
+
+Текущее наблюдаемое поведение системы описывается capability-specs в `openspec/specs/`. Новое
+поведение сначала существует как delta в `openspec/changes/` и попадает в baseline только после
+apply, verify и archive. `openspec/MIGRATION.md` связывает канонические capabilities с
+историческими Spec Kit-каталогами. `.specify/` и корневой `specs/` не используются для новых
+feature-артефактов; roadmap остаётся планом, а не описанием реализованной архитектуры.
+
 ### Frontend
 
 `src/pages/` собирает маршруты и экраны. `src/api/` отвечает за HTTP-вызовы, а `src/store/` -- за

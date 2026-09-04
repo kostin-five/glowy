@@ -3,10 +3,14 @@ import {
   aiLimitErrorSchema,
   aiUsageSchema,
   mindHubResponseSchema,
+  subtaskDraftRequestSchema,
+  subtaskDraftResponseSchema,
   type AiUsage,
   type MindHubMessage,
   type MindHubMode,
   type MindHubResponse,
+  type SubtaskDraftRequest,
+  type SubtaskDraftResponse,
 } from "@glowy/contracts";
 import { useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
@@ -97,6 +101,27 @@ export default class AiApi {
         };
       }
 
+      throw error;
+    }
+  }
+
+  static async createSubtaskDraft(input: SubtaskDraftRequest): Promise<SubtaskDraftResponse> {
+    const authStore = useAuthStore.getState();
+    if (authStore.isGuest) {
+      throw new Error("Чтобы пользоваться Glowy AI, зарегистрируйся или войди в аккаунт.");
+    }
+
+    try {
+      const payload = subtaskDraftRequestSchema.parse(input);
+      const response = await aiInstance.post("/subtask-draft", payload);
+      return subtaskDraftResponseSchema.parse(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(
+          error.response?.data?.error || "Glowy не смог составить шаги. Попробуй ещё раз.",
+          { cause: error }
+        );
+      }
       throw error;
     }
   }

@@ -99,6 +99,24 @@ export const aiLimitErrorSchema = z.object({
   requestId: z.string().optional(),
 });
 
+export const subtaskDraftRequestSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  category: z.string().trim().max(100).default(""),
+  priority: prioritySchema.default("⚡️ P2"),
+  energyLevel: energyLevelSchema.default("med"),
+  estimatedMinutes: z.number().int().min(1).max(1440).nullable().default(null),
+  existingSubtasks: z.array(z.string().trim().min(1).max(160)).max(30).default([]),
+});
+
+export const subtaskDraftItemSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+});
+
+export const subtaskDraftResponseSchema = z.object({
+  subtasks: z.array(subtaskDraftItemSchema).min(2).max(8),
+  limit: mindHubLimitSchema,
+});
+
 export type AiUsage = z.infer<typeof aiUsageSchema>;
 export type MindHubDraft = z.infer<typeof mindHubDraftSchema>;
 export type MindHubLimit = z.infer<typeof mindHubLimitSchema>;
@@ -106,3 +124,5 @@ export type MindHubMessage = z.infer<typeof mindHubMessageSchema>;
 export type MindHubMode = z.infer<typeof mindHubModeSchema>;
 export type MindHubRequest = z.infer<typeof mindHubRequestSchema>;
 export type MindHubResponse = z.infer<typeof mindHubResponseSchema>;
+export type SubtaskDraftRequest = z.infer<typeof subtaskDraftRequestSchema>;
+export type SubtaskDraftResponse = z.infer<typeof subtaskDraftResponseSchema>;

@@ -5,6 +5,8 @@ import {
   aiUsageSchema,
   mindHubRequestSchema,
   mindHubResponseSchema,
+  subtaskDraftRequestSchema,
+  subtaskDraftResponseSchema,
 } from "@glowy/contracts";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { buildErrorEnvelope } from "../middleware/error.middleware.js";
@@ -32,6 +34,10 @@ import {
   getMindHubErrorResponse,
   isExpectedAiUnavailableError,
 } from "../utils/ai-errors.utils.js";
+import {
+  generateSubtaskDraft as generateSubtaskDraftWithProvider,
+  InvalidSubtaskDraftError,
+} from "../services/ai/subtask-draft.service.js";
 
 const EMOTIONAL_KEYWORDS = [
   "устал", "устала", "нет сил", "тяжело", "сложно", "тревожно", "тревога", 
@@ -115,6 +121,7 @@ export const createAiRouter = ({
   getUsage = getAuthenticatedAiUsage,
   reserveRequest = reserveAuthenticatedAiRequest,
   releaseRequest = releaseAuthenticatedAiRequest,
+  generateSubtaskDraft = generateSubtaskDraftWithProvider,
 } = {}) => {
 const router = express.Router();
 const releaseReservation = async (
@@ -157,6 +164,43 @@ router.get("/usage", async (req, res) => {
           "AI_USAGE_FAILED"
         )
       );
+  }
+});
+
+router.post("/subtask-draft", async (req, res) => {
+  let reservation: AiReservation | null = null;
+  try {
+    const requestResult = subtaskDraftRequestSchema.safeParse(req.body);
+    if (!requestResult.success) {
+      return res.status(400).json(buildAiError(req, "Проверь данные задачи.", "AI_SUBTASK_REQUEST_INVALID", {
+        details: getSafeValidationDetails(requestResult.error.issues),
+      }));
+    }
+
+    const reserved = await reserveRequest(req.user.id);
+    if (!reserved.allowed) {
+      return res.status(429).json(buildAiError(req, "Лимит запросов исчерпан.", "AI_LIMIT_EXHAUSTED", { limit: reserved.limit }));
+    }
+    reservation = reserved.reservation ?? null;
+    const subtasks = await generateSubtaskDraft(requestResult.data, { userId: req.user.id });
+    return res.json(subtaskDraftResponseSchema.parse({ subtasks, limit: reserved.limit }));
+  } catch (error) {
+    await releaseReservation(req, reservation);
+    logger.error("ai.subtask_draft.failed", {
+      req,
+      error,
+      statusCode: error instanceof InvalidSubtaskDraftError ? 502 : getErrorStatus(error) || 500,
+      errorCode: error instanceof InvalidSubtaskDraftError ? error.code : undefined,
+    });
+    if (error instanceof InvalidSubtaskDraftError) {
+      return res.status(502).json(buildAiError(req, "Glowy не смог составить корректные шаги. Попробуй ещё раз.", error.code));
+    }
+    if (isExpectedAiUnavailableError(error)) {
+      const payload = buildGracefulMindHubUnavailablePayload(error);
+      return res.status(503).json(buildAiError(req, payload.reply, payload.code));
+    }
+    const { status, body } = getMindHubErrorResponse(error);
+    return res.status(status).json(buildAiError(req, body.error, "AI_PROVIDER_UNAVAILABLE", { retryable: Boolean(body.retryable) }));
   }
 });
 

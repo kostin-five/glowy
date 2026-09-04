@@ -5,6 +5,8 @@ import {
   aiUsageSchema,
   mindHubRequestSchema,
   mindHubResponseSchema,
+  subtaskDraftRequestSchema,
+  subtaskDraftResponseSchema,
 } from "../dist/index.js";
 
 const requestId = "018f07a2-7b6c-7d85-a2de-89efb6c124e1";
@@ -38,6 +40,21 @@ test("parses the current authenticated Mind Hub contract", () => {
 
   assert.equal(response.drafts.length, 1);
   assert.equal(response.drafts[0].date, "2026-08-31");
+});
+
+test("parses bounded subtask drafts and rejects unsafe shapes", () => {
+  const request = subtaskDraftRequestSchema.parse({
+    title: "Подготовить запуск",
+    existingSubtasks: ["Собрать обратную связь"],
+  });
+  assert.equal(request.energyLevel, "med");
+
+  const response = subtaskDraftResponseSchema.parse({
+    subtasks: [{ title: "Собрать требования" }, { title: "Проверить сценарий" }],
+    limit: { limit: 70, remaining: 69, resetAt: null },
+  });
+  assert.equal(response.subtasks.length, 2);
+  assert.equal(subtaskDraftResponseSchema.safeParse({ subtasks: [{ title: "Один шаг" }], limit: { limit: 70, remaining: 69, resetAt: null } }).success, false);
 });
 
 test("parses AI usage and graceful provider fallback", () => {

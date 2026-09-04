@@ -23,7 +23,6 @@ import {
   GripVertical,
   Pencil,
   Plus,
-  Sparkles,
   Square,
   Trash2,
   X,
@@ -52,6 +51,7 @@ import {
 } from "../../store/useSettingsStore";
 import TaskFormModeControl from "./TaskFormModeControl";
 import { getTaskFormSections } from "./taskFormPresentation";
+import AiSubtaskDraft from "./AiSubtaskDraft";
 
 interface IDialog {
   isOpen: boolean;
@@ -223,7 +223,6 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
     subtasks: task.subtasks ?? [],
   });
   const [subTitle, setSubTitle] = useState("");
-  const [showAiSoon, setShowAiSoon] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -574,21 +573,37 @@ const EditTaskModal = ({ isOpen, onClose, task }: IDialog) => {
             <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 sm:text-sm">
               Подзадачи
             </label>
-            <button
-              type="button"
-              onClick={() => setShowAiSoon(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-[11px] font-medium text-indigo-500 transition-colors hover:bg-indigo-500/10 hover:text-indigo-600 dark:text-indigo-300 sm:text-xs"
-            >
-              <Sparkles size={14} />
-              AI шаги
-            </button>
+            <AiSubtaskDraft
+              task={{
+                title: values.title,
+                category: values.category || "",
+                priority: values.priority,
+                energyLevel: values.energyLevel,
+                estimatedMinutes: values.estimatedMinutes ?? null,
+                existingSubtasks: (values.subtasks ?? []).map((subtask) => subtask.title),
+              }}
+              onApply={async (titles) => {
+                const existing = new Set((values.subtasks ?? []).map((subtask) => subtask.title.trim().toLocaleLowerCase("ru-RU")));
+                const unique = titles.filter((title) => {
+                  const key = title.trim().toLocaleLowerCase("ru-RU");
+                  if (!key || existing.has(key)) return false;
+                  existing.add(key);
+                  return true;
+                });
+                const failed: string[] = [];
+                for (const title of unique) {
+                  try {
+                    const created = await addSubTask(values.id, title);
+                    if (!created) failed.push(title);
+                  } catch {
+                    failed.push(title);
+                  }
+                }
+                refreshSubtasks(values.id);
+                return { failed };
+              }}
+            />
           </div>
-
-          {showAiSoon && (
-            <p className="mb-3 rounded-md bg-indigo-50 px-2 py-1 text-[11px] text-indigo-500 dark:bg-indigo-900/20 dark:text-indigo-300">
-              Функция AI-разбиения задачи на шаги скоро появится
-            </p>
-          )}
 
           <div className="flex gap-2 mb-3">
             <input

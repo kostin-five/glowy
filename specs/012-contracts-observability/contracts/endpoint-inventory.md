@@ -1,6 +1,6 @@
 # Actual HTTP endpoint inventory (v2.9.0 working state)
 
-Источник: mounts в `backend/app.js`, route handlers в `backend/routes/`, frontend clients в
+Источник: mounts в `backend/app.ts`, route handlers в `backend/routes/`, frontend clients в
 `src/api/` и прямые consumers. Это описание фактического состояния до v2.9.0, включая
 неоднородные error envelopes.
 
@@ -23,6 +23,7 @@
 - `SubTask`: `{ id, taskId, title, completed, position, createdAt, updatedAt }`.
 - `Limit`: `{ limit, remaining, resetAt }`; `Usage`: `{ plan, used, limit, remaining }`.
 - `MindHubResult`: `{ drafts, reply, limit? }`; draft соответствует подтверждаемому `TaskDraft`.
+- `SubtaskDraftResult`: `{ subtasks: [{ title }], limit }`; 2–8 несохранённых уникальных шагов.
 - `PlanState`: `{ plan, subscriptionStatus, planExpiresAt, ...public entitlement flags }`.
 - `Note`: note + ordered task links; `ProgressOverview`, `AnalyticsSnapshot`, `Habit` соответствуют
   существующим Zod schemas в `src/types`.
@@ -49,13 +50,14 @@
 | `PUT /api/subtasks/:id` | User session/owner | partial `{ title, completed, position }` | `200 SubTask` | 400 `{errors}`; 403/500 `{error}` | `SubTaskApi.toggleSubTask/updateSubTask` → offline sync/store |
 | `DELETE /api/subtasks/:id` | User session/owner | positive id expected but not explicitly validated | `200 { message: "Удалено" }` | 403/500 `{error}` | `SubTaskApi.deleteSubTask` → offline sync/store |
 
-## AI domain — 4 HTTP operations plus internal consumers
+## AI domain — 5 HTTP operations plus internal consumers
 
 | Method/path | Access | Request | Success | Route errors | Known consumers |
 |---|---|---|---|---|---|
 | `GET /api/ai/usage` | User session | none | `200 Usage` | 500 `{error}` | `AiApi.getAiUsage` → `SettingsPage` |
 | `POST /api/ai/analyze` | User session | empty | `200 { message, aiUnavailable?, retryable?, code? }` | provider/500 `{error}` | `AiApi.getAdvice`; no current page caller found |
 | `POST /api/ai/mind-hub` | User session + tariff limit | `{ message, hubMode: chat|parse|auto, messages[], currentEnergy }` | `200 MindHubResult`; provider failure may be graceful 200 | 400 `{error}`; 429 `{error,limit}`; 5xx `{error}` | `AiApi.parseMindHub` → `MindHubChat`; Telegram uses same services directly |
+| `POST /api/ai/subtask-draft` | User session + shared tariff limit | bounded task context + existing subtask titles | `200 SubtaskDraftResult`; no data mutation | 400/401/429/502/503/500 safe error envelope | `AiApi.createSubtaskDraft` → create/edit task modal |
 | `POST /api/chat` | User session + 15/hour in-memory | body ignored | `200 { message: "Запрос к ИИ прошел успешно!" }` | 429/500 `{error}` | No frontend consumer found; legacy candidate |
 
 Internal AI-limit/provider consumers included in AI slice:
@@ -139,9 +141,10 @@ command/callback contracts and remain documented/tested in the Telegram slice in
 
 ## Inventory totals and v2.9 migration boundary
 
-- Auth 4, Tasks 8, AI 4, Payments 5, Analytics 9, Profile 5, Notes 8, Telegram 7,
-  platform health 1: **51 active operations**. The v2.8.0 baseline had 52; the one retired
-  operation is recorded above.
+- Auth 4, Tasks 8, AI 5, Payments 5, Analytics 9, Profile 5, Notes 8, Telegram 7,
+  platform health 1: **52 active operations**. The v2.8.0 baseline also had 52: its retired
+  public Mind Hub operation is recorded above, while the authenticated subtask-draft operation
+  was added as an independently tested boundary on 2026-09-04.
 - Shared-contract implementation order: AI → auth → tasks → payments.
 - Analytics/profile/notes/Telegram remain inventory-only except shared AI accounting/provider
   adapters required to make the AI slice correct across every client.

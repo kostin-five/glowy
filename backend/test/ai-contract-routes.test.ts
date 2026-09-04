@@ -94,6 +94,64 @@ test("a denied reservation skips the Mind Hub provider", async () => {
   assert.equal(providerCalled, false);
 });
 
+test("subtask draft validates input before reserving usage", async () => {
+  let reserved = false;
+  const response = await request(createIsolatedAiApp({
+    reserveRequest: async () => {
+      reserved = true;
+      return { allowed: false };
+    },
+  })).post("/api/ai/subtask-draft").send({ title: "   " });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.code, "AI_SUBTASK_REQUEST_INVALID");
+  assert.equal(reserved, false);
+});
+
+test("subtask draft enforces shared limit without calling provider", async () => {
+  let providerCalled = false;
+  const response = await request(createIsolatedAiApp({
+    reserveRequest: async () => ({ allowed: false, limit: { limit: 70, remaining: 0, resetAt: null } }),
+    generateSubtaskDraft: async () => {
+      providerCalled = true;
+      return [];
+    },
+  })).post("/api/ai/subtask-draft").send({ title: "Подготовить запуск" });
+
+  assert.equal(response.status, 429);
+  assert.equal(providerCalled, false);
+  assert.equal(response.body.limit.remaining, 0);
+});
+
+test("subtask draft returns validated steps without mutating tasks", async () => {
+  let taskMutation = false;
+  const response = await request(createIsolatedAiApp({
+    db: {
+      task: { findMany: async () => [], create: async () => { taskMutation = true; } },
+      user: { findUnique: async () => ({ currentEnergy: 50, aiTone: "calm" }) },
+    },
+    reserveRequest: async () => ({ allowed: true, reservation: { userId: 42, cost: 1, resetAt: null }, limit: { limit: 70, remaining: 69, resetAt: null } }),
+    generateSubtaskDraft: async () => [{ title: "Собрать требования" }, { title: "Проверить сценарий" }],
+  })).post("/api/ai/subtask-draft").send({ title: "Подготовить запуск", priority: "⚡️ P2", energyLevel: "med" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.subtasks.length, 2);
+  assert.equal(taskMutation, false);
+});
+
+test("subtask draft releases reservation after provider failure", async () => {
+  const token = { userId: 42, cost: 1, resetAt: null };
+  let released: unknown;
+  const response = await request(createIsolatedAiApp({
+    reserveRequest: async () => ({ allowed: true, reservation: token, limit: { limit: 70, remaining: 69, resetAt: null } }),
+    releaseRequest: async (reservation: unknown) => { released = reservation; return { released: true, limit: { limit: 70, remaining: 70, resetAt: null } }; },
+    generateSubtaskDraft: async () => { throw Object.assign(new Error("timeout"), { code: "AI_PROVIDER_TIMEOUT" }); },
+  })).post("/api/ai/subtask-draft").send({ title: "Подготовить запуск" });
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(released, token);
+});
+
 test("a provider failure releases its Mind Hub reservation", async () => {
   const token = {
     userId: 42,

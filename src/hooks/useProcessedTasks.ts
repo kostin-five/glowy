@@ -8,6 +8,7 @@ import {
 } from "../store/useTaskStore";
 import type { SortDirection, Task } from "../types";
 import { parseTaskDateToLocalDay } from "../utils/taskDateGroups";
+import { filterTasksAdvanced, type TaskAdvancedFilterState } from "../utils/taskAdvancedFilters";
 
 const energyWeights = { low: 1, med: 2, high: 3 };
 
@@ -67,16 +68,19 @@ export const useFilteredTasks = () => {
   return filteredTasks;
 };
 
-export const useProcessedTasks = () => {
+export const useProcessedTasks = (advancedFilters?: TaskAdvancedFilterState) => {
   const sortField = useSortField();
   const sortDirection = useSortDirection();
   const filteredTasks = useFilteredTasks();
 
   const sortedTasks = useMemo(() => {
+    const advancedFilteredTasks = advancedFilters
+      ? filterTasksAdvanced(filteredTasks, advancedFilters)
+      : filteredTasks;
     if (!sortField) {
-      return filteredTasks;
+      return advancedFilteredTasks;
     }
-    return [...filteredTasks].sort((a, b) => {
+    return [...advancedFilteredTasks].sort((a, b) => {
       let comparison: number;
       switch (sortField) {
         case "energy":
@@ -100,7 +104,7 @@ export const useProcessedTasks = () => {
       }
       return sortDirection === "desc" ? -comparison : comparison;
     });
-  }, [sortDirection, sortField, filteredTasks]);
+  }, [advancedFilters, sortDirection, sortField, filteredTasks]);
 
   return sortedTasks;
 };

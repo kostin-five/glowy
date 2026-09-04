@@ -3,9 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import TaskControls from "../components/tasks/TaskControls";
 import TaskList from "../components/tasks/TaskList";
 import { openTaskCreateLauncher } from "../components/tasks/taskCreateLauncher";
+import { EMPTY_TASK_ADVANCED_FILTERS, type TaskAdvancedFilterState } from "../utils/taskAdvancedFilters";
 
 const TaskPage = () => {
   const [isBulkSelectMode, setIsBulkSelectMode] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState<TaskAdvancedFilterState>(EMPTY_TASK_ADVANCED_FILTERS);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -29,12 +31,15 @@ const TaskPage = () => {
         onCreateClick={openTaskCreateLauncher}
         isBulkSelectMode={isBulkSelectMode} 
         setIsBulkSelectMode={setIsBulkSelectMode} 
+        advancedFilters={advancedFilters}
+        onAdvancedFiltersChange={setAdvancedFilters}
       />
       <TaskList 
         onEmptyClick={openTaskCreateLauncher}
         groupByDate 
         isBulkSelectMode={isBulkSelectMode}
         setIsBulkSelectMode={setIsBulkSelectMode}
+        advancedFilters={advancedFilters}
       />
 
     </div>

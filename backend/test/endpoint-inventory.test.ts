@@ -51,10 +51,10 @@ const readDocumentedOperations = async () => {
     .sort();
 };
 
-test("the documented 51-operation endpoint inventory matches mounted routes", async () => {
+test("the documented 52-operation endpoint inventory matches mounted routes", async () => {
   const implemented = await readImplementedOperations();
   const documented = await readDocumentedOperations();
 
-  assert.equal(implemented.length, 51);
+  assert.equal(implemented.length, 52);
   assert.deepEqual(documented, implemented);
 });

@@ -46,6 +46,7 @@ import {
 import { trackProductEvent } from "../../utils/analytics";
 import Modal from "../ui/Modal";
 import { getTomorrowDate, moveSelectedTasks } from "./bulkTaskActions";
+import type { TaskAdvancedFilterState } from "../../utils/taskAdvancedFilters";
 
 interface TaskListProps {
   onlyActive?: boolean;
@@ -55,6 +56,7 @@ interface TaskListProps {
   groupByDate?: boolean;
   isBulkSelectMode?: boolean;
   setIsBulkSelectMode?: (value: boolean) => void;
+  advancedFilters?: TaskAdvancedFilterState;
 }
 
 
@@ -208,6 +210,7 @@ const TaskList = ({
   groupByDate = false,
   isBulkSelectMode = false,
   setIsBulkSelectMode,
+  advancedFilters,
 }: TaskListProps) => {
   const toggle = useToggleTask();
   const updateTask = useUpdateTask();
@@ -216,7 +219,7 @@ const TaskList = ({
   const removeTaskLocally = useRemoveTaskLocally();
   const restoreTaskLocally = useRestoreTaskLocally();
   const confirmTaskDeletion = useConfirmTaskDeletion();
-  const processedTasks = useProcessedTasks();
+  const processedTasks = useProcessedTasks(advancedFilters);
   const taskViewMode = useTaskViewMode();
   const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
   const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null);

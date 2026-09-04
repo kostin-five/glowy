@@ -117,3 +117,8 @@ Status values: `pending`, `converted`, `excluded`. Core backend release target i
 | `backend/utils/ai-date.utils.js` | runtime-support | ai | ai | converted |
 | `backend/utils/ai-errors.utils.js` | runtime-support | ai | ai | converted |
 | `backend/utils/validation.utils.js` | runtime-support | foundation | foundation | converted |
+
+## TypeScript files added after the migration
+
+- `backend/services/ai/subtask-draft.service.ts` — typed AI draft service added in feature 021.
+- `backend/services/ai/subtask-draft.service.test.ts` — focused normalization tests for feature 021.

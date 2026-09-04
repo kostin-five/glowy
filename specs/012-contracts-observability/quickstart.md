@@ -86,7 +86,7 @@ Foundation не меняет runtime entrypoint: local/dev/prod backend прод
   mobile Chromium. Shared auth fixtures include the full `SafeUser` contract; the Telegram
   registration-required fixture keeps `/auth/me` unauthenticated and checks the current Russian
   registration heading.
-- Endpoint inventory test confirms all **51** active operations; the retired public Mind Hub path
+- Endpoint inventory test confirms all **52** active operations; the retired public Mind Hub path
   is not counted and returns 404 before provider work.
 - Audit confirms one `PrismaClient` in `backend/lib/prisma.js`; changed routes/services import
   that instance. Redaction tests cover request bodies, credentials, email, initData, task/note/AI

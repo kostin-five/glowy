@@ -1,6 +1,7 @@
 import { LayoutGrid, List, Search, type LucideIcon } from "lucide-react";
 import SortMenu from "../ui/SortMenu";
 import TaskFilter from "./TaskFilter";
+import TaskAdvancedFilters from "./TaskAdvancedFilters";
 import {
   useSearchQuery,
   useSetSearchQuery,
@@ -10,18 +11,23 @@ import {
   useTaskViewMode,
   type TaskViewMode,
 } from "../../store/useSettingsStore";
+import { useAllCategories } from "../../store/useTaskStore";
+import type { TaskAdvancedFilterState } from "../../utils/taskAdvancedFilters";
 
 interface TaskControlsProps {
   onCreateClick: () => void;
   isBulkSelectMode: boolean;
   setIsBulkSelectMode: (v: boolean) => void;
+  advancedFilters: TaskAdvancedFilterState;
+  onAdvancedFiltersChange: (value: TaskAdvancedFilterState) => void;
 }
 
-const TaskControls = ({ onCreateClick, isBulkSelectMode, setIsBulkSelectMode }: TaskControlsProps) => {
+const TaskControls = ({ onCreateClick, isBulkSelectMode, setIsBulkSelectMode, advancedFilters, onAdvancedFiltersChange }: TaskControlsProps) => {
   const searchQuery = useSearchQuery();
   const setSearchQuery = useSetSearchQuery();
   const taskViewMode = useTaskViewMode();
   const setTaskViewMode = useSetTaskViewMode();
+  const categories = useAllCategories();
   const viewOptions: Array<{
     mode: TaskViewMode;
     label: string;
@@ -112,6 +118,8 @@ const TaskControls = ({ onCreateClick, isBulkSelectMode, setIsBulkSelectMode }: 
           })}
         </div>
       </div>
+
+      <TaskAdvancedFilters value={advancedFilters} categories={categories} onChange={onAdvancedFiltersChange} />
 
       <button
         type="button"

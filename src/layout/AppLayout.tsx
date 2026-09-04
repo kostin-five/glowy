@@ -7,6 +7,7 @@ import BottomNav from "../components/layout/BottomNav";
 import OfflineSyncStatus from "../components/OfflineSyncStatus";
 import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
 import GlobalTaskCreateLauncher from "../components/tasks/GlobalTaskCreateLauncher";
+import { useAppWallpaper } from "../personalization/useAppWallpaper";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,6 +18,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const { isTelegramMiniApp, webApp } = useTelegramMiniApp();
   const isFullScreenAi = location.pathname === "/ai";
+  const wallpaper = useAppWallpaper();
 
   useEffect(() => {
     if (!isTelegramMiniApp || !webApp?.BackButton) return;
@@ -32,13 +34,19 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div
-      className="relative flex h-[var(--tg-viewport-height,100dvh)] min-h-[var(--tg-viewport-height,100dvh)] overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-200"
+      className="relative flex h-[var(--tg-viewport-height,100dvh)] min-h-[var(--tg-viewport-height,100dvh)] overflow-hidden bg-slate-100 text-slate-900 dark:bg-[#01030a] dark:text-slate-200"
       style={isTelegramMiniApp ? { paddingTop: "var(--tg-content-safe-area-inset-top, 0px)" } : undefined}
     >
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: wallpaper.backgroundImage }}
+        aria-hidden="true"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-slate-50/90 dark:bg-[#01030a]/75" aria-hidden="true" />
       <div className="pointer-events-none absolute left-[-10%] top-[-10%] h-[40%] w-[40%] rounded-full bg-indigo-500/10 blur-[120px]"></div>
       <div className="pointer-events-none absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-purple-500/10 blur-[120px]"></div>
       <Sidebar />
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
         {!isFullScreenAi && <Header />}
         <OfflineSyncStatus />
         <main

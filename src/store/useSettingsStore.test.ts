@@ -111,3 +111,31 @@ describe("useSettingsStore task form preferences", () => {
     });
   });
 });
+
+describe("useSettingsStore wallpaper preferences", () => {
+  it("uses the darker default and accepts a supported preset", async () => {
+    const { useSettingsStore } = await loadStore();
+
+    expect(useSettingsStore.getState().appWallpaperId).toBe("midnight");
+    useSettingsStore.getState().setAppWallpaperId("nebula");
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      appWallpaperId: "nebula",
+      appWallpaperRevision: 1,
+    });
+  });
+
+  it("replaces an unknown persisted wallpaper with the safe default", async () => {
+    localStorage.setItem(
+      "glowy-settings",
+      JSON.stringify({
+        state: { appWallpaperId: "unknown-wallpaper" },
+        version: 0,
+      })
+    );
+
+    const { useSettingsStore } = await loadStore();
+
+    expect(useSettingsStore.getState().appWallpaperId).toBe("midnight");
+  });
+});

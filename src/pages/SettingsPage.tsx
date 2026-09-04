@@ -49,6 +49,8 @@ import ProfilePreferencesPanel from "../components/profile/ProfilePreferencesPan
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 import TelegramConnectionPanel from "../components/settings/TelegramConnectionPanel";
 import TaskFormModeControl from "../components/tasks/TaskFormModeControl";
+import WallpaperPicker from "../components/settings/WallpaperPicker";
+import { deleteCustomWallpaper } from "../personalization/customWallpaperStorage";
 
 const themeOptions: Array<{
   value: ThemeMode;
@@ -264,8 +266,14 @@ const SettingsPage = () => {
     }
   };
 
-  const handleClearLocalCache = () => {
+  const handleClearLocalCache = async () => {
     const authStorage = localStorage.getItem("auth-storage");
+
+    try {
+      await deleteCustomWallpaper();
+    } catch {
+      // Clearing settings remains useful when IndexedDB is unavailable.
+    }
 
     localStorage.clear();
     if (authStorage) {
@@ -473,6 +481,8 @@ const SettingsPage = () => {
           })}
         </div>
 
+        <WallpaperPicker onSaved={showSettingsSavedToast} />
+
         <div className="mt-6 border-t border-slate-200 pt-6 dark:border-slate-800">
           <h3 className="font-display text-lg font-bold text-slate-950 dark:text-slate-100">
             Форма задачи
@@ -600,7 +610,7 @@ const SettingsPage = () => {
             </div>
             <button
               type="button"
-              onClick={handleClearLocalCache}
+              onClick={() => void handleClearLocalCache()}
               className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300 dark:hover:border-rose-400/30 dark:hover:text-rose-300"
             >
               <Trash2 size={17} />

@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import {
+  DEFAULT_APP_WALLPAPER,
+  normalizeAppWallpaperId,
+  type AppWallpaperId,
+} from "../personalization/wallpapers";
 
 export type TaskViewMode = "list" | "grid";
 export type ThemeMode = "light" | "dark" | "system";
@@ -27,6 +32,8 @@ interface SettingsStore {
   shownOnboardingHints: OnboardingHintId[];
   isSidebarCollapsed: boolean;
   taskFormPreferencesByAccount: Record<string, TaskFormPreferences>;
+  appWallpaperId: AppWallpaperId;
+  appWallpaperRevision: number;
   toggleDarkMode: () => void;
   setDarkMode: (isDarkMode: boolean) => void;
   setThemeMode: (themeMode: ThemeMode) => void;
@@ -42,6 +49,7 @@ interface SettingsStore {
     field: TaskFormField,
     isVisible: boolean
   ) => void;
+  setAppWallpaperId: (wallpaperId: AppWallpaperId) => void;
 }
 
 export const DEFAULT_TASK_FORM_PREFERENCES: TaskFormPreferences = {
@@ -111,6 +119,8 @@ export const useSettingsStore = create<SettingsStore>()(
       shownOnboardingHints: [],
       isSidebarCollapsed: false,
       taskFormPreferencesByAccount: {},
+      appWallpaperId: DEFAULT_APP_WALLPAPER,
+      appWallpaperRevision: 0,
       toggleDarkMode: () =>
         set((state) => ({
           isDarkMode: !state.isDarkMode,
@@ -170,6 +180,11 @@ export const useSettingsStore = create<SettingsStore>()(
             },
           };
         }),
+      setAppWallpaperId: (appWallpaperId) =>
+        set((state) => ({
+          appWallpaperId,
+          appWallpaperRevision: state.appWallpaperRevision + 1,
+        })),
     }),
     {
       name: "glowy-settings",
@@ -194,6 +209,8 @@ export const useSettingsStore = create<SettingsStore>()(
           taskFormPreferencesByAccount: normalizeTaskFormPreferencesMap(
             persisted?.taskFormPreferencesByAccount
           ),
+          appWallpaperId: normalizeAppWallpaperId(persisted?.appWallpaperId),
+          appWallpaperRevision: currentState.appWallpaperRevision,
         };
       },
     }
@@ -243,3 +260,9 @@ export const useSetTaskFormMode = () =>
   useSettingsStore((state) => state.setTaskFormMode);
 export const useSetTaskFormFieldVisible = () =>
   useSettingsStore((state) => state.setTaskFormFieldVisible);
+export const useAppWallpaperId = () =>
+  useSettingsStore((state) => state.appWallpaperId);
+export const useSetAppWallpaperId = () =>
+  useSettingsStore((state) => state.setAppWallpaperId);
+export const useAppWallpaperRevision = () =>
+  useSettingsStore((state) => state.appWallpaperRevision);

@@ -5,13 +5,14 @@ Read this file before changing the repository. The binding project rules live in
 
 ## Product and Scope
 
-Glowy is a Russian-language AI task planner. Its central promise is calm planning: help a
+Glowy is currently a Russian-language AI task planner. Its central promise is calm planning: help a
 person capture thoughts and choose a realistic next step using tasks and current energy.
 
 - AI proposes answers or drafts; it never silently mutates user data.
 - Do not change `src/pages/LandingPage.tsx` unless the request explicitly concerns the landing
   page.
-- Keep user-facing text in Russian until a feature explicitly introduces localization.
+- Keep user-facing text in Russian until the separately planned RU/EN localization feature
+  explicitly introduces translated copy.
 - Read `docs/product-roadmap.md` before proposing or implementing roadmap work. It is a working
   plan, not a public delivery-date promise.
 
@@ -80,9 +81,9 @@ Backend HTTP tests must stay database-free unless a separate test database is de
 - Backend source uses strict ESM TypeScript and compiles to `backend/dist/`. Keep routes focused on
   HTTP handling; put reusable AI logic in `backend/services/ai/` and data access behind the shared
   Prisma instance. NodeNext source imports keep emitted `.js` suffixes where required.
-- Import Prisma only from `backend/lib/prisma.js` in source imports; it resolves to
-  `backend/lib/prisma.ts` during TypeScript compilation. Never create another `PrismaClient` or
-  database pool in a route or service.
+- The only Prisma source is `backend/lib/prisma.ts`. NodeNext TypeScript modules import it with an
+  emitted `.js` specifier (for example `../lib/prisma.js`); that suffix does not identify a
+  JavaScript source file. Never create another `PrismaClient` or database pool.
 - Preserve the task-date frontend contract: `YYYY-MM-DD` or an empty string. Do not reintroduce
   locale-dependent dates into API payloads.
 - Prefer existing Zod and Express validation patterns at input boundaries. Treat client input and
@@ -128,6 +129,9 @@ $speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
 ## Git Collaboration
 
 - The working tree can contain user changes. Read and preserve them; never revert unrelated work.
+- Before synchronizing `dev`, inspect `git status`, fetch, the recent graph and branch relationship.
+  Do not run a blind pull when local unpushed commits exist.
+- Create each implementation block in a new `codex/*` branch from the verified local `dev`.
 - Do not use `git reset --hard`, `git checkout --`, force pushes, or destructive cleanup without
   explicit user approval.
 - Make focused commits only when requested. Include a concise summary, relevant verification, and
@@ -138,6 +142,7 @@ $speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
 - `.specify/memory/constitution.md` - non-negotiable project principles.
 - `docs/handoffs/PROJECT_HANDOFF_2026-09-04.md` - latest local development state and next steps.
 - `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - last verified production release and infrastructure state.
+- `docs/handoffs/NEXT_CHAT_PROMPT.md` - canonical bootstrap prompt for the next main developer.
 - `README.md` - setup, environment variables, deploy, and payment overview.
 - `docs/product-roadmap.md` - approved product direction and release boundaries.
 - `docs/payments-live-checklist.md` - operational checklist for live YooKassa payments.

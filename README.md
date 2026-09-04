@@ -1,6 +1,6 @@
 # Glowy AI
 
-Glowy AI — эмпатичный SaaS-продукт для задач, подзадач, энергии дня, прогресса и AI-Хаба мыслей, который помогает превращать хаос в спокойный план действий.
+Glowy AI — эмпатичный SaaS-продукт для задач, подзадач, энергии дня, прогресса и AI-ассистента, который помогает превращать хаос в спокойный план действий.
 
 Идея проекта простая: планирование должно помогать двигаться вперёд, а не добавлять давления. Glowy объединяет task manager, AI-коучинг, энергопотенциал, XP-прогресс, аналитику и базовый billing-контур в одном рабочем пространстве.
 
@@ -9,7 +9,7 @@ Glowy AI — эмпатичный SaaS-продукт для задач, под�
 Glowy помогает пользователю:
 
 - вести задачи и подзадачи;
-- выгружать мысли в Хаб мыслей;
+- выгружать мысли в Ассистент и получать редактируемый черновик;
 - превращать свободный текст в структурированные задачи;
 - получать короткую AI-поддержку, если сообщение не похоже на задачу;
 - планировать день с учётом текущей энергии;
@@ -18,8 +18,10 @@ Glowy помогает пользователю:
 
 ## Текущий релиз
 
-Текущий production-релиз: `v2.8.0`. В feature-ветке готовится `v2.9.0` — «Типы,
-контракты и наблюдаемость»; он ещё не развёрнут в production.
+Последний подтверждённый владельцем production-релиз — `v2.8.0` на commit `97af6f6`.
+Локальный `dev` содержит завершённые v2.9.0, v2.10.0 и последующие автономные frontend-блоки,
+но они ещё не запушены и не развёрнуты. Git-ссылки и наличие кода не считаются доказательством
+production deploy; актуальное разделение состояний находится в handoff-документах.
 
 Ключевые изменения:
 
@@ -60,11 +62,12 @@ Glowy помогает пользователю:
 │   ├── components/              # UI и feature-компоненты
 │   ├── pages/                   # Страницы приложения
 │   └── store/                   # Zustand stores
-├── backend/                     # Express backend на ESM JavaScript
+├── backend/                     # strict ESM TypeScript backend
 │   ├── routes/                  # API routes
 │   ├── services/ai/             # AI provider, Mind Hub, limits
+│   ├── lib/prisma.ts            # единственный Prisma client source
 │   ├── prisma/                  # Prisma schema и migrations
-│   └── server.js
+│   └── dist/                    # локальный generated artifact, не хранится в git
 ├── packages/contracts/          # Общие Zod request/response/error contracts
 ├── ai-proxy/                    # Опциональный AI proxy service
 ├── docs/                        # Release notes и operational docs
@@ -161,18 +164,20 @@ cd backend
 npm install
 ```
 
-Создать env-файлы:
+Создать только backend env из публичного шаблона и заполнить dev-значениями:
 
 ```bash
-cp .env.example .env
 cp backend/.env.example backend/.env
 ```
 
-Запустить backend:
+Корневой `.env` для обычного локального запуска не нужен; AI keys никогда не задаются как Vite
+variables.
+
+Запустить backend в watch-режиме:
 
 ```bash
 cd backend
-npm run start
+npm run serve
 ```
 
 Запустить frontend:
@@ -196,20 +201,19 @@ npm run typecheck
 npm run test
 ```
 
-Backend остаётся ESM JavaScript и запускается через `backend/server.js`; v2.9.0 не переводит его
-целиком на TypeScript. Строгая TypeScript-проверка распространяется на общий пакет
-`packages/contracts`, а `backend/tsconfig.json` задаёт NodeNext foundation для последующей
-поэтапной миграции. Существующие backend `.js` пока не считаются типобезопасными:
-`checkJs` намеренно выключен до перевода доменов отдельными небольшими slices. Frontend API
-clients проверяют критические ответы общими Zod-контрактами. Реальный список route, auth boundary
-и consumers зафиксирован в
-`specs/012-contracts-observability/contracts/endpoint-inventory.md`.
+Начиная с локально завершённой v2.10.0 основной backend — strict ESM TypeScript. `npm run build`
+создаёт `backend/dist/`, `npm start` запускает `dist/server.js`, а source-импорты NodeNext сохраняют
+`.js` suffix для будущего emitted artifact. Единственный Prisma client создаётся в
+`backend/lib/prisma.ts`. Общий пакет `packages/contracts` валидирует критические auth, tasks, AI и
+payment boundaries; фактические endpoints и consumers зафиксированы в
+`specs/012-contracts-observability/contracts/endpoint-inventory.md`. Отдельный `ai-proxy/` не
+является обычным runtime-путём и сохраняется только как rollback-компонент.
 
 ## База данных и Prisma
 
 Prisma migrations находятся в `backend/prisma/migrations`.
 
-Для новой пустой базы:
+Только для новой пустой dev/test базы после review migration history:
 
 ```bash
 cd backend
@@ -223,11 +227,9 @@ npm run migrate:deploy
 - перед migration operations делать backup базы в Timeweb;
 - использовать `prisma migrate resolve --applied <migration>` только для миграций, которые уже фактически отражены в реальной схеме.
 
-Миграция `20260816110000_add_personal_progress_analytics` только добавляет поля
-профиля/задач и таблицы прогресса/AI-агрегатов. Её нужно сначала проверить на
-dev-базе, а в Timeweb применять только после свежего backup и отдельного
-подтверждения владельца. Подготовка файла в репозитории не означает, что
-миграция уже применена.
+Production Timeweb содержит реальные данные и имеет собственную подтверждённую историю применений.
+Подготовка migration в репозитории не означает её применение. Перед любой новой production
+migration нужны review SQL, свежий backup Timeweb и отдельное разрешение владельца.
 
 ## Deploy
 
@@ -272,6 +274,12 @@ Forever:
 
 ## Документация
 
+- [Latest local handoff](docs/handoffs/PROJECT_HANDOFF_2026-09-04.md)
+- [Last verified production handoff](docs/handoffs/PROJECT_HANDOFF_2026-08-30.md)
+- [Developer onboarding](docs/handoffs/DEVELOPER_ONBOARDING.md)
+- [Canonical next-chat prompt](docs/handoffs/NEXT_CHAT_PROMPT.md)
+- [Architecture](docs/architecture.md)
+- [Product roadmap](docs/product-roadmap.md)
 - [Kodik review notes](docs/README_KODIK_REVIEW.md)
 - [v2.0.0 release notes](docs/releases/v2.0.0-product-release.md)
 - [v2.2.1 release notes](docs/releases/v2.2.1-ai-providers-and-founder.md)

@@ -1,8 +1,9 @@
-# Glowy AI Proxy (temporary rollback)
+# Glowy AI Proxy (rollback only)
 
-This private service is retained only until direct backend calls to DeepSeek and GigaChat pass dev
-and Timeweb smoke tests. It forwards provider-neutral chat messages to DeepSeek. The frontend must
-never call it directly.
+This private service is a rollback-only component retained after direct backend calls to DeepSeek
+and GigaChat passed local gates. It is not the normal Glowy AI runtime. Before any removal or
+production change, verify the deployed provider mode and obtain owner approval. It forwards
+provider-neutral chat messages to DeepSeek. The frontend must never call it directly.
 
 ## Environment
 
@@ -24,5 +25,5 @@ curl http://localhost:3002/health
 ```
 
 The main backend uses this rollback only with `AI_PROVIDER_MODE=proxy`, `AI_PROXY_URL`, and the
-same server-only `AI_PROXY_SECRET`. After direct providers are verified in both environments,
-remove the proxy process, its infrastructure secrets, and this directory in a separate cleanup.
+same server-only `AI_PROXY_SECRET`. Removing the proxy process, infrastructure secrets or this
+directory is a separate approved cleanup, not a side effect of ordinary feature work.

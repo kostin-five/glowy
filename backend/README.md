@@ -3,6 +3,9 @@
 Backend написан на TypeScript, компилируется в игнорируемый каталог `backend/dist/` и запускается
 обычным Node.js без runtime-loader.
 
+Единственный Prisma client source — `backend/lib/prisma.ts`. Суффикс `.js` в NodeNext imports
+указывает на путь emitted artifact и не означает наличие второго JavaScript source.
+
 ## Локальная работа
 
 ```bash

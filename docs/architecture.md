@@ -3,9 +3,9 @@
 ## Границы системы
 
 ```text
-React + Vite frontend
+React + TypeScript + Vite frontend
   -> HTTPS API
-Express backend
+Express + strict ESM TypeScript backend
   -> shared Zod contracts (`packages/contracts`)
   -> Prisma (один общий клиент) -> PostgreSQL
   -> AI service/provider -> DeepSeek API

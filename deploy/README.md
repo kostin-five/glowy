@@ -2,6 +2,10 @@
 
 Инструкция для production-деплоя backend Glowy на Ubuntu VPS через PM2 и Nginx.
 
+> Последний подтверждённый production — v2.8.0. TypeScript artifact v2.10.0 подготовлен локально,
+> но его наличие в репозитории не означает, что PM2 уже переключён. Любой deploy выполняется только
+> после отдельного разрешения владельца и актуального release checklist.
+
 ## 1. Обновить систему
 
 ```bash
@@ -47,7 +51,7 @@ cd /var/www/glowy/backend
 ## 6. Установить backend dependencies
 
 ```bash
-npm install
+npm ci
 ```
 
 ## 7. Создать backend/.env
@@ -72,7 +76,7 @@ DEEPSEEK_MODEL=deepseek-chat
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 GIGACHAT_AUTH_KEY=
 GIGACHAT_SCOPE=GIGACHAT_API_PERS
-GIGACHAT_MODEL=GigaChat
+GIGACHAT_MODEL=GigaChat-2-Max
 GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
 GIGACHAT_BASE_URL=https://api.giga.chat
 AI_COST_DEEPSEEK_INPUT_PER_MILLION_USD=
@@ -86,7 +90,7 @@ CORS_ORIGINS=https://glowy-ai.ru,https://www.glowy-ai.ru,https://dev.glowy-ai.ru
 
 Не хранить секреты в git.
 
-Глубокий анализ аналитики доступен только активным Focus/Founder-пользователям
+Глубокий анализ аналитики доступен только активным Focus/Forever-пользователям
 и запускается ими вручную. Стоимости за миллион токенов задаются по актуальным
 тарифам провайдеров; пустое значение
 означает, что стоимость запроса остаётся неизвестной, а не равной нулю.

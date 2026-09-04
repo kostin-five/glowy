@@ -4,11 +4,14 @@
 
 1. Запустить в корне `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build` и
    `npm run test:e2e`.
-2. Если менялся backend, выполнить `cd backend && npm run test`.
-3. Выполнить `git diff --check`; проверить, что в diff нет `.env`, токенов, пользовательских
+2. Если менялись shared API boundaries, выполнить `npm run contracts:build` и
+   `npm run contracts:test`.
+3. Если менялся backend, выполнить `cd backend && npm run typecheck && npm run test` и убедиться,
+   что inventory не допускает возврат runtime JavaScript в основной backend.
+4. Выполнить `git diff --check`; проверить, что в diff нет `.env`, токенов, пользовательских
    данных, миграций без согласования и несвязанных файлов.
-4. Убедиться, что CI pull request прошёл полностью.
-5. Не запускать `prisma db push`, `prisma migrate reset` или production migration без отдельного
+5. Убедиться, что CI pull request прошёл полностью.
+6. Не запускать `prisma db push`, `prisma migrate reset` или production migration без отдельного
    согласования и Timeweb backup.
 
 ## После dev-deploy

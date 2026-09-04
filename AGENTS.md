@@ -30,7 +30,7 @@ backend/             Express API and Prisma access
   routes/            Thin HTTP handlers
   services/ai/       AI provider, Mind Hub, parser, and usage limits
   middleware/        Authentication and request middleware
-  lib/prisma.js      The single shared Prisma client
+  lib/prisma.ts      The single shared Prisma client source
   prisma/            Schema and migration history
 ai-proxy/            Optional server-side AI provider proxy
 docs/                Product, release, payment, and operational documentation
@@ -77,10 +77,12 @@ Backend HTTP tests must stay database-free unless a separate test database is de
   Reuse the local pattern instead of introducing a parallel abstraction.
 - Frontend code is TypeScript. Keep API access in `src/api/`, shared client state in Zustand
   stores, and route composition in `src/pages/`.
-- Backend code uses ESM JavaScript. Keep routes focused on HTTP handling; put reusable AI logic in
-  `backend/services/ai/` and data access behind the shared Prisma instance.
-- Import Prisma only from `backend/lib/prisma.js`. Never create another `PrismaClient` or database
-  pool in a route or service.
+- Backend source uses strict ESM TypeScript and compiles to `backend/dist/`. Keep routes focused on
+  HTTP handling; put reusable AI logic in `backend/services/ai/` and data access behind the shared
+  Prisma instance. NodeNext source imports keep emitted `.js` suffixes where required.
+- Import Prisma only from `backend/lib/prisma.js` in source imports; it resolves to
+  `backend/lib/prisma.ts` during TypeScript compilation. Never create another `PrismaClient` or
+  database pool in a route or service.
 - Preserve the task-date frontend contract: `YYYY-MM-DD` or an empty string. Do not reintroduce
   locale-dependent dates into API payloads.
 - Prefer existing Zod and Express validation patterns at input boundaries. Treat client input and
@@ -134,7 +136,8 @@ $speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks
 ## Useful References
 
 - `.specify/memory/constitution.md` - non-negotiable project principles.
-- `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - current release, infrastructure, and next-step context.
+- `docs/handoffs/PROJECT_HANDOFF_2026-09-04.md` - latest local development state and next steps.
+- `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - last verified production release and infrastructure state.
 - `README.md` - setup, environment variables, deploy, and payment overview.
 - `docs/product-roadmap.md` - approved product direction and release boundaries.
 - `docs/payments-live-checklist.md` - operational checklist for live YooKassa payments.

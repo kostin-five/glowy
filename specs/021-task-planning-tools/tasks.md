@@ -2,31 +2,31 @@
 
 ## Phase 1: Contracts and tests
 
-- [ ] T001 Зафиксировать shared request/response contract AI-шагов и contract tests
-- [ ] T002 [P] Добавить pure tests для комбинированных фильтров
-- [ ] T003 [P] Добавить database-free backend route tests: auth, validation, limit, release, success
-- [ ] T004 [P] Добавить component tests для draft/cancel/confirm/partial result
+- [x] T001 Зафиксировать shared request/response contract AI-шагов и contract tests
+- [x] T002 [P] Добавить pure tests для комбинированных фильтров
+- [x] T003 [P] Добавить database-free backend route tests: auth, validation, limit, release, success
+- [x] T004 [P] Добавить component tests для draft/cancel/confirm/partial result
 
 ## Phase 2: Filters
 
-- [ ] T005 Реализовать pure filter model в `src/utils/taskAdvancedFilters.ts`
-- [ ] T006 Реализовать responsive control и active count в `src/components/tasks/TaskAdvancedFilters.tsx`
-- [ ] T007 Подключить фильтры к `TaskPage`/`TaskList` без изменения store persistence
+- [x] T005 Реализовать pure filter model в `src/utils/taskAdvancedFilters.ts`
+- [x] T006 Реализовать responsive control и active count в `src/components/tasks/TaskAdvancedFilters.tsx`
+- [x] T007 Подключить фильтры к `TaskPage`/`TaskList` без изменения store persistence
 
 ## Phase 3: AI subtask draft
 
-- [ ] T008 Реализовать строгую нормализацию и prompt в `backend/services/ai/subtask-draft.service.ts`
-- [ ] T009 Добавить authenticated limited endpoint в существующий AI router
-- [ ] T010 Расширить `AiApi` общим валидированным методом
-- [ ] T011 Реализовать общий локальный редактор черновика
-- [ ] T012 Подключить create-flow без persistence до общего submit
-- [ ] T013 Подключить edit-flow с уникальностью и честным partial retry
+- [x] T008 Реализовать строгую нормализацию и prompt в `backend/services/ai/subtask-draft.service.ts`
+- [x] T009 Добавить authenticated limited endpoint в существующий AI router
+- [x] T010 Расширить `AiApi` общим валидированным методом
+- [x] T011 Реализовать общий локальный редактор черновика
+- [x] T012 Подключить create-flow без persistence до общего submit
+- [x] T013 Подключить edit-flow с уникальностью и честным partial retry
 
 ## Phase 4: Verification and documentation
 
-- [ ] T014 Добавить desktop/mobile Playwright сценарии
-- [ ] T015 Выполнить contracts/backend/frontend/typecheck/lint/unit/build/e2e gates
-- [ ] T016 Обновить roadmap, architecture, onboarding и handoff 2026-09-04
+- [x] T014 Добавить desktop/mobile Playwright сценарии
+- [x] T015 Выполнить contracts/backend/frontend/typecheck/lint/unit/build/e2e gates
+- [x] T016 Обновить roadmap, architecture, onboarding и handoff 2026-09-04
 
 ## Dependencies
 

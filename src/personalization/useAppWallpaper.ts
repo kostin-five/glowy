@@ -11,28 +11,37 @@ export interface AppWallpaperPresentation {
   isCustom: boolean;
 }
 
+interface LoadedCustomWallpaper {
+  revision: number;
+  url: string;
+}
+
 export const useAppWallpaper = (): AppWallpaperPresentation => {
   const wallpaperId = useAppWallpaperId();
   const wallpaperRevision = useAppWallpaperRevision();
-  const [customUrl, setCustomUrl] = useState<string | null>(null);
+  const [customWallpaper, setCustomWallpaper] =
+    useState<LoadedCustomWallpaper | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
     let objectUrl: string | null = null;
 
     if (wallpaperId !== "custom") {
-      setCustomUrl(null);
       return () => undefined;
     }
 
     void getCustomWallpaper()
       .then((blob) => {
-        if (!isCurrent || !blob) return;
+        if (!isCurrent) return;
+        if (!blob) {
+          setCustomWallpaper(null);
+          return;
+        }
         objectUrl = URL.createObjectURL(blob);
-        setCustomUrl(objectUrl);
+        setCustomWallpaper({ revision: wallpaperRevision, url: objectUrl });
       })
       .catch(() => {
-        if (isCurrent) setCustomUrl(null);
+        if (isCurrent) setCustomWallpaper(null);
       });
 
     return () => {
@@ -41,9 +50,12 @@ export const useAppWallpaper = (): AppWallpaperPresentation => {
     };
   }, [wallpaperId, wallpaperRevision]);
 
-  if (wallpaperId === "custom" && customUrl) {
+  if (
+    wallpaperId === "custom" &&
+    customWallpaper?.revision === wallpaperRevision
+  ) {
     return {
-      backgroundImage: `url("${customUrl}")`,
+      backgroundImage: `url("${customWallpaper.url}")`,
       isCustom: true,
     };
   }

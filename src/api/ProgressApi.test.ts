@@ -69,8 +69,26 @@ describe("ProgressApi calendar contract", () => {
 
     expect(get).toHaveBeenCalledWith("", {
       params: { today: "2026-08-28", month: "2026-08" },
+      signal: undefined,
     });
     expect(result.taskStreak.calendar?.month).toBe("2026-08");
+  });
+
+  it("forwards an abort signal while preserving response validation", async () => {
+    get.mockResolvedValue({ data: overview });
+    const controller = new AbortController();
+
+    const result = await ProgressApi.getOverview(
+      "2026-08-28",
+      "2026-08",
+      controller.signal
+    );
+
+    expect(get).toHaveBeenCalledWith("", {
+      params: { today: "2026-08-28", month: "2026-08" },
+      signal: controller.signal,
+    });
+    expect(result.xp.current).toBe(10);
   });
 
   it("keeps the month in an explicit rescue request", async () => {

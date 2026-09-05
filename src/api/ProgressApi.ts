@@ -23,8 +23,12 @@ api.interceptors.request.use((config) => {
 attachUnauthorizedInterceptor(api);
 
 export const ProgressApi = {
-  async getOverview(today: string, month?: string): Promise<ProgressOverview> {
-    const response = await api.get("", { params: { today, month } });
+  async getOverview(
+    today: string,
+    month?: string,
+    signal?: AbortSignal
+  ): Promise<ProgressOverview> {
+    const response = await api.get("", { params: { today, month }, signal });
     return schemaProgressOverview.parse(response.data);
   },
 

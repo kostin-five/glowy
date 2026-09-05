@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Info, LoaderCircle, X } from "lucide-react";
-import { ProgressApi } from "../api/ProgressApi";
 import HabitsPanel from "../components/progress/HabitsPanel";
 import StreakPanel from "../components/progress/StreakPanel";
 import Modal from "../components/ui/Modal";
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 import SuccessStairs from "../dashboard/SuccessStairs";
-import { useIsGuest } from "../store/useAuthStore";
+import { useAuthStore, useIsGuest } from "../store/useAuthStore";
 import { useCurrentXP, useTasks, useUserLevel } from "../store/useTaskStore";
-import type { Habit, ProgressOverview, Task } from "../types";
+import { useProgressMutations } from "../queries/progress/progressMutations";
+import { useProgressOverview } from "../queries/progress/progressQueries";
+import type { Habit, Task } from "../types";
 import { trackProductEvent } from "../utils/analytics";
 import { formatLocalDateOnly } from "../utils/localDate";
 import { parseTaskDateToLocalDay } from "../utils/taskDateGroups";
@@ -166,51 +167,28 @@ const SuccessStairsPage = () => {
   const currentXP = useCurrentXP();
   const tasks = useTasks() as TaskWithTimestamps[];
   const isGuest = useIsGuest();
+  const userId = useAuthStore((state) => state.userId);
   const today = useMemo(() => formatLocalDateOnly(), []);
   const [activeTab, setActiveTab] = useState<ProgressTab>("xp");
-  const [progress, setProgress] = useState<ProgressOverview | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(today.slice(0, 7));
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(!isGuest);
-  const [isSaving, setIsSaving] = useState(false);
-  const [pendingHabitIds, setPendingHabitIds] = useState<Set<number>>(new Set());
+  const [mutationError, setMutationError] = useState("");
   const [isXpHelpOpen, setIsXpHelpOpen] = useState(false);
   const [isRescueConfirmOpen, setIsRescueConfirmOpen] = useState(false);
-
-  const loadProgress = useCallback(async () => {
-    if (isGuest) return;
-    setIsLoading(true);
-    setError("");
-    try {
-      setProgress(await ProgressApi.getOverview(today, selectedMonth));
-    } catch {
-      setError(PROGRESS_LOAD_ERROR);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isGuest, selectedMonth, today]);
-
-  useEffect(() => {
-    if (isGuest) return;
-    let isActive = true;
-
-    ProgressApi.getOverview(today, selectedMonth)
-      .then((overview) => {
-        if (isActive) setProgress(overview);
-      })
-      .catch(() => {
-        if (isActive) {
-          setError(PROGRESS_LOAD_ERROR);
-        }
-      })
-      .finally(() => {
-        if (isActive) setIsLoading(false);
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [isGuest, selectedMonth, today]);
+  const queryScope = {
+    userId,
+    today,
+    month: selectedMonth,
+    enabled: !isGuest && userId !== null,
+  };
+  const progressQuery = useProgressOverview(queryScope);
+  const progressMutations = useProgressMutations(queryScope);
+  const progress = progressQuery.data ?? null;
+  const isLoading =
+    progressQuery.isPending || (progressQuery.isFetching && !progress);
+  const error =
+    progressQuery.isError && !progressQuery.isFetching
+      ? PROGRESS_LOAD_ERROR
+      : mutationError;
 
   const todayXp = tasks.reduce((sum, task) => {
     if (!task.completed || !task.xpAwarded) return sum;
@@ -220,115 +198,78 @@ const SuccessStairsPage = () => {
   }, 0);
 
   const createHabit = async (title: string) => {
-    setIsSaving(true);
-    setError("");
+    setMutationError("");
     try {
-      const habit = await ProgressApi.createHabit(title, today);
-      setProgress((current) => current ? { ...current, habits: [...current.habits, habit] } : current);
+      await progressMutations.createHabit.mutateAsync({ title });
       trackProductEvent("habit_created");
-      void loadProgress();
       return true;
     } catch {
-      setError("Не удалось добавить привычку. Попробуй ещё раз.");
+      setMutationError("Не удалось добавить привычку. Попробуй ещё раз.");
       return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const replaceHabit = (habit: Habit) =>
-    setProgress((current) => current ? {
-      ...current,
-      habits: current.habits.map((item) => item.id === habit.id ? habit : item),
-    } : current);
-
-  const withPendingHabit = async (habitId: number, action: () => Promise<void>) => {
-    setPendingHabitIds((current) => new Set(current).add(habitId));
-    try {
-      await action();
-    } finally {
-      setPendingHabitIds((current) => {
-        const next = new Set(current);
-        next.delete(habitId);
-        return next;
-      });
     }
   };
 
   const toggleHabitDate = async (habit: Habit, date: string) => {
-    setError("");
-    const completed = habit.checkDates.includes(date);
-    const optimisticDates = completed
-      ? habit.checkDates.filter((item) => item !== date)
-      : [...habit.checkDates, date].sort();
-    replaceHabit({ ...habit, checkDates: optimisticDates, checkedToday: date === today ? !completed : habit.checkedToday });
-    await withPendingHabit(habit.id, async () => {
-      try {
-        replaceHabit(
-          await ProgressApi.setHabitCompleted(habit.id, date, !completed, today)
-        );
-        void loadProgress();
-      } catch {
-        replaceHabit(habit);
-        setError("Не удалось обновить привычку. Попробуй ещё раз.");
-      }
-    });
+    setMutationError("");
+    try {
+      await progressMutations.toggleHabit.mutateAsync({ habit, date });
+    } catch {
+      setMutationError("Не удалось обновить привычку. Попробуй ещё раз.");
+    }
   };
 
   const archiveHabit = async (habit: Habit) => {
-    setError("");
-    replaceHabit({ ...habit, archived: true });
-    await withPendingHabit(habit.id, async () => {
-      try { replaceHabit(await ProgressApi.archiveHabit(habit.id, today)); }
-      catch { replaceHabit(habit); setError("Не удалось убрать привычку в архив."); }
-    });
+    setMutationError("");
+    try {
+      await progressMutations.archiveHabit.mutateAsync({ habit });
+    } catch {
+      setMutationError("Не удалось убрать привычку в архив.");
+    }
   };
 
   const restoreHabit = async (habit: Habit) => {
-    setError("");
-    replaceHabit({ ...habit, archived: false });
-    await withPendingHabit(habit.id, async () => {
-      try { replaceHabit(await ProgressApi.restoreHabit(habit.id, today)); }
-      catch { replaceHabit(habit); setError("Не удалось вернуть привычку из архива."); }
-    });
+    setMutationError("");
+    try {
+      await progressMutations.restoreHabit.mutateAsync({ habit });
+    } catch {
+      setMutationError("Не удалось вернуть привычку из архива.");
+    }
   };
 
   const renameHabit = async (habit: Habit, title: string) => {
-    setError("");
-    replaceHabit({ ...habit, title });
-    let saved = true;
-    await withPendingHabit(habit.id, async () => {
-      try { replaceHabit(await ProgressApi.updateHabit(habit.id, title, today)); }
-      catch { saved = false; replaceHabit(habit); setError("Не удалось изменить привычку."); }
-    });
-    return saved;
+    setMutationError("");
+    try {
+      await progressMutations.renameHabit.mutateAsync({ habit, title });
+      return true;
+    } catch {
+      setMutationError("Не удалось изменить привычку.");
+      return false;
+    }
   };
 
   const deleteHabit = async (habit: Habit) => {
-    setError("");
-    setProgress((current) => current ? { ...current, habits: current.habits.filter((item) => item.id !== habit.id) } : current);
-    await withPendingHabit(habit.id, async () => {
-      try { await ProgressApi.deleteHabit(habit.id); void loadProgress(); }
-      catch {
-        setProgress((current) => current ? { ...current, habits: [...current.habits, habit].sort((a, b) => a.id - b.id) } : current);
-        setError("Не удалось удалить привычку.");
-      }
-    });
+    setMutationError("");
+    try {
+      await progressMutations.deleteHabit.mutateAsync({ habit });
+    } catch {
+      setMutationError("Не удалось удалить привычку.");
+    }
   };
 
   const applyRescue = async () => {
     const eligibleDate = progress?.taskStreak.missedDateEligibleForRescue;
     if (!eligibleDate) return;
-    setIsSaving(true);
-    setError("");
+    setMutationError("");
     try {
-      setProgress(await ProgressApi.applyRescue(eligibleDate, today, selectedMonth));
+      await progressMutations.applyRescue.mutateAsync({
+        protectedOn: eligibleDate,
+      });
       trackProductEvent("rescue_used");
       setIsRescueConfirmOpen(false);
     } catch {
-      setError("Не удалось восстановить стрик. Обнови страницу и попробуй ещё раз.");
-    } finally {
-      setIsSaving(false);
+      setMutationError(
+        "Не удалось восстановить стрик. Обнови страницу и попробуй ещё раз."
+      );
     }
   };
 
@@ -385,13 +326,13 @@ const SuccessStairsPage = () => {
         <ServerProgressPlaceholder
           isGuest={isGuest}
           isLoading={isLoading}
-          onRetry={() => void loadProgress()}
+          onRetry={() => void progressQuery.refetch()}
         />
       )}
       {activeTab === "streak" && progress && !isGuest && (
         <StreakPanel
           progress={progress}
-          isApplyingRescue={isSaving}
+          isApplyingRescue={progressMutations.applyRescue.isPending}
           onUseRescue={async () => setIsRescueConfirmOpen(true)}
           onMonthChange={setSelectedMonth}
         />
@@ -400,8 +341,8 @@ const SuccessStairsPage = () => {
         <HabitsPanel
           habits={progress.habits}
           today={today}
-          isCreating={isSaving}
-          pendingHabitIds={pendingHabitIds}
+          isCreating={progressMutations.createHabit.isPending}
+          pendingHabitIds={progressMutations.pendingHabitIds}
           onCreate={createHabit}
           onToggleDate={toggleHabitDate}
           onArchive={archiveHabit}
@@ -430,10 +371,12 @@ const SuccessStairsPage = () => {
           <button
             type="button"
             onClick={() => void applyRescue()}
-            disabled={isSaving}
+            disabled={progressMutations.applyRescue.isPending}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
           >
-            {isSaving ? "Восстанавливаю..." : "Использовать круг"}
+            {progressMutations.applyRescue.isPending
+              ? "Восстанавливаю..."
+              : "Использовать круг"}
           </button>
         </div>
       </Modal>

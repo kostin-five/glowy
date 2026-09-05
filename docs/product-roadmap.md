@@ -660,6 +660,12 @@ shared Zod contracts, Prisma и PostgreSQL. Не выполнять framework re
 Добавить TanStack Query как отдельный слой удалённого серверного состояния, не как замену всему
 Zustand и не как переписывание приложения за один этап.
 
+**Первый pilot выполнен локально 2026-09-05.** В отдельной ветке экран «Мой прогресс» переведён на
+in-memory TanStack Query cache с account-scoped ключами, отменой запросов при смене сессии,
+управляемым retry и optimistic rollback для привычек. Pilot не меняет backend, task/subtask offline
+queue и другие server-state домены; production deploy не выполнялся. Расширять Query на следующий
+домен можно только отдельным OpenSpec change после проверки результатов этого pilot.
+
 - Zustand остаётся для локального UI-state, настроек, auth snapshot, browser-local AI-диалога и
   других клиентских данных.
 - Первый pilot выбрать среди read-heavy доменов с простой моделью мутаций: profile/settings,

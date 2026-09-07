@@ -1,0 +1,135 @@
+:root {
+  --glowy-color-canvas: #f8fafc;
+  --glowy-color-surface: #ffffff;
+  --glowy-color-surface-raised: #eef2ff;
+  --glowy-color-text-primary: #0f172a;
+  --glowy-color-text-secondary: #334155;
+  --glowy-color-text-muted: #475569;
+  --glowy-color-border-subtle: #cbd5e1;
+  --glowy-color-border-strong: #64748b;
+  --glowy-color-primary: #4338ca;
+  --glowy-color-primary-foreground: #ffffff;
+  --glowy-color-accent: #a21caf;
+  --glowy-color-accent-foreground: #ffffff;
+  --glowy-color-status-success: #047857;
+  --glowy-color-status-success-foreground: #ffffff;
+  --glowy-color-status-warning: #a16207;
+  --glowy-color-status-warning-foreground: #ffffff;
+  --glowy-color-status-danger: #be123c;
+  --glowy-color-status-danger-foreground: #ffffff;
+  --glowy-color-focus: #4338ca;
+
+  --glowy-font-sans: var(--font-sans);
+  --glowy-font-display: var(--font-display);
+  --glowy-space-1: 0.25rem;
+  --glowy-space-2: 0.5rem;
+  --glowy-space-3: 0.75rem;
+  --glowy-space-4: 1rem;
+  --glowy-space-6: 1.5rem;
+  --glowy-space-8: 2rem;
+  --glowy-radius-control: 0.75rem;
+  --glowy-radius-panel: 1.5rem;
+  --glowy-radius-pill: 9999px;
+  --glowy-border-width: 1px;
+  --glowy-elevation-panel: 0 18px 45px rgb(15 23 42 / 0.12);
+  --glowy-elevation-glow: 0 0 36px rgb(79 70 229 / 0.24);
+  --glowy-focus-width: 3px;
+  --glowy-focus-offset: 3px;
+  --glowy-motion-fast: 160ms;
+  --glowy-motion-standard: 240ms;
+  --glowy-motion-orbit: 7s;
+  --glowy-touch-target: 44px;
+}
+
+.dark {
+  --glowy-color-canvas: #01030a;
+  --glowy-color-surface: #111827;
+  --glowy-color-surface-raised: #172036;
+  --glowy-color-text-primary: #f8fafc;
+  --glowy-color-text-secondary: #cbd5e1;
+  --glowy-color-text-muted: #94a3b8;
+  --glowy-color-border-subtle: #334155;
+  --glowy-color-border-strong: #94a3b8;
+  --glowy-color-primary: #a5b4fc;
+  --glowy-color-primary-foreground: #111827;
+  --glowy-color-accent: #f0abfc;
+  --glowy-color-accent-foreground: #3b0764;
+  --glowy-color-status-success: #6ee7b7;
+  --glowy-color-status-success-foreground: #052e16;
+  --glowy-color-status-warning: #fde68a;
+  --glowy-color-status-warning-foreground: #451a03;
+  --glowy-color-status-danger: #fda4af;
+  --glowy-color-status-danger-foreground: #4c0519;
+  --glowy-color-focus: #a5b4fc;
+  --glowy-elevation-panel: 0 20px 52px rgb(0 0 0 / 0.3);
+  --glowy-elevation-glow: 0 0 42px rgb(165 180 252 / 0.2);
+}
+
+@theme inline {
+  --color-glowy-canvas: var(--glowy-color-canvas);
+  --color-glowy-surface: var(--glowy-color-surface);
+  --color-glowy-surface-raised: var(--glowy-color-surface-raised);
+  --color-glowy-text-primary: var(--glowy-color-text-primary);
+  --color-glowy-text-secondary: var(--glowy-color-text-secondary);
+  --color-glowy-text-muted: var(--glowy-color-text-muted);
+  --color-glowy-border-subtle: var(--glowy-color-border-subtle);
+  --color-glowy-border-strong: var(--glowy-color-border-strong);
+  --color-glowy-primary: var(--glowy-color-primary);
+  --color-glowy-primary-foreground: var(--glowy-color-primary-foreground);
+  --color-glowy-accent: var(--glowy-color-accent);
+  --color-glowy-accent-foreground: var(--glowy-color-accent-foreground);
+  --color-glowy-status-success: var(--glowy-color-status-success);
+  --color-glowy-status-success-foreground: var(--glowy-color-status-success-foreground);
+  --color-glowy-status-warning: var(--glowy-color-status-warning);
+  --color-glowy-status-warning-foreground: var(--glowy-color-status-warning-foreground);
+  --color-glowy-status-danger: var(--glowy-color-status-danger);
+  --color-glowy-status-danger-foreground: var(--glowy-color-status-danger-foreground);
+  --color-glowy-focus: var(--glowy-color-focus);
+  --font-glowy-sans: var(--glowy-font-sans);
+  --font-glowy-display: var(--glowy-font-display);
+  --spacing-glowy-1: var(--glowy-space-1);
+  --spacing-glowy-2: var(--glowy-space-2);
+  --spacing-glowy-3: var(--glowy-space-3);
+  --spacing-glowy-4: var(--glowy-space-4);
+  --spacing-glowy-6: var(--glowy-space-6);
+  --spacing-glowy-8: var(--glowy-space-8);
+  --spacing-glowy-touch-target: var(--glowy-touch-target);
+  --radius-glowy-control: var(--glowy-radius-control);
+  --radius-glowy-panel: var(--glowy-radius-panel);
+  --radius-glowy-pill: var(--glowy-radius-pill);
+  --shadow-glowy-panel: var(--glowy-elevation-panel);
+  --shadow-glowy-glow: var(--glowy-elevation-glow);
+}
+
+.foundation-showcase {
+  color-scheme: light;
+}
+
+.dark .foundation-showcase {
+  color-scheme: dark;
+}
+
+.foundation-token-focus:focus-visible {
+  outline: var(--glowy-focus-width) solid var(--glowy-color-focus);
+  outline-offset: var(--glowy-focus-offset);
+}
+
+@keyframes glowy-foundation-orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.foundation-token-orbit {
+  animation: glowy-foundation-orbit-spin var(--glowy-motion-orbit) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foundation-token-orbit {
+    animation: none;
+  }
+}

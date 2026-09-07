@@ -20,13 +20,25 @@ import './index.css'
 import App from './App.tsx'
 import { ensureServiceWorkerControl } from './offline/ensureServiceWorkerControl'
 import { AppQueryProvider } from './query/AppQueryProvider'
+import FoundationShowcase from './design-system/FoundationShowcase'
+import {
+  isFoundationShowcasePath,
+} from './design-system/foundationShowcaseRoute'
+
+const isFoundationShowcase = isFoundationShowcasePath(window.location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppQueryProvider>
-      <App />
-    </AppQueryProvider>
+    {isFoundationShowcase ? (
+      <FoundationShowcase />
+    ) : (
+      <AppQueryProvider>
+        <App />
+      </AppQueryProvider>
+    )}
   </StrictMode>,
 )
 
-void ensureServiceWorkerControl()
+if (!isFoundationShowcase) {
+  void ensureServiceWorkerControl()
+}

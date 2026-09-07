@@ -1,4 +1,4 @@
-# Дизайн-система Glowy: foundations
+# Дизайн-система Glowy: foundations и primitives
 
 Semantic token layer в `src/styles/design-tokens.css` — публичная визуальная основа для следующих
 shared UI primitives и экранов. Он не меняет существующие product components: это намеренная
@@ -43,10 +43,54 @@ Shared control должен пользоваться классом `foundation-
 по-прежнему разрешается в `src/App.tsx`, поэтому token layer не хранит и не меняет пользовательскую
 настройку темы. Telegram variables и существующие product styles не являются частью этого слоя.
 
-Первым потребителем foundation будут следующие отдельные changes для primitives и dashboard. При
-новом UI change сначала используйте semantic role; перенос уже существующего экрана делайте только
-в рамках его отдельного проверяемого change. Не заменяйте им Headless UI, не добавляйте Storybook и
-не публикуйте технический экран пользователям без отдельного решения.
+При новом UI change сначала используйте semantic role; перенос уже существующего экрана делайте
+только в рамках его отдельного проверяемого change. Существующие Headless UI consumers не являются
+неявными потребителями этого слоя и не мигрируются вместе с новым экраном.
+
+## Glowy primitives
+
+Новый public namespace — `src/components/ui/primitives/`. Импортируйте новый control из его
+`index.ts`, а не из внутренних файлов:
+
+```tsx
+import { Button, Dialog, DialogContent, DialogTrigger, Field, Input } from "../components/ui/primitives";
+```
+
+| Группа | Public primitives | Граница использования |
+| --- | --- | --- |
+| Действия и форма | `Button`, `IconButton`, `Input`, `Textarea`, `Label`, `Field` | Native HTML props сохраняются; `IconButton` требует `aria-label`, а `Field` сам связывает label, description и error с control. |
+| Surfaces и feedback | `Card`, `Badge`, `Skeleton`, `EmptyState`, `Alert`, `Toast` | `ToastProvider` размещается в конкретном feature subtree. Глобальный toast store намеренно отсутствует. |
+| Overlay и выбор | `Dialog`, `Sheet`, `Popover`, `Select`, `Tabs`, `Tooltip` | Новые overlay/selection controls используют Radix. Root поддерживает controlled callbacks (`open`/`onOpenChange`, `value`/`onValueChange`), Escape и focus return обрабатывает Radix. |
+
+Каждый primitive использует только semantic tokens, `foundation-token-focus` и минимум `44 × 44`
+для интерактивной цели. Для Dialog и Sheet добавляйте доступные `Title` и `Description`; Sheet
+сохраняет safe-area на компактных экранах. Не смешивайте эти Radix wrappers с Headless UI в одном
+новом control и не заменяйте ими работающие legacy dialogs без отдельного OpenSpec change.
+
+## Локальный Storybook-каталог
+
+Storybook — только локальный каталог состояний, не product route. Он импортирует тот же CSS entry,
+но не запускает PWA/service worker, `App`, stores или API clients. В toolbar выберите светлую или
+тёмную тему и desktop либо compact ширину 390 px; accessibility addon показывает базовые проблемы
+в Canvas каждой story.
+
+```bash
+# Открыть каталог локально на http://127.0.0.1:6006
+npm run storybook
+
+# Собрать локальный статический артефакт (storybook-static/ игнорируется Git)
+npm run build-storybook
+
+# Browser smoke: API isolation, Escape/focus return и touch target в desktop/mobile
+npm run test:storybook
+
+# Public API и accessibility associations
+npm run test -- src/components/ui/primitives/primitives.test.tsx
+```
+
+Перед review shared primitive проверьте соответствующую story в light/dark и compact viewport,
+откройте a11y panel и пройдите keyboard flow. Не публикуйте `storybook-static/`, не добавляйте его
+в PWA и не подключайте внешний visual-regression service без решения владельца.
 
 ## Локальная showcase и visual baseline
 

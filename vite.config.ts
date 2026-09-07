@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const isComponentCatalog = process.env.GLOWY_COMPONENT_CATALOG === "true";
+
 // https://vite.dev/config/
 export default defineConfig({
   resolve: {
@@ -51,7 +53,12 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    // Storybook imports the same token CSS through Vite, but it must stay an
+    // isolated catalog rather than registering a product service worker.
+    ...(isComponentCatalog
+      ? []
+      : [
+          VitePWA({
       strategies: "generateSW",
       registerType: "autoUpdate",
       devOptions: {
@@ -135,6 +142,7 @@ export default defineConfig({
           },
         ],
       },
-    }),
+          }),
+        ]),
   ],
 });

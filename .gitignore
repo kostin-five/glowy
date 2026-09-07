@@ -17,6 +17,7 @@ coverage
 *.tmp
 playwright-report
 test-results
+storybook-static
 
 # Editor directories and files
 .vscode/*

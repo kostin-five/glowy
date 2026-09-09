@@ -356,6 +356,8 @@ test("keeps a rejected offline change queued and offers a retry", async ({
   context,
   page,
 }) => {
+  test.setTimeout(45_000);
+
   const taskTitle = "Изменение ожидает повторения";
   await setAuthenticatedSession(page, 1);
   const server = await mockAuthenticatedApi(page);

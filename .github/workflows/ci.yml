@@ -47,9 +47,8 @@ jobs:
         run: npm ci
         working-directory: backend
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
-        working-directory: backend
+      - name: Build deployable backend artifact
+        run: npm run build:backend
 
       - name: Check backend TypeScript foundation
         run: npm run typecheck

@@ -204,6 +204,28 @@ npm run typecheck
 npm run test
 ```
 
+### Vercel и Render
+
+Репозиторий содержит общий runtime-пакет `packages/contracts`, поэтому deployment-сборки должны
+запускаться из корня монорепозитория. Корневой `npm run build` сам сначала собирает contracts, а
+затем frontend; отдельная команда `npm run build:backend` собирает contracts, генерирует локальный
+Prisma Client и собирает backend.
+
+Для Vercel оставьте Root Directory пустым (корень репозитория), Build Command — `npm run build`,
+Output Directory — `dist`. Стандартная установка зависимостей Vercel может оставаться автоматической.
+
+Для Render backend-сервиса используйте:
+
+```text
+Root Directory:         (пусто)
+Build Command:          npm ci && npm --prefix backend ci && npm run build:backend
+Start Command:          npm --prefix backend start
+```
+
+Если Root Directory установлен в `backend`, Render не устанавливает корневые зависимости и не
+собирает `packages/contracts`; запуск затем завершается ошибкой об отсутствующем
+`backend/dist/server.js`.
+
 Начиная с локально завершённой v2.10.0 основной backend — strict ESM TypeScript. `npm run build`
 создаёт `backend/dist/`, `npm start` запускает `dist/server.js`, а source-импорты NodeNext сохраняют
 `.js` suffix для будущего emitted artifact. Единственный Prisma client создаётся в

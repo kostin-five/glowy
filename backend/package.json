@@ -6,6 +6,7 @@
   "scripts": {
     "build": "sh scripts/build-backend.sh",
     "inventory:check": "sh scripts/check-typescript-inventory.sh",
+    "prisma:generate": "prisma generate",
     "serve": "npm run serve:compiled",
     "serve:compiled": "nodemon --watch . --ext ts,json --ignore dist --exec npm run start:compiled",
     "typecheck": "tsc -p tsconfig.json",

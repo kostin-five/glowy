@@ -1,8 +1,8 @@
 # Feature Specification: Инструменты планирования задач
 
-**Feature Branch**: `codex/task-filters-subtask-drafts`  
-**Created**: 2026-09-04  
-**Status**: Clarified  
+**Feature Branch**: `codex/task-filters-subtask-drafts`
+**Created**: 2026-09-04
+**Status**: Clarified
 **Input**: Продолжить автономное усиление продукта: добавить удобные фильтры задач и AI-разбиение задачи на редактируемые шаги без скрытого сохранения.
 
 ## Clarifications

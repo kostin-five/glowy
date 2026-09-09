@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Инструменты планирования задач
 
-**Purpose**: Validate specification completeness and quality before planning  
-**Created**: 2026-09-04  
+**Purpose**: Validate specification completeness and quality before planning
+**Created**: 2026-09-04
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality

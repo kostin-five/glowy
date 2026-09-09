@@ -8,12 +8,12 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript, React 18  
-**Primary Dependencies**: React Router, Zustand, Axios, Lucide, Tailwind CSS, Vitest, Testing Library  
-**Storage**: Без новых хранилищ; существующий notes API и локальные настройки обоев  
-**Testing**: Vitest + Testing Library; frontend typecheck  
-**Target Platform**: Desktop web, mobile web и Telegram Mini App  
-**Project Type**: React SPA с отдельным Express backend  
+**Language/Version**: TypeScript, React 18
+**Primary Dependencies**: React Router, Zustand, Axios, Lucide, Tailwind CSS, Vitest, Testing Library
+**Storage**: Без новых хранилищ; существующий notes API и локальные настройки обоев
+**Testing**: Vitest + Testing Library; frontend typecheck
+**Target Platform**: Desktop web, mobile web и Telegram Mini App
+**Project Type**: React SPA с отдельным Express backend
 **Constraints**: Не менять LandingPage, backend, Prisma, production или пользовательские данные; русский интерфейс; AI не мутирует данные без подтверждения.
 
 ## Constitution Check
@@ -53,4 +53,3 @@ src/
 ## Rollback
 
 Откат выполняется одним локальным commit без миграций и данных. Старые API и маршруты не меняются, поэтому rollback не требует действий над backend или базой.
-

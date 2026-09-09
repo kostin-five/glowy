@@ -8,10 +8,10 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 6, React 19, ESM  
-**Primary Dependencies**: Zustand persist, native IndexedDB, Testing Library, Vitest  
-**Storage**: localStorage только для wallpaper id; IndexedDB для одного Blob  
-**Testing**: store normalization, storage adapter, settings picker, focused typecheck  
+**Language/Version**: TypeScript 6, React 19, ESM
+**Primary Dependencies**: Zustand persist, native IndexedDB, Testing Library, Vitest
+**Storage**: localStorage только для wallpaper id; IndexedDB для одного Blob
+**Testing**: store normalization, storage adapter, settings picker, focused typecheck
 **Constraints**: local-only, Russian UI, no network/schema/env/production/LandingPage, preserve logo/orb
 
 ## Constitution Check

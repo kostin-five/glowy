@@ -14,4 +14,3 @@
 - Both surfaces remain present side by side from the large breakpoint.
 - Saving failure leaves entered content visible.
 - AI draft creation remains a two-step request + explicit confirmation flow.
-

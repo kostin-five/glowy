@@ -1,7 +1,7 @@
 # Feature Specification: Ассистент и современные заметки
 
-**Feature Branch**: `codex/assistant-notes-polish`  
-**Created**: 2026-09-04  
+**Feature Branch**: `codex/assistant-notes-polish`
+**Created**: 2026-09-04
 **Status**: Approved from user feedback
 
 ## User Scenarios & Testing
@@ -71,4 +71,3 @@
 - **SC-003**: Пользователь на ширине 320 px может открыть, изменить, сохранить и закрыть заметку без горизонтальной прокрутки.
 - **SC-004**: Все существующие целевые тесты mobile-навигации заметок и подтверждения AI-черновика проходят без регрессий.
 - **SC-005**: Ни одно действие AI не создаёт задачу до явного подтверждения пользователя.
-

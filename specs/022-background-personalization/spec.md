@@ -1,8 +1,8 @@
 # Feature Specification: Персонализация фона
 
-**Feature Branch**: `codex/background-personalization`  
-**Created**: 2026-09-04  
-**Status**: Implemented  
+**Feature Branch**: `codex/background-personalization`
+**Created**: 2026-09-04
+**Status**: Implemented
 **Input**: Сделать фон Glowy немного темнее и позволить пользователю выбрать предложенные обои или загрузить собственные, продолжая автономную разработку без production и push.
 
 ## Clarifications

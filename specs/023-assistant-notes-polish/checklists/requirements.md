@@ -1,7 +1,7 @@
 # Specification Quality Checklist: Ассистент и современные заметки
 
-**Purpose**: Validate specification completeness and quality before implementation  
-**Created**: 2026-09-04  
+**Purpose**: Validate specification completeness and quality before implementation
+**Created**: 2026-09-04
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -32,4 +32,3 @@
 ## Notes
 
 No critical ambiguities remain. Existing APIs and data model are deliberately preserved.
-

@@ -8,11 +8,11 @@
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.8, React 19, Express 5, ESM  
-**Primary Dependencies**: Zustand, Zod, Axios, Headless UI, Vitest, Testing Library, Node test runner, Playwright  
-**Storage**: существующие Task/SubTask в PostgreSQL и offline task store; новых сущностей нет  
-**Testing**: shared contract, database-free backend route, pure filter, component integration, Playwright, full gates  
-**Constraints**: Russian UI; explicit confirmation; backend auth/limit; redacted logs; no schema/env/production/LandingPage  
+**Language/Version**: TypeScript 5.8, React 19, Express 5, ESM
+**Primary Dependencies**: Zustand, Zod, Axios, Headless UI, Vitest, Testing Library, Node test runner, Playwright
+**Storage**: существующие Task/SubTask в PostgreSQL и offline task store; новых сущностей нет
+**Testing**: shared contract, database-free backend route, pure filter, component integration, Playwright, full gates
+**Constraints**: Russian UI; explicit confirmation; backend auth/limit; redacted logs; no schema/env/production/LandingPage
 **Scale/Scope**: четыре фильтра, один endpoint, один shared draft editor, две form integrations
 
 ## Constitution Check

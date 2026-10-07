@@ -83,7 +83,7 @@ export const sanitizeLogContext = (
 const getRequestContext = (req?: Request) => ({
   requestId: req?.requestId,
   method: req?.method,
-  path: req?.path,
+  route: typeof req?.route?.path === "string" ? req.route.path : "unmatched",
 });
 
 type LogLevel = "info" | "error";

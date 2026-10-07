@@ -14,6 +14,7 @@ import {
   isTelegramMiniAppSessionError,
 } from "../services/telegram/telegram-mini-app-session.service.js";
 import { isUnknownRecord } from "../types/boundaries.js";
+import { requireRegistrationEnabled } from "../middleware/error.middleware.js";
 
 const safeSecretEqual = (received: unknown, expected: unknown): boolean => {
   if (typeof received !== "string" || typeof expected !== "string") return false;
@@ -92,7 +93,7 @@ export const createTelegramRouter = ({
     }
   });
 
-  router.post("/mini-app/register", miniAppLimiter, async (req, res) => {
+  router.post("/mini-app/register", requireRegistrationEnabled, miniAppLimiter, async (req, res) => {
     try {
       const result = await miniAppSessions.register({
         initData: req.body?.initData,

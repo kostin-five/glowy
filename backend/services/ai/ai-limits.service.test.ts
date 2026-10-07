@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   AI_LIMITS_BY_PLAN,
   createAiLimitService,
+  createAiBurstLimiter,
   getEffectiveAiLimit,
 } from "./ai-limits.service.js";
 import type {
@@ -15,6 +16,21 @@ interface MemoryDbOptions {
   count?: number;
   resetAt?: Date | null;
 }
+
+test("burst limit rejects request six without reserving quota and resets after a minute", async () => {
+  let calls = 0;
+  let time = 1_000;
+  const reserve = createAiBurstLimiter({
+    reserve: async () => { calls++; return { allowed: true }; },
+    getUsage: async () => ({ limit: 10, remaining: 5 }),
+  } as never, () => time);
+  for (let i = 0; i < 5; i++) assert.equal((await reserve(42)).allowed, true);
+  assert.equal((await reserve(42)).allowed, false);
+  assert.equal(calls, 5);
+  assert.equal((await reserve(43)).allowed, true);
+  time += 60_000;
+  assert.equal((await reserve(42)).allowed, true);
+});
 
 const createMemoryDb = ({ count = 0, resetAt }: MemoryDbOptions = {}) => {
   const state = {

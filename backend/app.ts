@@ -56,6 +56,12 @@ const getAllowedOrigins = (isProd: boolean): string[] => {
       ? prodOrigins
       : [...prodOrigins, ...devOrigins];
 
+  for (const origin of configuredOrigins) {
+    const url = new URL(origin);
+    if (url.origin !== origin || url.hostname.includes("*") || !["http:", "https:"].includes(url.protocol) ||
+      (isProd && url.protocol !== "https:")) throw new Error("Invalid CORS origin configuration");
+  }
+
   return isProd
     ? configuredOrigins
     : addLocalhostAliases(configuredOrigins);
@@ -90,10 +96,16 @@ export const createApp = ({
     return next();
   };
 
-  app.set("trust proxy", 1);
+  const proxyHops = Number(process.env.TRUST_PROXY_HOPS || (isProd ? "0" : "1"));
+  if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 2) throw new Error("Invalid proxy configuration");
+  app.set("trust proxy", proxyHops === 0 ? false : proxyHops);
+  app.disable("x-powered-by");
   app.disable("etag");
   app.use(requestIdMiddleware);
   app.use((_req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    if (isProd) res.setHeader("Strict-Transport-Security", "max-age=31536000");
     res.setHeader("Cache-Control", "private, no-store, max-age=0, must-revalidate");
     res.setHeader("CDN-Cache-Control", "no-store");
     res.setHeader("Vercel-CDN-Cache-Control", "no-store");
@@ -142,7 +154,7 @@ export const createApp = ({
     res.json({ status: "ok", service: "glowy-backend" });
   });
 
-  if (testRoute) {
+  if (testRoute && !isProd) {
     app.get("/api/__test__/error", () => {
       throw new Error("Intentional test error");
     });

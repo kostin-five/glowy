@@ -7,6 +7,7 @@ import type { RequestHandler } from "express";
 import type { AiReservation } from "../services/ai/ai-limits.service.js";
 import { createApp } from "../app.js";
 import { createAiRouter } from "../routes/ai.routes.js";
+import { getDatabasePoolConfig } from "../lib/prisma.js";
 
 const allowedOrigin = "http://localhost:5173";
 const testJwtSecret = "test-only-ai-contract-key";
@@ -40,6 +41,40 @@ const createIsolatedAiApp = (overrides: Record<string, unknown> = {}) => {
   return app;
 };
 
+test("remote PostgreSQL cannot disable certificate verification through its URL", () => {
+  const config = getDatabasePoolConfig({ DATABASE_URL: "postgresql://demo:demo@db.example.test/glowy?sslmode=no-verify&sslrootcert=ignored", DATABASE_CA_CERT: "test-ca" });
+  assert.deepEqual(config.ssl, { rejectUnauthorized: true, ca: "test-ca" });
+  assert.equal(new URL(config.connectionString!).searchParams.has("sslmode"), false);
+  assert.throws(() => getDatabasePoolConfig({ DATABASE_URL: "postgresql://demo:demo@db.example.test/glowy", DATABASE_TLS_MODE: "local" }));
+  assert.throws(() => getDatabasePoolConfig({ DATABASE_URL: "postgresql://demo:demo@localhost/glowy", DATABASE_TLS_MODE: "local", NODE_ENV: "production" }));
+  assert.equal(getDatabasePoolConfig({ DATABASE_URL: "postgresql://demo:demo@localhost/glowy", DATABASE_TLS_MODE: "local" }).ssl, false);
+});
+
+test("task analysis enforces the quota before invoking the provider", async () => {
+  let called = false;
+  const app = createIsolatedAiApp({
+    db: { task: { findMany: async () => [{ title: "Demo", completed: false, subtasks: [] }] }, user: { findUnique: async () => ({ currentEnergy: 50 }) } },
+    reserveRequest: async () => ({ allowed: false, limit: { remaining: 0 } }),
+    generateContent: async () => { called = true; return { text: "Demo" }; },
+  });
+  const response = await request(app).post("/api/ai/analyze").send({});
+  assert.equal(response.status, 429);
+  assert.equal(called, false);
+});
+
+test("task analysis releases its reservation when generation fails", async () => {
+  const token = { userId: 42, cost: 1, resetAt: null };
+  let released: unknown;
+  const app = createIsolatedAiApp({
+    db: { task: { findMany: async () => [{ title: "Demo", completed: false, subtasks: [] }] }, user: { findUnique: async () => ({ currentEnergy: 50 }) } },
+    reserveRequest: async () => ({ allowed: true, reservation: token }),
+    releaseRequest: async (value: unknown) => { released = value; },
+    generateContent: async () => { throw Object.assign(new Error("timeout"), { code: "AI_PROVIDER_TIMEOUT" }); },
+  });
+  await request(app).post("/api/ai/analyze").send({});
+  assert.deepEqual(released, token);
+});
+
 test("authenticated Mind Hub rejects a missing session before validation", async () => {
   const response = await request(createApp())
     .post("/api/ai/mind-hub")
@@ -60,7 +95,7 @@ test("the removed public Mind Hub path cannot reach AI handling", async () => {
 });
 
 test("authenticated Mind Hub returns a safe request-ID validation error", async () => {
-  const response = await request(createApp())
+  const response = await request(createIsolatedAiApp())
     .post("/api/ai/mind-hub")
     .set("Origin", allowedOrigin)
     .set("Authorization", authHeader())
@@ -68,7 +103,7 @@ test("authenticated Mind Hub returns a safe request-ID validation error", async 
 
   assert.equal(response.status, 400);
   assert.equal(response.body.code, "AI_REQUEST_INVALID");
-  assert.equal(response.body.requestId, response.headers["x-request-id"]);
+  assert.equal(response.body.requestId, "018f07a2-7b6c-7d85-a2de-89efb6c124e1");
   assert.equal(response.body.error, "Проверь сообщение и параметры запроса.");
   assert.ok(Array.isArray(response.body.details));
   assert.equal(JSON.stringify(response.body).includes("unexpected"), false);

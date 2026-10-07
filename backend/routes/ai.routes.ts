@@ -205,6 +205,7 @@ router.post("/subtask-draft", async (req, res) => {
 });
 
 router.post("/analyze", async (req, res) => {
+  let reservation: AiReservation | null = null;
   try {
     const tasks = await db.task.findMany({
       where: { userId: req.user.id },
@@ -226,6 +227,11 @@ router.post("/analyze", async (req, res) => {
     });
     const currentEnergy = user?.currentEnergy ?? 100;
     const tasksString = stringifyActiveTasks(activeTasks);
+    const aiLimit = await reserveRequest(req.user.id);
+    if (!aiLimit.allowed) {
+      return res.status(429).json(buildAiError(req, "Лимит запросов исчерпан.", "AI_LIMIT_EXHAUSTED", { limit: aiLimit.limit }));
+    }
+    reservation = aiLimit.reservation ?? null;
     const { text } = await generateContent(
       buildTaskAnalysisPrompt(tasksString, currentEnergy, user?.aiTone),
       "Task analysis",
@@ -234,6 +240,7 @@ router.post("/analyze", async (req, res) => {
 
     res.json({ message: text });
   } catch (error) {
+    await releaseReservation(req, reservation);
     logger.error("ai.analysis.failed", {
       req,
       error,

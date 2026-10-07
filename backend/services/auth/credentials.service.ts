@@ -58,15 +58,15 @@ export const createUserWithCredentials = async ({
   const candidate = await db.user.findUnique({ where: { email: value.email } });
   if (candidate) {
     throw new CredentialsError(
-      "AUTH_EMAIL_EXISTS",
-      "Пользователь с таким email уже существует"
+      "AUTH_REGISTRATION_REJECTED",
+      "Не удалось зарегистрироваться. Проверьте данные или попробуйте войти."
     );
   }
   return db.user.create({
     data: {
       name: value.name,
       email: value.email,
-      password: bcrypt.hashSync(value.password, 10),
+      password: await bcrypt.hash(value.password, 10),
     },
   });
 };
@@ -84,7 +84,7 @@ export const verifyUserCredentials = async ({
   const user = normalizedEmail
     ? await db.user.findUnique({ where: { email: normalizedEmail } })
     : null;
-  if (!user || typeof password !== "string" || !bcrypt.compareSync(password, user.password)) {
+  if (!user || typeof password !== "string" || password.length > 128 || !await bcrypt.compare(password, user.password)) {
     throw new CredentialsError(
       "AUTH_INVALID_CREDENTIALS",
       "Неверный email или пароль"

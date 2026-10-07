@@ -10,8 +10,8 @@ import {
 } from "@glowy/contracts";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { buildErrorEnvelope } from "../middleware/error.middleware.js";
+import { authMiddleware, getTokenFromRequest } from "../middleware/auth.middleware.js";
+import { buildErrorEnvelope, requireRegistrationEnabled } from "../middleware/error.middleware.js";
 import {
   createUserWithCredentials,
   CredentialsError,
@@ -24,6 +24,7 @@ import {
   SAFE_USER_SELECT,
   setAuthCookie,
   toSafeUser,
+  revokeAuthToken,
 } from "../services/auth/auth-session.service.js";
 
 const buildAuthError = (req: Request, error: string, code: string) =>
@@ -48,6 +49,16 @@ const loginLimiter = rateLimit({
     `${ipKeyGenerator(req.ip || "unknown")}:${normalizeAuthEmail(req.body || {}) || "unknown"}`,
 });
 
+const loginIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip || "unknown"),
+  handler: (req, res) => res.status(429).json(buildAuthError(req,
+    "Слишком много попыток входа. Пожалуйста, попробуйте позже.", "AUTH_RATE_LIMITED")),
+});
+
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
@@ -69,13 +80,15 @@ const registerLimiter = rateLimit({
 export const createAuthRouter = ({
   db = prisma,
   authenticate = authMiddleware,
+  revokeToken = revokeAuthToken,
 }: {
   db?: Pick<PrismaClient, "user">;
   authenticate?: RequestHandler;
+  revokeToken?: (token: string) => Promise<void>;
 } = {}): Router => {
   const router = express.Router();
 
-  router.post("/register", registerLimiter, async (req, res) => {
+  router.post("/register", requireRegistrationEnabled, registerLimiter, async (req, res) => {
     try {
       const requestResult = authRegisterRequestSchema.safeParse({
         name: req.body?.name,
@@ -116,7 +129,7 @@ export const createAuthRouter = ({
     }
   });
 
-  router.post("/login", loginLimiter, async (req, res) => {
+  router.post("/login", loginIpLimiter, loginLimiter, async (req, res) => {
     try {
       const email = normalizeAuthEmail(req.body);
       if (!email) {
@@ -150,7 +163,13 @@ export const createAuthRouter = ({
     }
   });
 
-  router.post("/logout", (_req, res) => {
+  router.post("/logout", async (req, res) => {
+    try {
+      const token = getTokenFromRequest(req);
+      if (token) await revokeToken(token);
+    } catch {
+      return res.status(503).json(buildAuthError(req, "Не удалось завершить сессию. Попробуйте ещё раз.", "AUTH_LOGOUT_FAILED"));
+    }
     clearAuthCookie(res);
     return res
       .status(200)

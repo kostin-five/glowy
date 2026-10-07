@@ -15,7 +15,8 @@ test("logger keeps sensitive request and error details out of error records", ()
       req: {
         requestId: "request-123",
         method: "POST",
-        path: "/api/tasks",
+        path: "/api/tasks/SENTINEL_PRIVATE_TEXT",
+        route: { path: "/tasks/:id" },
         body: { title: "Private task", password: "secret" },
         headers: { authorization: "Bearer private-token" },
       } as Request,
@@ -32,11 +33,11 @@ test("logger keeps sensitive request and error details out of error records", ()
     event: "test.redaction",
     requestId: "request-123",
     method: "POST",
-    path: "/api/tasks",
+    route: "/tasks/:id",
     statusCode: 500,
     errorName: "Error",
   });
-  assert.doesNotMatch(record, /Private task|secret|private-token|private failure/i);
+  assert.doesNotMatch(record, /Private task|secret|private-token|private failure|SENTINEL_PRIVATE_TEXT/i);
 });
 
 test("logger recursively allowlists operational fields from info context", () => {

@@ -306,8 +306,30 @@ export interface AiReservation {
 export const getAuthenticatedAiUsage = (userId: number) =>
   defaultAiLimitService.getUsage(userId);
 
-export const reserveAuthenticatedAiRequest = (userId: number, requestCost = 1) =>
-  defaultAiLimitService.reserve(userId, requestCost);
+export const createAiBurstLimiter = (service = defaultAiLimitService, clock = Date.now) => {
+ const burstWindows = new Map<number, { until: number; count: number }>();
+ return async (userId: number, requestCost = 1) => {
+  const now = clock();
+  for (const [id, window] of burstWindows) if (window.until <= now) burstWindows.delete(id);
+  let window = burstWindows.get(userId);
+  if (!window) {
+    if (burstWindows.size >= 10_000) {
+      const usage = await service.getUsage(userId);
+      return { allowed: false, reservation: undefined, limit: { limit: usage.limit, remaining: usage.remaining, resetAt: new Date(now + 60_000).toISOString() } };
+    }
+    window = { until: now + 60_000, count: 0 };
+    burstWindows.set(userId, window);
+  }
+  window.count += 1;
+  if (window.count > 5) {
+    const usage = await service.getUsage(userId);
+    return { allowed: false, reservation: undefined, limit: { limit: usage.limit, remaining: usage.remaining, resetAt: new Date(window.until).toISOString() } };
+  }
+  return service.reserve(userId, requestCost);
+ };
+};
+
+export const reserveAuthenticatedAiRequest = createAiBurstLimiter();
 
 export const releaseAuthenticatedAiRequest = (
   reservation: AiReservation | null | undefined

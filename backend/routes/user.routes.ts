@@ -1,4 +1,5 @@
 import express from "express";
+import bcrypt from "bcryptjs";
 import type { CookieOptions, Request, Response } from "express";
 import type { User } from "@prisma/client";
 import { body, validationResult } from "express-validator";
@@ -101,10 +102,11 @@ const toPreferenceResponse = (user: PreferenceUser) => {
 export const createUserRouter = ({
   db = prisma,
   telegramLinks = createTelegramLinkService({ db }),
+  authenticate = authMiddleware,
 } = {}) => {
   const router = express.Router();
 
-  router.use(authMiddleware);
+  router.use(authenticate);
 
   router.get("/preferences", async (req, res) => {
     try {
@@ -270,8 +272,9 @@ router.put(
       const updatedUser = await db.user.update({
         where: { id: req.user.id },
         data: { currentEnergy },
+        select: { currentEnergy: true },
       });
-      res.json(updatedUser);
+      res.json({ currentEnergy: updatedUser.currentEnergy });
     } catch (e) {
       logger.error("user.energy.update_failed", { req, error: e, statusCode: 500 });
       res.status(500).json({ error: "Ошибка при обновлении" });
@@ -283,13 +286,17 @@ router.delete("/account", async (req, res) => {
   try {
     const user = await db.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true },
+      select: { id: true, password: true },
     });
 
     if (!user) {
       return res.status(404).json({ error: "Пользователь не найден" });
     }
 
+    const password: unknown = req.body?.password;
+    if (typeof password !== "string" || password.length > 128 || !await bcrypt.compare(password, user.password)) {
+      return res.status(403).json({ error: "Подтвердите удаление паролем аккаунта.", code: "ACCOUNT_REAUTH_REQUIRED" });
+    }
     await db.user.delete({
       where: { id: req.user.id },
     });

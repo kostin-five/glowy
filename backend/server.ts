@@ -2,7 +2,9 @@ import { createApp } from "./app.js";
 import { logger } from "./lib/logger.js";
 import { createTelegramRouter } from "./routes/telegram.routes.js";
 import { createTelegramWorker } from "./services/telegram/telegram-worker.service.js";
+import { getAuthSecret } from "./services/auth/auth-session.service.js";
 
+getAuthSecret();
 const port = process.env.PORT || 3001;
 const telegramWorker = createTelegramWorker();
 const app = createApp({

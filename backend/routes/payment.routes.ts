@@ -157,11 +157,12 @@ const paymentCreateLimiter = rateLimit({
 
 const isActivePlan = (
   user: PlanUser | null | undefined,
-  plan: PaymentPlan
+  plan: PaymentPlan,
+  now = new Date()
 ): boolean => {
   if (user?.plan !== plan || user?.subscriptionStatus !== "active") return false;
   if (plan === "focus") {
-    return Boolean(user?.planExpiresAt && new Date(user.planExpiresAt) > new Date());
+    return Boolean(user?.planExpiresAt && new Date(user.planExpiresAt) > now);
   }
   return plan === "forever";
 };
@@ -172,6 +173,9 @@ const createPaymentHandler = (
   : PaymentHandlerDependencies
 ): RequestHandler => async (req, res) => {
   try {
+    if (env.PAYMENTS_ENABLED !== "true") {
+      return res.status(403).json(buildPaymentError(req, "Новые оплаты отключены в демонстрационной версии.", "PAYMENTS_DISABLED"));
+    }
     if (plan === "forever" && !paidForeverEnabled()) {
       return res
         .status(403)
@@ -211,7 +215,7 @@ const createPaymentHandler = (
       currentTime()
     );
 
-    if (isActivePlan(user, "forever")) {
+    if (isActivePlan(user, "forever", currentTime())) {
       return res
         .status(409)
         .json(
@@ -223,7 +227,7 @@ const createPaymentHandler = (
         );
     }
 
-    if (isActivePlan(user, plan)) {
+    if (isActivePlan(user, plan, currentTime())) {
       return res.status(409).json(
         buildPaymentError(
           req,
@@ -253,6 +257,7 @@ const createPaymentHandler = (
 
     const response = await fetchImpl("https://api.yookassa.ru/v3/payments", {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: {
         "Content-Type": "application/json",
         "Idempotence-Key": idempotenceKey,
@@ -294,7 +299,8 @@ const createPaymentHandler = (
       !isUnknownRecord(data) ||
       typeof data.id !== "string" ||
       typeof data.status !== "string" ||
-      typeof confirmation?.confirmation_url !== "string"
+      typeof confirmation?.confirmation_url !== "string" ||
+      !/^https:\/\//i.test(confirmation.confirmation_url)
     ) {
       return res
         .status(500)
@@ -351,7 +357,7 @@ export const createPaymentRouter = ({
 } = {}) => {
 const router = express.Router();
 
-router.post("/yookassa/webhook", async (req, res) => {
+router.post("/yookassa/webhook", rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }), async (req, res) => {
   try {
     const { YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY } = env;
     if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
@@ -377,6 +383,9 @@ router.post("/yookassa/webhook", async (req, res) => {
     }
 
     const paymentId = eventObject.id;
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(paymentId)) {
+      return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
+    }
     const eventName =
       typeof eventRecord?.event === "string" ? eventRecord.event : "";
 
@@ -384,9 +393,12 @@ router.post("/yookassa/webhook", async (req, res) => {
       return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
     }
 
+    const localPayment = await db.payment.findFirst({ where: { providerPaymentId: paymentId } });
+    if (!localPayment) return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
     const authString = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
     const response = await fetchImpl(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
       headers: { Authorization: `Basic ${authString}` },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
@@ -405,14 +417,7 @@ router.post("/yookassa/webhook", async (req, res) => {
     if (!isUnknownRecord(yookassaPayment)) {
       return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
     }
-    const localPayment = await db.payment.findFirst({
-      where: { providerPaymentId: paymentId },
-    });
-
-    if (!localPayment) {
-      return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
-    }
-
+    if (yookassaPayment.id !== paymentId) return res.status(200).json(paymentWebhookAckSchema.parse({ ok: true }));
     const localPlanConfig = getPlanConfig(localPayment.plan, env);
 
     if (eventName === "payment.succeeded" && yookassaPayment.status === "succeeded") {
@@ -441,24 +446,25 @@ router.post("/yookassa/webhook", async (req, res) => {
 
       const planExpiresAt = localPlanConfig.getPlanExpiresAt();
 
-      await db.$transaction([
-        db.payment.update({
-          where: { id: localPayment.id },
+      await db.$transaction(async (tx) => {
+        const claimed = await tx.payment.updateMany({
+          where: { id: localPayment.id, paid: false },
           data: { status: "succeeded", paid: true },
-        }),
-        db.user.update({
+        });
+        if (claimed.count !== 1) return;
+        await tx.user.update({
           where: { id: localPayment.userId },
           data: {
             plan: localPayment.plan,
             subscriptionStatus: "active",
             planExpiresAt,
           },
-        }),
-      ]);
+        });
+      });
     } else if (eventName === "payment.canceled" && yookassaPayment.status === "canceled") {
       if (!localPayment.paid) {
-        await db.payment.update({
-          where: { id: localPayment.id },
+        await db.payment.updateMany({
+          where: { id: localPayment.id, paid: false },
           data: { status: "canceled", paid: false },
         });
       }

@@ -7,6 +7,7 @@ import { createPaymentRouter } from "../routes/payment.routes.js";
 
 const requestId = "018f07a2-7b6c-7d85-a2de-89efb6c124e1";
 const env = {
+  PAYMENTS_ENABLED: "true",
   YOOKASSA_SHOP_ID: "test-shop",
   YOOKASSA_SECRET_KEY: "test-key",
   YOOKASSA_RETURN_URL: "https://glowy-ai.ru/payment/success",
@@ -164,4 +165,73 @@ test("webhook amount mismatch is acknowledged without activating a plan", async 
   assert.equal(response.status, 200);
   assert.deepEqual(response.body, { ok: true });
   assert.equal(transactionCalled, false);
+});
+
+test("unknown and malformed payment identifiers never call the provider", async () => {
+  let calls = 0;
+  const app = createApp({ db: { payment: { findFirst: async () => null } }, fetchImpl: async () => { calls++; } });
+  for (const id of ["unknown-payment", "../../private", "x".repeat(65)]) {
+    assert.equal((await request(app).post("/api/payments/yookassa/webhook").send({ event: "payment.succeeded", object: { id } })).status, 200);
+  }
+  assert.equal(calls, 0);
+});
+
+test("checkout never accepts a non-HTTPS confirmation URL", async () => {
+  let writes = 0;
+  const response = await request(createApp({
+    db: { user: { findUnique: async () => ({ plan: "start", subscriptionStatus: "inactive" }) }, payment: { create: async () => { writes++; } } },
+    fetchImpl: async () => ({ ok: true, json: async () => ({ id: "unsafe-checkout", status: "pending", confirmation: { confirmation_url: "javascript:alert(1)" } }) }),
+  })).post("/api/payments/focus/create");
+  assert.equal(response.status, 500);
+  assert.equal(writes, 0);
+});
+
+test("portfolio checkout is disabled server-side without provider work", async () => {
+  let calls = 0;
+  const app = createApp({ env: { ...env, PAYMENTS_ENABLED: "false" }, db: {}, fetchImpl: async () => { calls++; } });
+  assert.equal((await request(app).post("/api/payments/focus/create")).status, 403);
+  assert.equal(calls, 0);
+});
+
+test("concurrent succeeded and canceled events activate an entitlement at most once", async () => {
+  let paid = false;
+  let activations = 0;
+  let state = "pending";
+  const payment = { id: 5, userId: 42, providerPaymentId: "payment-race", plan: "focus", amountKopeks: 9900, currency: "RUB" };
+  const updateMany = async ({ data }: { data: { paid: boolean; status: string } }) => {
+    if (paid) return { count: 0 };
+    paid = data.paid;
+    state = data.status;
+    return { count: 1 };
+  };
+  let providerCalls = 0;
+  const app = createApp({
+    db: { payment: { findFirst: async () => ({ ...payment, paid }), updateMany },
+      $transaction: async (work: (tx: unknown) => Promise<void>) => work({ payment: { updateMany }, user: { update: async () => { activations++; } } }),
+    },
+    fetchImpl: async (_url: unknown, options: { signal: AbortSignal }) => {
+      assert.ok(options.signal);
+      const index = providerCalls++;
+      return { ok: true, json: async () => ({ id: "payment-race", status: index === 2 ? "canceled" : "succeeded", amount: { value: "99.00", currency: "RUB" }, metadata: { userId: 42, plan: "focus" } }) };
+    },
+  });
+  const responses = await Promise.all(["payment.succeeded", "payment.succeeded", "payment.canceled"].map((event) => request(app).post("/api/payments/yookassa/webhook").send({ event, object: { id: "payment-race" } })));
+  assert.ok(responses.every((response) => response.status === 200));
+  assert.equal(activations, 1);
+  assert.equal(paid, true);
+  assert.equal(state, "succeeded");
+});
+
+test("a stalled provider request is bounded by an abort signal", async () => {
+  const app = createApp({
+    db: { payment: { findFirst: async () => ({ id: 5, providerPaymentId: "payment-timeout" }) } },
+    fetchImpl: async (_url: unknown, options: { signal: AbortSignal }) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new Error("SENTINEL_PROVIDER_ERROR")), { once: true });
+    }),
+  });
+  const started = Date.now();
+  const response = await request(app).post("/api/payments/yookassa/webhook").send({ event: "payment.succeeded", object: { id: "payment-timeout" } });
+  assert.equal(response.status, 500);
+  assert.ok(Date.now() - started < 15_000);
+  assert.doesNotMatch(JSON.stringify(response.body), /SENTINEL/);
 });

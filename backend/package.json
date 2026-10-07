@@ -8,7 +8,7 @@
     "inventory:check": "sh scripts/check-typescript-inventory.sh",
     "prisma:generate": "prisma generate",
     "serve": "npm run serve:compiled",
-    "serve:compiled": "nodemon --watch . --ext ts,json --ignore dist --exec npm run start:compiled",
+    "serve:compiled": "npm run start:compiled",
     "typecheck": "tsc -p tsconfig.json",
     "migrate:deploy": "prisma migrate deploy",
     "start": "node dist/server.js",
@@ -42,7 +42,6 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/supertest": "^7.2.1",
-    "nodemon": "^3.1.14",
     "prisma": "^7.10.0",
     "supertest": "^7.2.2",
     "typescript": "~6.0.2"

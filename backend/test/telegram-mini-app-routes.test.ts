@@ -6,6 +6,7 @@ import { createTelegramRouter } from "../routes/telegram.routes.js";
 import { TelegramMiniAppSessionError } from "../services/telegram/telegram-mini-app-session.service.js";
 
 process.env.JWT_SECRET = "telegram-mini-app-route-secret";
+process.env.REGISTRATION_ENABLED = "true";
 process.env.TELEGRAM_MINI_APP_SESSION_HOURS = "24";
 
 const result = {
@@ -131,4 +132,22 @@ test("unexpected session errors stay generic and logs redact request input", asy
   } finally {
     console.error = originalError;
   }
+});
+
+test("closed Mini App registration never calls the session service and preserves login", async () => {
+  let registrations = 0;
+  const app = createApp({
+    register: async () => { registrations++; return result; },
+    login: async () => result,
+  });
+  process.env.REGISTRATION_ENABLED = "false";
+  try {
+    const response = await request(app).post("/api/telegram/mini-app/register").send({});
+    assert.equal(response.status, 403);
+    assert.equal(response.body.code, "AUTH_REGISTRATION_DISABLED");
+    assert.equal(response.headers["set-cookie"], undefined);
+    assert.equal(registrations, 0);
+    const login = await request(app).post("/api/telegram/mini-app/login").send({});
+    assert.equal(login.status, 200);
+  } finally { process.env.REGISTRATION_ENABLED = "true"; }
 });

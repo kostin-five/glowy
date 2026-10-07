@@ -2,9 +2,11 @@ import jwt from "jsonwebtoken";
 import type { SignOptions } from "jsonwebtoken";
 import type { CookieOptions, Response } from "express";
 import type { User } from "@prisma/client";
+import crypto from "node:crypto";
+import { prisma } from "../../lib/prisma.js";
 
 export const AUTH_COOKIE_NAME = "glowy_token";
-export const WEB_SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+export const WEB_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const TELEGRAM_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export const getTelegramSessionHours = () => {
@@ -36,7 +38,7 @@ export const createAuthToken = (
   {
     jwtSecret = process.env.JWT_SECRET,
     telegramConnectionId = null,
-    expiresIn = telegramConnectionId ? `${getTelegramSessionHours()}h` : "30d",
+    expiresIn = telegramConnectionId ? `${getTelegramSessionHours()}h` : "24h",
   }: {
     jwtSecret?: string;
     telegramConnectionId?: number | null;
@@ -46,7 +48,36 @@ export const createAuthToken = (
   const payload = telegramConnectionId
     ? { id: userId, channel: "telegram-mini-app", telegramConnectionId }
     : { id: userId };
-  return jwt.sign(payload, jwtSecret as jwt.Secret, { expiresIn });
+  return jwt.sign(payload, getAuthSecret(jwtSecret), { expiresIn, algorithm: "HS256", jwtid: crypto.randomUUID() });
+};
+
+export const getAuthSecret = (secret = process.env.JWT_SECRET): string => {
+  if (!secret || (process.env.NODE_ENV === "production" && (secret.length < 32 || /change.?me|example|your.secret/i.test(secret)))) {
+    throw new Error("JWT secret is missing or unsuitable for production");
+  }
+  return secret;
+};
+
+export const tokenFingerprint = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
+
+export const isAuthTokenRevoked = async (token: string, db = prisma): Promise<boolean> =>
+  Boolean(await db.revokedToken.findUnique({ where: { fingerprint: tokenFingerprint(token) } }));
+
+export const revokeAuthToken = async (token: string, db = prisma, secret = process.env.JWT_SECRET): Promise<void> => {
+  let decoded: jwt.JwtPayload | string;
+  try {
+    decoded = jwt.verify(token, getAuthSecret(secret), { algorithms: ["HS256"] });
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) return;
+    throw error;
+  }
+  if (typeof decoded === "string" || typeof decoded.exp !== "number") return;
+  await db.revokedToken.upsert({
+    where: { fingerprint: tokenFingerprint(token) },
+    create: { fingerprint: tokenFingerprint(token), expiresAt: new Date(decoded.exp * 1000) },
+    update: {},
+  });
+  await db.revokedToken.deleteMany({ where: { expiresAt: { lt: new Date() } } });
 };
 
 export const setAuthCookie = (

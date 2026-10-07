@@ -1,9 +1,23 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import test from "node:test";
 import request from "supertest";
 import express from "express";
 import type { Response as SupertestResponse } from "supertest";
 import { createApp } from "../app.js";
+
+const require = createRequire(import.meta.url);
+const proxyAddr = require("proxy-addr") as {
+  compile(subnet: string): (address: string) => boolean;
+};
+
+test("IPv4-mapped IPv6 trust must not accept an unrelated IPv4 address", () => {
+  // Regression for GHSA-jqcg-44mw-7w3h; synthetic addresses only.
+  assert.equal(proxyAddr.compile("::ffff:10.0.0.0/8")("203.0.113.10"), false);
+  const trust = proxyAddr.compile("::ffff:10.0.0.0/104");
+  assert.equal(trust("10.1.2.3"), true);
+  assert.equal(trust("203.0.113.10"), false);
+});
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -99,4 +113,35 @@ test("browser CSRF bypass remains limited to the exact Telegram webhook", async 
 
   assert.equal(webhook.status, 200);
   assert.equal(miniApp.status, 403);
+});
+
+test("malformed and oversized JSON use safe errors", async () => {
+  for (const [body, status, code] of [["{SENTINEL_SECRET", 400, "REQUEST_JSON_INVALID"], [JSON.stringify({ text: "SENTINEL".repeat(20_000) }), 413, "REQUEST_TOO_LARGE"]] as const) {
+    const response = await request(createApp()).post("/api/auth/login").set("Origin", allowedOrigins[0]!).set("Content-Type", "application/json").send(body);
+    assert.equal(response.status, status);
+    assert.equal(response.body.code, code);
+    assert.doesNotMatch(JSON.stringify(response.body), /SENTINEL/);
+  }
+});
+
+test("production configuration rejects wildcard origins, excessive proxies and test routes", async () => {
+  const before = { NODE_ENV: process.env.NODE_ENV, CORS_ORIGINS: process.env.CORS_ORIGINS, TRUST_PROXY_HOPS: process.env.TRUST_PROXY_HOPS };
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.CORS_ORIGINS = "https://example.test";
+    process.env.TRUST_PROXY_HOPS = "0";
+    const response = await request(createApp({ testRoute: true })).get("/api/__test__/error").set("X-Forwarded-For", "203.0.113.1");
+    assert.equal(response.status, 404);
+    assert.equal(response.headers["x-powered-by"], undefined);
+    assert.equal(response.headers["x-content-type-options"], "nosniff");
+    process.env.CORS_ORIGINS = "https://*.example.test";
+    assert.throws(() => createApp());
+    process.env.CORS_ORIGINS = "https://example.test";
+    process.env.TRUST_PROXY_HOPS = "99";
+    assert.throws(() => createApp());
+  } finally {
+    for (const [key, value] of Object.entries(before)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });

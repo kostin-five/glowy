@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import crypto from "node:crypto";
 
 const PORT = process.env.PORT || 3002;
 const AI_PROXY_SECRET = process.env.AI_PROXY_SECRET;
@@ -7,9 +8,8 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 const DEEPSEEK_API_URL =
   process.env.DEEPSEEK_API_URL || "https://api.deepseek.com/chat/completions";
-const AI_PROVIDER_TIMEOUT_MS = Number(
-  process.env.AI_PROVIDER_TIMEOUT_MS || 30_000
-);
+const configuredTimeout = Number(process.env.AI_PROVIDER_TIMEOUT_MS || 30_000);
+const AI_PROVIDER_TIMEOUT_MS = Number.isFinite(configuredTimeout) ? Math.min(60_000, Math.max(1000, configuredTimeout)) : 30_000;
 
 const missingEnv = [
   ["AI_PROXY_SECRET", AI_PROXY_SECRET],
@@ -26,7 +26,9 @@ if (missingEnv.length) {
 }
 
 const app = express();
+app.disable("x-powered-by");
 app.use(express.json({ limit: "1mb" }));
+let requestWindow = { until: Date.now() + 60_000, count: 0 };
 
 const requireProxyAuth = (req, res, next) => {
   const authorization = req.get("authorization") || "";
@@ -34,13 +36,17 @@ const requireProxyAuth = (req, res, next) => {
     ? authorization.slice("Bearer ".length)
     : "";
 
-  if (token !== AI_PROXY_SECRET) {
+  const received = crypto.createHash("sha256").update(token).digest();
+  const expected = crypto.createHash("sha256").update(AI_PROXY_SECRET).digest();
+  if (!token || !crypto.timingSafeEqual(received, expected)) {
     return res.status(401).json({
       ok: false,
       error: { code: "UNAUTHORIZED_PROXY_REQUEST", message: "Unauthorized." },
     });
   }
 
+  if (requestWindow.until <= Date.now()) requestWindow = { until: Date.now() + 60_000, count: 0 };
+  if (++requestWindow.count > 60) return res.status(429).json({ ok: false, error: { code: "PROXY_RATE_LIMITED", message: "Try later." } });
   return next();
 };
 
@@ -52,7 +58,8 @@ app.post("/v1/chat/completions", requireProxyAuth, async (req, res) => {
   const startedAt = Date.now();
   const { messages, generationConfig = {} } = req.body || {};
 
-  if (!Array.isArray(messages) || messages.length === 0) {
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50 ||
+    messages.some((message) => !message || !["system", "user", "assistant"].includes(message.role) || typeof message.content !== "string" || message.content.length > 20_000)) {
     return res.status(400).json({
       ok: false,
       error: { code: "AI_PROVIDER_BAD_REQUEST", message: "Messages are required." },
@@ -142,6 +149,11 @@ app.post("/v1/chat/completions", requireProxyAuth, async (req, res) => {
   } finally {
     clearTimeout(timeout);
   }
+});
+
+app.use((error, _req, res, _next) => {
+  const status = error?.type === "entity.too.large" ? 413 : error?.type === "entity.parse.failed" ? 400 : 500;
+  res.status(status).json({ ok: false, error: { code: "PROXY_REQUEST_FAILED", message: "Request could not be processed." } });
 });
 
 app.listen(PORT, () => {

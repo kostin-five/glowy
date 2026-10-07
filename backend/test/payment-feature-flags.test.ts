@@ -2,7 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import jwt from "jsonwebtoken";
 import request from "supertest";
-import { createApp } from "../app.js";
+import express from "express";
+import { createPaymentRouter } from "../routes/payment.routes.js";
+import { createAuthMiddleware } from "../middleware/auth.middleware.js";
+
+const createApp = () => {
+  const app = express();
+  app.use(express.json());
+  app.use("/api/payments", createPaymentRouter({ authenticate: createAuthMiddleware({ isRevoked: async () => false }), env: { ...process.env, PAYMENTS_ENABLED: "true" } }));
+  return app;
+};
 
 const originalFetch = global.fetch;
 const originalJwtSecret = process.env.JWT_SECRET;

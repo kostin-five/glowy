@@ -4,6 +4,7 @@ import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import type { AuthUser } from "../types/request-context.js";
+import { getAuthSecret, isAuthTokenRevoked } from "../services/auth/auth-session.service.js";
 
 const AUTH_COOKIE_NAME = "glowy_token";
 
@@ -16,14 +17,14 @@ const parseCookies = (cookieHeader = ""): Record<string, string> =>
     return cookies;
   }, {} as Record<string, string>);
 
-const getTokenFromRequest = (req: Request): string | null => {
+export const getTokenFromRequest = (req: Request): string | null => {
   const cookies = parseCookies(req.headers.cookie);
   if (cookies[AUTH_COOKIE_NAME]) return cookies[AUTH_COOKIE_NAME];
 
   const authHeader = req.headers.authorization;
   if (!authHeader) return null;
 
-  return authHeader.split(" ")[1] || null;
+  return /^Bearer ([^\s]+)$/i.exec(authHeader)?.[1] || null;
 };
 
 const sendUnauthorized = (req: Request, res: Response) =>
@@ -36,7 +37,7 @@ const sendUnauthorized = (req: Request, res: Response) =>
 type AuthDb = Pick<PrismaClient, "telegramConnection">;
 
 const toAuthUser = (decoded: string | JwtPayload): AuthUser | null => {
-  if (typeof decoded === "string" || !Number.isSafeInteger(decoded.id)) {
+  if (typeof decoded === "string" || !Number.isSafeInteger(decoded.id) || decoded.id <= 0) {
     return null;
   }
   return { ...decoded, id: decoded.id as number };
@@ -45,9 +46,11 @@ const toAuthUser = (decoded: string | JwtPayload): AuthUser | null => {
 export const createAuthMiddleware = ({
   db = prisma,
   jwtSecret,
+  isRevoked = isAuthTokenRevoked,
 }: {
   db?: AuthDb;
   jwtSecret?: string;
+  isRevoked?: (token: string) => Promise<boolean>;
 } = {}): RequestHandler => async (
   req: Request,
   res: Response,
@@ -65,12 +68,14 @@ export const createAuthMiddleware = ({
 
     const decoded = jwt.verify(
       token,
-      (jwtSecret || process.env.JWT_SECRET) as jwt.Secret
+      getAuthSecret(jwtSecret),
+      { algorithms: ["HS256"] }
     );
     const user = toAuthUser(decoded);
     if (!user) {
       return sendUnauthorized(req, res);
     }
+    if (await isRevoked(token)) return sendUnauthorized(req, res);
     if (user.channel === "telegram-mini-app") {
       if (!Number.isSafeInteger(user.telegramConnectionId)) {
         return sendUnauthorized(req, res);

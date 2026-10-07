@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import express from "express";
+import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import request from "supertest";
 import { createUserRouter } from "../routes/user.routes.js";
+import { createAuthMiddleware } from "../middleware/auth.middleware.js";
+import bcrypt from "bcryptjs";
 
 const originalJwtSecret = process.env.JWT_SECRET;
 
@@ -35,7 +38,7 @@ const createFixture = (overrides: Record<string, unknown> = {}) => {
   };
   const app = express();
   app.use(express.json());
-  app.use("/api/user", createUserRouter({ db } as never));
+  app.use("/api/user", createUserRouter({ db, authenticate: createAuthMiddleware({ isRevoked: async () => false }) } as never));
 
   process.env.JWT_SECRET = "user-preferences-test-secret";
   const authorization = `Bearer ${jwt.sign({ id: user.id }, process.env.JWT_SECRET)}`;
@@ -56,6 +59,33 @@ test("returns safe defaults for a legacy profile", async () => {
   assert.equal(response.body.avatarId, "orbit-indigo");
   assert.equal(response.body.aiTone, "calm");
   assert.equal(response.body.canUseFocusFeatures, false);
+});
+
+test("energy responses never include credential or profile fields", async () => {
+  const { app, authorization } = createFixture({ password: "SENTINEL_HASH", email: "synthetic@example.test" });
+  const response = await request(app).put("/api/user/energy").set("Authorization", authorization).send({ currentEnergy: 60 });
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { currentEnergy: 60 });
+  assert.doesNotMatch(JSON.stringify(response.body), /SENTINEL_HASH|synthetic/);
+});
+
+test("account removal requires its password even for a Telegram-bound session", async () => {
+  for (const channel of [undefined, "telegram-mini-app"]) {
+    let deleted = false;
+    const app = express();
+    app.use(express.json());
+    app.use(createUserRouter({
+      db: { user: {
+        findUnique: async () => ({ id: 7, password: await bcrypt.hash("synthetic-password", 4) }),
+        delete: async ({ where }: { where: { id: number } }) => { assert.equal(where.id, 7); deleted = true; },
+      } },
+      authenticate: ((req, _res, next) => { req.user = { id: 7, ...(channel ? { channel, telegramConnectionId: 5 } : {}) }; next(); }) satisfies RequestHandler,
+    } as never));
+    assert.equal((await request(app).delete("/account").send({ password: "wrong-password" })).status, 403);
+    assert.equal(deleted, false);
+    assert.equal((await request(app).delete("/account").send({ password: "synthetic-password" })).status, 200);
+    assert.equal(deleted, true);
+  }
 });
 
 test("updates a prepared avatar and respectful communication tone", async () => {

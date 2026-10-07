@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import test from "node:test";
 import request from "supertest";
 import { createUserRouter } from "../routes/user.routes.js";
+import { createAuthMiddleware } from "../middleware/auth.middleware.js";
 
 const secret = "user-telegram-test-secret";
 
@@ -15,6 +16,7 @@ const createFixture = (telegramLinks: unknown) => {
     "/api/user",
     createUserRouter({
       db: {},
+      authenticate: createAuthMiddleware({ isRevoked: async () => false }),
       telegramLinks,
     } as never)
   );

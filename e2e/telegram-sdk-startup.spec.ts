@@ -63,7 +63,7 @@ test("ordinary web pages never request Telegram SDK", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: /С возвращением в/ })).toBeVisible();
   await page.goto("/register");
-  await expect(page.getByRole("heading", { name: /Начать путь с/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Регистрация закрыта" })).toBeVisible();
 
   expect(sdkRequests).toBe(0);
 });

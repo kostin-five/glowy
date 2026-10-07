@@ -451,9 +451,9 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       await persistActiveTaskSnapshot(response.map(normalizeTask));
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+        console.error("TASK_REQUEST_FAILED");
       } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
+        console.error("TASK_REQUEST_FAILED");
       }
     } finally {
       set({ isLoading: false });
@@ -471,9 +471,9 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
       });
     } catch (e) {
       if (axios.isAxiosError(e)) {
-        console.error("Ошибка сервера:", e.response?.data?.error || e.message);
+        console.error("TASK_REQUEST_FAILED");
       } else if (e instanceof Error) {
-        console.error("Внутренняя ошибка:", e.message);
+        console.error("TASK_REQUEST_FAILED");
       }
     }
   },

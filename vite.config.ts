@@ -1,12 +1,21 @@
 import { defineConfig } from "vitest/config";
+import { readFileSync } from "node:fs";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 const isComponentCatalog = process.env.GLOWY_COMPONENT_CATALOG === "true";
+const deploymentHeaders = JSON.parse(readFileSync(new URL("./vercel.json", import.meta.url), "utf8"))
+  .headers.find((rule: { source: string }) => rule.source === "/(.*)").headers as { key: string; value: string }[];
+const previewHeaders = Object.fromEntries(deploymentHeaders.map(({ key, value }) => [key,
+  key === "Content-Security-Policy" && process.env.GLOWY_E2E_LOCAL_API === "true"
+    ? value.replace("connect-src 'self' https:;", "connect-src 'self' https: http://localhost:3001;")
+    : value]));
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Exercise the same static security headers locally as on Vercel.
+  preview: { headers: previewHeaders },
   resolve: {
     dedupe: ["react", "react-dom"],
   },

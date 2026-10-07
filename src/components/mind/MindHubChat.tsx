@@ -185,8 +185,8 @@ const ChatMessageBubble = ({
       await navigator.clipboard.writeText(message.text);
       setIsCopied(true);
       window.setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
-      console.error("Failed to copy chat message:", error);
+    } catch {
+      console.error("CHAT_COPY_FAILED");
     }
   };
 
@@ -611,7 +611,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
         addDrafts(accountScope, result.drafts);
       }
     } catch (error) {
-      console.error(error);
+      console.error("AI_REQUEST_FAILED");
       const serverError =
         axios.isAxiosError(error) && typeof error.response?.data?.error === "string"
           ? error.response.data.error

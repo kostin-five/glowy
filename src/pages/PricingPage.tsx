@@ -129,7 +129,7 @@ const PricingPage = () => {
         ? "Текущий тариф"
         : isLifetimeActive
           ? "Включён в пожизненный тариф"
-          : (paymentsEnabled ? "Оформить Focus" : "Оплата подключается"),
+          : (paymentsEnabled ? "Оформить Focus" : "Оплата отключена"),
       highlight: true,
       disabled: !paymentsEnabled || isFocusActive || isLifetimeActive,
       active: isFocusActive,

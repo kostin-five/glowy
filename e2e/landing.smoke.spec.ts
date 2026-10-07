@@ -17,17 +17,17 @@ test.describe("public landing", () => {
     );
   });
 
-  test("opens the registration form", async ({ page }) => {
+  test("explains closed registration and offers a local demo", async ({ page }) => {
     await page.goto("/register");
 
     await expect(
-      page.getByRole("heading", { level: 1, name: /Начать путь с Glowy/ }),
+      page.getByRole("heading", { level: 1, name: "Регистрация закрыта" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Ваше имя")).toBeVisible();
-    await expect(page.getByLabel("Почта")).toBeVisible();
+    await expect(page.getByLabel("Ваше имя")).toHaveCount(0);
+    await expect(page.getByLabel("Почта")).toHaveCount(0);
     await expect(
-      page.getByRole("button", { name: "Зарегистрироваться" }),
-    ).toBeDisabled();
+      page.getByRole("button", { name: "Открыть демо без регистрации" }),
+    ).toBeEnabled();
   });
 
   test("keeps public entry usable at compact mobile widths", async ({ browser }) => {
@@ -51,7 +51,7 @@ test.describe("public landing", () => {
       ).resolves.toBe(true);
 
       await page.goto("/register");
-      await expect(page.getByLabel("Ваше имя")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Регистрация закрыта" })).toBeVisible();
       await expect(
         page.evaluate(
           () => document.documentElement.scrollWidth <= window.innerWidth,

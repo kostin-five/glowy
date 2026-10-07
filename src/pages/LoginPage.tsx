@@ -3,7 +3,7 @@ import { AuthApi } from "../api/AuthApi";
 import { TelegramMiniAppApi } from "../api/TelegramMiniAppApi";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useToLogin } from "../store/useAuthStore";
+import { useAuthStore, useToLogin } from "../store/useAuthStore";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
@@ -149,15 +149,21 @@ const LoginPage = () => {
           </button>
 
           <div className="mt-4 text-center text-sm text-slate-400">
-            Нет аккаунта?{" "}
+            {import.meta.env.VITE_REGISTRATION_ENABLED === "true" ? "Нет аккаунта? " : "Новые аккаунты не создаются. "}
             <Link
               to={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}
               className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
             >
-              Зарегистрироваться
+              {import.meta.env.VITE_REGISTRATION_ENABLED === "true" ? "Зарегистрироваться" : "О демо-режиме"}
             </Link>
           </div>
         </form>
+        {!isTelegramMiniApp && (
+          <button type="button" disabled={isLoading} className="mt-5 rounded-xl border border-slate-600 px-6 py-3 text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+            onClick={() => { useAuthStore.getState().toDemoLogin(); navigate("/dashboard"); }}>
+            Открыть демо без регистрации
+          </button>
+        )}
       </motion.div>
 
       {showWakeupToast && (

@@ -25,7 +25,6 @@ import {
 } from "./store/useTaskStore";
 import RouteLoader from "./components/ui/RouteLoader";
 import AppErrorBoundary from "./components/ui/AppErrorBoundary";
-import CookieConsent from "./components/CookieConsent";
 import {
   useSetDarkMode,
   useStartRoute,
@@ -453,7 +452,6 @@ function App() {
         />
         <Route path="*" element={<Navigate to={startRoute} replace />} />
         </Routes>
-        <CookieConsent />
       </TelegramMiniAppProvider>
     </BrowserRouter>
   );

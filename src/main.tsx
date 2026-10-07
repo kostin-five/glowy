@@ -25,7 +25,7 @@ import {
   isFoundationShowcasePath,
 } from './design-system/foundationShowcaseRoute'
 
-const isFoundationShowcase = isFoundationShowcasePath(window.location.pathname)
+const isFoundationShowcase = import.meta.env.DEV && isFoundationShowcasePath(window.location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

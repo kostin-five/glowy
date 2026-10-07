@@ -53,8 +53,7 @@ export default class AiApi {
     try {
       const response = await aiInstance.get("/usage");
       return aiUsageSchema.parse(response.data);
-    } catch (error) {
-      console.error(error);
+    } catch {
       return null;
     }
   }
@@ -63,8 +62,7 @@ export default class AiApi {
     try {
       const response = await aiInstance.post("/analyze");
       return response.data;
-    } catch (e) {
-      console.error(e);
+    } catch {
       return { message: "Glowy сейчас отдыхает, попробуй позже" };
     }
   }

@@ -3,7 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_PAYMENTS_ENABLED?: string;
-  readonly VITE_YANDEX_METRIKA_ID?: string;
+  readonly VITE_REGISTRATION_ENABLED?: string;
 }
 
 interface ImportMeta {

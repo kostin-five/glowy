@@ -42,3 +42,20 @@ backend/.env.*
 ai-proxy/.env
 ai-proxy/.env.*
 !ai-proxy/.env.example
+
+# Private keys, data exports and backups (Prisma migrations remain tracked)
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.sqlite*
+backups/
+private-exports/
+private-docs/
+.aws/

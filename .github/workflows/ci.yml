@@ -40,6 +40,9 @@ jobs:
       - name: Run tests
         run: npm run test
 
+      - name: Check safe deployment configuration
+        run: npm run test:deployment
+
       - name: Build frontend
         run: npm run build
 
@@ -58,11 +61,22 @@ jobs:
         run: npm run test
         working-directory: backend
 
+      - name: Install optional proxy dependencies
+        run: npm ci
+        working-directory: ai-proxy
+
+      - name: Test optional proxy boundaries
+        run: npm test
+        working-directory: ai-proxy
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run end-to-end tests
         run: npm run test:e2e
+
+      - name: Check isolated developer foundations
+        run: npm run test:foundations
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

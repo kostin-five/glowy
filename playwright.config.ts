@@ -4,6 +4,7 @@ const baseURL = "http://127.0.0.1:4173";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "**/design-system-foundations.spec.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
@@ -16,7 +17,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "VITE_API_URL=http://localhost:3001/api npm run build && npm run preview -- --host 127.0.0.1 --port 4173",
+      "VITE_API_URL=http://localhost:3001/api npm run build && GLOWY_E2E_LOCAL_API=true npm run preview -- --host 127.0.0.1 --port 4173",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

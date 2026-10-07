@@ -104,6 +104,7 @@ const SettingsPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const pageRootRef = useRef<HTMLDivElement>(null);
   const savedToastTimerRef = useRef<number | null>(null);
   const name = useName();
@@ -254,13 +255,12 @@ const SettingsPage = () => {
     try {
       setIsDeletingAccount(true);
       setDeleteError(null);
-      await UserApi.deleteAccount();
+      await UserApi.deleteAccount(deletePassword);
       clearLocalAuthSession();
       setIsDeleteModalOpen(false);
       window.location.assign("/");
-    } catch (error) {
-      console.error("Delete account request failed:", error);
-      setDeleteError("Не удалось удалить аккаунт. Попробуй ещё раз.");
+    } catch {
+      setDeleteError("Не удалось удалить аккаунт. Проверь пароль и попробуй ещё раз.");
     } finally {
       setIsDeletingAccount(false);
     }
@@ -620,11 +620,11 @@ const SettingsPage = () => {
         </div>
 
         <a
-          href="mailto:contact@example.test"
+          href="https://github.com/kostin-five/glowy/issues"
           className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400 dark:text-indigo-300"
         >
           <Mail size={17} />
-          contact@example.test
+          GitHub Issues — без личных данных
         </a>
       </section>
 
@@ -671,6 +671,7 @@ const SettingsPage = () => {
           if (!isDeletingAccount) {
             setIsDeleteModalOpen(false);
             setDeleteError(null);
+            setDeletePassword("");
           }
         }}
         title="Удалить аккаунт"
@@ -679,6 +680,12 @@ const SettingsPage = () => {
           <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
             Аккаунт, задачи и данные будут удалены без восстановления.
           </p>
+          <label className="text-sm text-slate-700 dark:text-slate-200">
+            Пароль аккаунта
+            <input type="password" autoComplete="current-password" value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-slate-300 p-3 dark:border-slate-600 dark:bg-slate-900" />
+          </label>
           {deleteError && (
             <p className="text-sm font-semibold text-rose-600 dark:text-rose-300">
               {deleteError}
@@ -700,7 +707,7 @@ const SettingsPage = () => {
             <button
               type="button"
               onClick={handleDeleteAccount}
-              disabled={isDeletingAccount}
+              disabled={isDeletingAccount || !deletePassword}
               className="inline-flex flex-1 items-center justify-center rounded-2xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isDeletingAccount ? "Удаляем..." : "Удалить аккаунт"}

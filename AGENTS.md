@@ -152,10 +152,9 @@ archive.
 - `.specify/memory/constitution.md` - non-negotiable project principles.
 - `openspec/specs/` - canonical current product requirements.
 - `openspec/MIGRATION.md` - source hierarchy and mapping from historical Spec Kit artifacts.
-- `docs/handoffs/PROJECT_HANDOFF_2026-09-04.md` - latest local development state and next steps.
-- `docs/handoffs/PROJECT_HANDOFF_2026-08-30.md` - last verified production release and infrastructure state.
-- `docs/handoffs/NEXT_CHAT_PROMPT.md` - canonical bootstrap prompt for the next main developer.
+- `docs/demo-hosting.md` - safe demo setup and hosting limitations.
+- `docs/publication-manifest.md` - public/private document boundaries.
 - `README.md` - setup, environment variables, deploy, and payment overview.
 - `docs/product-roadmap.md` - approved product direction and release boundaries.
-- `docs/payments-live-checklist.md` - operational checklist for live YooKassa payments.
+- `docs/release-checklist.md` - verification and publication gate.
 - `deploy/README.md` - VPS and deployment notes.

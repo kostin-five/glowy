@@ -123,7 +123,9 @@ for (const width of [320, 360, 390, 430]) {
     await page.setViewportSize({ width, height: 780 });
     await page.goto("/telegram");
 
-    await expect(page.getByRole("heading", { name: "Начать путь с Glowy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Регистрация закрыта" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Войти", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Открыть демо без регистрации" })).toHaveCount(0);
     const overflow = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth,

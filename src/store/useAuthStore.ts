@@ -2,6 +2,7 @@ import axios from "axios";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { API_BASE_URL } from "../api/config";
+import { AuthApi } from "../api/AuthApi";
 import type { AiTone, AvatarId } from "../types";
 
 export const GUEST_REQUEST_LIMIT = 3;
@@ -134,8 +135,6 @@ export const useAuthStore = create<AuthStore>()(
 
         set({ isChecking: true });
         try {
-          // Dynamic import to avoid circular dependency
-          const { AuthApi } = await import("../api/AuthApi");
           const user = await AuthApi.meRequest();
           if (requestSessionVersion !== authSessionVersion) return;
 
@@ -236,8 +235,8 @@ export const useAuthStore = create<AuthStore>()(
                 : undefined,
             }
           );
-        } catch (e) {
-          console.error(e);
+        } catch {
+          // Keep the previous energy when the request cannot be saved.
         }
       },
     }),

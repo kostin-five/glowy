@@ -4,6 +4,7 @@ import { AuthApi } from "../api/AuthApi";
 import { clearLocalAuthSession } from "../api/authSession";
 import { useTelegramMiniApp } from "../telegram/telegramMiniAppContext";
 import { blockTelegramMiniAppAutoRestore } from "../telegram/telegramMiniAppSession";
+import { useAuthStore } from "../store/useAuthStore";
 
 export const useLogout = () => {
   const navigate = useNavigate();
@@ -11,15 +12,13 @@ export const useLogout = () => {
 
   return useCallback(async () => {
     try {
-      await AuthApi.logoutRequest();
-    } catch (error) {
-      console.error("Logout request failed:", error);
-    } finally {
-      if (isTelegramMiniApp) {
-        blockTelegramMiniAppAutoRestore();
-      }
-      clearLocalAuthSession();
-      navigate("/login", { replace: true });
+      if (!useAuthStore.getState().isGuest) await AuthApi.logoutRequest();
+    } catch {
+      window.alert("Не удалось завершить серверную сессию. Проверь соединение и попробуй ещё раз.");
+      return;
     }
+    if (isTelegramMiniApp) blockTelegramMiniAppAutoRestore();
+    clearLocalAuthSession();
+    navigate("/login", { replace: true });
   }, [isTelegramMiniApp, navigate]);
 };

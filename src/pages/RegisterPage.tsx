@@ -6,7 +6,7 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import AuthLoader from "../components/ui/AuthLoader";
-import { useToLogin } from "../store/useAuthStore";
+import { useAuthStore, useToLogin } from "../store/useAuthStore";
 import { useStartRoute } from "../store/useSettingsStore";
 import { trackProductEventOnce } from "../utils/analytics";
 import { openTelegramExternalLink } from "../telegram/telegramExternalLink";
@@ -41,6 +41,7 @@ const RegisterPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (import.meta.env.VITE_REGISTRATION_ENABLED !== "true") return;
     setError("");
 
     if (password.length < 8) {
@@ -84,6 +85,20 @@ const RegisterPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (import.meta.env.VITE_REGISTRATION_ENABLED !== "true") {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-6 px-6 text-center">
+        <h1 className="text-2xl font-bold">Регистрация закрыта</h1>
+        <p className="max-w-md text-slate-400">Glowy сохранён как портфолио-проект. Новые аккаунты не создаются. Можно войти в существующий аккаунт.</p>
+        <Link to="/login" className="text-indigo-300 underline">Войти</Link>
+        {!isTelegramMiniApp && <button type="button" className="rounded-xl border border-slate-600 px-6 py-3"
+          onClick={() => { useAuthStore.getState().toDemoLogin(); navigate("/dashboard"); }}>
+          Открыть демо без регистрации
+        </button>}
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden py-6 px-4">

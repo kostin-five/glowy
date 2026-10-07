@@ -16,6 +16,8 @@
     "openspec:validate": "openspec validate --all --strict",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:foundations": "playwright test -c playwright.foundations.config.ts",
+    "test:deployment": "node --test deploy/hosting-config.test.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "preview": "vite preview",

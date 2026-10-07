@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: glowy-demo-backend
+    runtime: node
+    plan: free
+    branch: master
+    autoDeployTrigger: off
+    buildCommand: npm ci && npm --prefix backend ci && npm run build:backend
+    startCommand: npm --prefix backend run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.3
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PAYMENTS_ENABLED
+        value: "false"
+      - key: REGISTRATION_ENABLED
+        value: "false"
+      - key: TELEGRAM_WORKER_ENABLED
+        value: "false"
+      - key: TRUST_PROXY_HOPS
+        value: "1"

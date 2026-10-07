@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import RegisterPage from "./RegisterPage";
@@ -28,13 +28,15 @@ vi.mock("../telegram/telegramMiniAppSession", () => ({
   allowTelegramMiniAppAutoRestore: mocks.allowAutoRestore,
 }));
 
-vi.mock("../store/useAuthStore", () => ({ useToLogin: () => mocks.toLogin }));
+vi.mock("../store/useAuthStore", () => ({ useToLogin: () => mocks.toLogin, useAuthStore: { getState: () => ({ toDemoLogin: vi.fn() }) } }));
 vi.mock("../store/useSettingsStore", () => ({ useStartRoute: () => "/dashboard" }));
 vi.mock("../utils/analytics", () => ({
   trackProductEventOnce: mocks.trackProductEventOnce,
 }));
 
+beforeEach(() => vi.stubEnv("VITE_REGISTRATION_ENABLED", "true"));
 afterEach(() => {
+  vi.unstubAllEnvs();
   mocks.registerRequest.mockReset();
   mocks.telegramRegister.mockReset();
   mocks.allowAutoRestore.mockReset();
@@ -44,6 +46,15 @@ afterEach(() => {
 });
 
 describe("registration analytics", () => {
+  it("shows a closed registration screen without requesting an account", () => {
+    vi.stubEnv("VITE_REGISTRATION_ENABLED", "false");
+    render(<MemoryRouter><RegisterPage /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Регистрация закрыта" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Почта")).not.toBeInTheDocument();
+    expect(mocks.registerRequest).not.toHaveBeenCalled();
+    expect(mocks.telegramRegister).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Открыть демо без регистрации" })).toBeInTheDocument();
+  });
   it("records start and completion around a successful registration", async () => {
     mocks.registerRequest.mockResolvedValue({
       id: 42,

@@ -7,6 +7,7 @@ import NoteEditor from "../components/notes/NoteEditor";
 import NoteList from "../components/notes/NoteList";
 import NoteTaskDraftDialog from "../components/notes/NoteTaskDraftDialog";
 import { useTaskStore } from "../store/useTaskStore";
+import { useAuthStore } from "../store/useAuthStore";
 import type { Note, TaskDraft } from "../types";
 
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -16,6 +17,14 @@ const errorMessage = (error: unknown, fallback: string) =>
     : fallback;
 
 export default function NotesPage() {
+  const scope = useAuthStore((state) => `${state.isGuest}:${state.userId}:${state.token}`);
+  return <NotesView key={scope} />;
+}
+
+function NotesView() {
+  const isGuest = useAuthStore((state) => state.isGuest);
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const { noteId } = useParams();
   const navigate = useNavigate();
   const tasks = useTaskStore((state) => state.tasks);
@@ -42,7 +51,7 @@ export default function NotesPage() {
     setLoading(true); setListError(null);
     try {
       const result = await NoteApi.list(query, archived);
-      if (revision !== loadRevision.current) return;
+      if (!active.current || revision !== loadRevision.current) return;
       setNotes(result);
       if (noteId) {
         const requested = result.find((note) => note.id === Number(noteId)) ?? await NoteApi.get(Number(noteId));
@@ -103,6 +112,7 @@ export default function NotesPage() {
       const saved = selected
         ? await NoteApi.update(selected.id, { title, content })
         : await NoteApi.create({ title, content });
+      if (!active.current) return false;
       if (revision !== requestRevision.current) {
         if (isCreating) {
           selectedIdRef.current = saved.id;
@@ -134,6 +144,7 @@ export default function NotesPage() {
     if (!selected) return;
     try {
       await NoteApi.update(selected.id, { archived: !selected.archived });
+      if (!active.current) return;
       setNotes((current) => current.filter((note) => note.id !== selected.id));
       resetEditor();
       setNewNoteOpen(false);
@@ -150,9 +161,11 @@ export default function NotesPage() {
   const refreshSelected = async () => {
     if (!selected) return;
     const note = await NoteApi.get(selected.id);
+    if (!active.current) return;
     setSelected(note); setNotes((all) => all.map((item) => item.id === note.id ? note : item));
   };
   const requestDraft = async (fragment: string) => {
+    if (isGuest) { setListError("AI недоступен в демо-режиме"); return; }
     if (!selected) return;
     if (status === "dirty" || status === "saving" || status === "error") {
       setListError("Сначала сохраните изменения заметки"); return;
@@ -174,6 +187,16 @@ export default function NotesPage() {
     finally { setDraftBusy(false); }
   };
 
+  const deleteLocalNote = async () => {
+    if (!selected || !isGuest || !window.confirm("Удалить локальную заметку? Это действие нельзя отменить.")) return;
+    try {
+      await NoteApi.deleteLocal(selected.id);
+      if (!active.current) return;
+      setNotes((all) => all.filter((note) => note.id !== selected.id));
+      resetEditor(); setNewNoteOpen(false); navigate("/notes");
+    } catch { if (active.current) setListError("Не удалось удалить заметку. Повтори действие."); }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-[96rem] flex-col gap-5">
       <header className={`${mobileEditorOpen ? "hidden lg:flex" : "flex"} flex-wrap items-end justify-between gap-3`}>
@@ -182,10 +205,11 @@ export default function NotesPage() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Место для мыслей, к которым хочется вернуться.</p>
         </div>
         <span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/50 bg-white/55 px-3 text-xs font-bold text-slate-600 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-950/35 dark:text-slate-300">
-          <LockKeyhole size={15} className="text-indigo-400" /> Только для меня
+          <LockKeyhole size={15} className="text-indigo-400" /> {isGuest ? "Только в этом браузере" : "Только для меня"}
         </span>
       </header>
       {listError && <div role="alert" className="rounded-2xl bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-300">{listError}</div>}
+      {isGuest && selected && <button type="button" onClick={() => void deleteLocalNote()} className="self-end rounded-xl px-3 py-2 text-sm text-rose-500">Удалить заметку</button>}
       <div className="flex min-h-0 flex-col gap-4 lg:h-[calc(100dvh-12.5rem)] lg:min-h-[38rem] lg:flex-row">
         <NoteList hiddenOnMobile={mobileEditorOpen} notes={notes} selectedId={selected?.id ?? null} query={query} archived={archived} loading={loading} error={null} onQueryChange={setQuery} onArchivedChange={(value) => { setArchived(value); resetEditor(); setNewNoteOpen(false); navigate("/notes"); }} onSelect={choose} onCreate={createBlank} />
         <NoteEditor hiddenOnMobile={!mobileEditorOpen} loading={Boolean(noteId) && selected?.id !== Number(noteId)} note={selected} title={title} content={content} status={status} tasks={tasks} onTitle={changeTitle} onContent={changeContent} onSave={() => void save()} onBack={() => void returnToList()} onArchive={() => void archiveNote()} onLink={(taskId) => selected && void NoteApi.linkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось связать задачу")))} onUnlink={(taskId) => selected && void NoteApi.unlinkTask(selected.id, taskId).then(refreshSelected).catch((error) => setListError(errorMessage(error, "Не удалось убрать связь")))} onDraft={(fragment) => void requestDraft(fragment)} />

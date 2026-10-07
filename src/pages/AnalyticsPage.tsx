@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -30,6 +29,7 @@ import {
 } from "../api/AnalyticsApi";
 import { formatLocalDateOnly } from "../utils/localDate";
 import { useAuthStore, useIsGuest } from "../store/useAuthStore";
+import { useTaskStore } from "../store/useTaskStore";
 import type { AnalyticsSnapshot } from "../types";
 import FirstUsePopover from "../components/onboarding/FirstUsePopover";
 import Modal from "../components/ui/Modal";
@@ -120,7 +120,8 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
 }) => {
   const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(!isGuest);
+  const [isLoading, setIsLoading] = useState(true);
+  const tasks = useTaskStore((state) => state.tasks);
   const [reportOverride, setReportOverride] = useState<{
     key: string;
     text: string | null;
@@ -143,7 +144,7 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
   }, [isGuest, ownerId]);
 
   const retrySnapshot = useCallback(async () => {
-    if (isGuest || snapshotPending.current || !isCurrentView()) return;
+    if (snapshotPending.current || !isCurrentView()) return;
     snapshotPending.current = true;
     setIsLoading(true);
     setError(null);
@@ -156,11 +157,9 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
       snapshotPending.current = false;
       if (isCurrentView()) setIsLoading(false);
     }
-  }, [anchor, isGuest, isCurrentView, period]);
+  }, [anchor, isCurrentView, period]);
 
   useEffect(() => {
-    if (isGuest) return;
-
     let active = true;
     AnalyticsApi.getSnapshot(period, anchor)
       .then((data) => {
@@ -179,7 +178,7 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
     return () => {
       active = false;
     };
-  }, [anchor, isGuest, isCurrentView, period]);
+  }, [anchor, isGuest, isCurrentView, period, tasks]);
 
   const chartData = useMemo(
     () =>
@@ -256,27 +255,6 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
     setReportOverride({ key: reportIdentityKey, text: null });
     setCopyFeedback(null);
   };
-
-  if (isGuest) {
-    return (
-      <section className="mx-auto w-full max-w-4xl px-4 pb-28 md:px-8 lg:pb-8">
-        <h1 className="font-display text-3xl font-bold text-slate-950 dark:text-slate-100">
-          Твоя аналитика
-        </h1>
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/70">
-          <p className="font-semibold text-slate-900 dark:text-slate-100">
-            Аналитика сохраняется в аккаунте
-          </p>
-          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-            Войди, чтобы видеть стрик, время и динамику выполненных задач между устройствами.
-          </p>
-          <Link className="mt-4 inline-flex text-sm font-bold text-indigo-500" to="/login">
-            Войти в аккаунт
-          </Link>
-        </div>
-      </section>
-    );
-  }
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pb-28 sm:px-4 md:px-8 lg:pb-8">
@@ -446,6 +424,7 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
               <Sparkles className="mt-0.5 shrink-0 text-indigo-500" size={20} />
               <div className="min-w-0 flex-1">
                 <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
+                {isGuest && <p className="mt-2 text-sm text-slate-500">AI недоступен в демо-режиме</p>}
                 {isInsightLoading && (
                   <div role="status" aria-live="polite" className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                     <p className="flex items-center gap-2 font-semibold">
@@ -457,7 +436,9 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
                     </p>
                   </div>
                 )}
-                {insight ? (
+                {isGuest ? (
+                  <button type="button" disabled className="mt-4 rounded-xl border px-4 py-2 text-sm opacity-50">AI-разбор недоступен</button>
+                ) : insight ? (
                   <div className="mt-3">
                     <div className="mb-4 flex flex-wrap items-center gap-2">
                       <button
@@ -506,7 +487,7 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
                     <button
                       type="button"
                       onClick={requestInsight}
-                      disabled={isInsightLoading}
+                      disabled={isGuest || isInsightLoading || !snapshot.canRequestAiInsight}
                       className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
                     >
                       {isInsightLoading

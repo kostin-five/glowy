@@ -68,6 +68,7 @@ const AvatarPicker = ({ value, onChange, disabled = false }: AvatarPickerProps) 
             key={avatar.id}
             type="button"
             onClick={() => onChange(avatar.id)}
+            aria-label={avatar.label}
             className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-xl border p-2 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               selected
                 ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10"

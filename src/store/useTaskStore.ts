@@ -15,6 +15,8 @@ import type { StateCreator } from "zustand";
 import { TaskApi } from "../api/TaskApi";
 import { UserApi } from "../api/UserApi";
 import { useAuthStore } from "./useAuthStore";
+import { schemaTask } from "../types";
+import { DemoNotes } from "../demo/demoNotes";
 import { getLevelByXp, getXpReward } from "../utils/xp";
 import { normalizeTaskDate } from "../utils/taskDateGroups";
 import axios from "axios";
@@ -262,7 +264,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
     }),
 
   confirmTaskDeletion: async (id: number) => {
-    if (isGuestSession()) return;
+    if (isGuestSession()) { if (typeof indexedDB !== "undefined") await DemoNotes.removeTaskLinks(id); return; }
     await persistAndQueue(get().tasks, {
       kind: "task.delete",
       entityId: id,
@@ -306,6 +308,7 @@ const taskStore: StateCreator<TaskStore> = (set, get) => ({
 
   deleteTask: async (id: number) => {
     if (isGuestSession()) {
+      if (typeof indexedDB !== "undefined") await DemoNotes.removeTaskLinks(id);
       set((state) => ({
         tasks: state.tasks.filter((task) => task.id !== id),
       }));
@@ -715,6 +718,37 @@ export const useTaskStore = create<TaskStore>()(
     }),
   })
 );
+
+// Preserve the original guest task shape and key, but keep a separate snapshot
+// before account-scoped offline sync replaces the visible task store.
+const DEMO_TASK_KEY = "glowy-demo-tasks-v1";
+const saveDemoTasks = () => {
+  const { tasks, currentXP, userLevel } = useTaskStore.getState();
+  localStorage.setItem(DEMO_TASK_KEY, JSON.stringify({ tasks, currentXP, userLevel }));
+};
+useTaskStore.subscribe((state, previous) => {
+  if (useAuthStore.getState().isGuest && (state.tasks !== previous.tasks || state.currentXP !== previous.currentXP)) {
+    try { saveDemoTasks(); } catch {
+      useTaskStore.setState({ completionNotice: "Не удалось сохранить задачи демо на устройстве." });
+    }
+  }
+});
+useAuthStore.subscribe((next, previous) => {
+  if (next.isGuest === previous.isGuest && next.userId === previous.userId) return;
+  if (previous.isGuest) {
+    try { saveDemoTasks(); } catch { useTaskStore.setState({ completionNotice: "Не удалось сохранить задачи демо на устройстве." }); }
+  }
+  if (next.isGuest) {
+    try {
+      const raw = localStorage.getItem(DEMO_TASK_KEY);
+      const saved = raw ? JSON.parse(raw) : null;
+      const tasks = saved ? schemaTask.array().parse(saved.tasks) : [];
+      useTaskStore.setState({ tasks, currentXP: Math.max(0, Number(saved?.currentXP) || 0), userLevel: Math.max(1, Number(saved?.userLevel) || 1), completionNotice: null });
+    } catch { useTaskStore.setState({ tasks: [], currentXP: 0, userLevel: 1, completionNotice: "Не удалось прочитать задачи демо. Локальные данные не удалены." }); }
+  } else {
+    useTaskStore.setState({ tasks: [], currentXP: 0, userLevel: 1, completionNotice: null });
+  }
+});
 
 export const useTasks = () => useTaskStore((state) => state.tasks);
 export const useFilter = () => useTaskStore((state) => state.filterStatus);

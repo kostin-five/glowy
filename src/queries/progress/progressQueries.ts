@@ -1,12 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { ProgressApi } from "../../api/ProgressApi";
 import { accountQueryKeys } from "../../query/accountQueryKeys";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export interface ProgressQueryScope {
   userId: number | null;
   today: string;
   month: string;
   enabled: boolean;
+  isGuest?: boolean;
+  taskRevision?: string;
+  sessionKey?: string;
 }
 
 const anonymousAccountKey = ["account", "anonymous"] as const;
@@ -23,19 +27,24 @@ export const getProgressOverviewKey = ({
   userId,
   today,
   month,
+  isGuest,
+  taskRevision,
+  sessionKey,
 }: ProgressQueryScope) =>
-  userId === null
+  isGuest ? ["demo", "progress", sessionKey, today, month, taskRevision] as const : userId === null
     ? progressQueryKeys.anonymousOverview(today, month)
     : progressQueryKeys.overview(userId, today, month);
 
 export const useProgressOverview = (scope: ProgressQueryScope) =>
   useQuery({
     queryKey: getProgressOverviewKey(scope),
+    networkMode: scope.isGuest ? "always" : "online",
     queryFn: ({ signal }) => {
-      if (scope.userId === null) {
+      const auth = useAuthStore.getState();
+      if (scope.isGuest ? !auth.isGuest || (scope.sessionKey !== undefined && scope.sessionKey !== (auth.token ?? "guest")) : auth.isGuest || scope.userId === null) {
         throw new Error("Progress query requires an authenticated account");
       }
       return ProgressApi.getOverview(scope.today, scope.month, signal);
     },
-    enabled: scope.enabled && scope.userId !== null,
+    enabled: scope.enabled && (scope.isGuest || scope.userId !== null),
   });

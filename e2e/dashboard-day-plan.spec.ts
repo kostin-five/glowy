@@ -6,11 +6,6 @@ const fulfillJson = (route: Route, body: unknown) => route.fulfill({
   body: JSON.stringify(body),
 });
 
-const today = () => {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
 const createTask = (id: number, title: string, energyLevel: "low" | "med" | "high") => ({
   id,
   title,
@@ -96,34 +91,15 @@ const prepareApp = async (page: Page) => {
   return updates;
 };
 
-test("reviews and confirms a bounded day plan without hidden updates", async ({ page }) => {
+test("keeps next steps without the removed day-plan flow or hidden updates", async ({ page }) => {
   const updates = await prepareApp(page);
   await page.goto("/dashboard");
 
   await expect(page.getByText("Следующий шаг", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Настроить план" }).click();
-  await expect(page.getByRole("dialog", { name: "План на сегодня" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Настроить план" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "План на сегодня" })).toHaveCount(0);
+  await expect(page.getByText(/План на сегодня готов/)).toHaveCount(0);
+  await expect(page.getByText("Сегодня", { exact: true }).first()).toBeVisible();
   expect(updates).toHaveLength(0);
-
-  const panel = page.getByTestId("modal-panel");
-  const panelBox = await panel.boundingBox();
-  const viewport = page.viewportSize();
-  expect(panelBox).not.toBeNull();
-  expect(viewport).not.toBeNull();
-  expect(panelBox!.x).toBeGreaterThanOrEqual(0);
-  expect(panelBox!.x + panelBox!.width).toBeLessThanOrEqual(viewport!.width + 1);
-  await expect.poll(async () => {
-    const settledBox = await panel.boundingBox();
-    return settledBox ? Math.ceil(settledBox.y + settledBox.height) : Number.POSITIVE_INFINITY;
-  }).toBeLessThanOrEqual(viewport!.height + 1);
-
-  await page.getByRole("checkbox", { name: /Не добавлять сегодня/ }).uncheck();
-  expect(updates).toHaveLength(0);
-  await page.getByRole("button", { name: "Добавить в план" }).click();
-
-  await expect(page.getByText(/План на сегодня готов/)).toBeVisible();
-  await expect.poll(() => updates).toHaveLength(2);
-  expect(updates.map(({ id }) => id).sort()).toEqual([1, 2]);
-  expect(updates.every((update) => update.date === today())).toBe(true);
   await expect(page.getByText("Не добавлять сегодня")).toBeVisible();
 });

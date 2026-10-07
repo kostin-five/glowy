@@ -6,13 +6,14 @@ import { toneCatalog } from "../../constants/profile";
 import { useAuthStore } from "../../store/useAuthStore";
 import type { AiTone, AvatarId, UserPreferences } from "../../types";
 import AvatarPicker from "./AvatarPicker";
+import { demoTransaction } from "../../demo/demoStorage";
 
 interface ProfilePreferencesPanelProps {
   isGuest: boolean;
   onSaved: () => void;
 }
 
-const ProfilePreferencesPanel = ({
+const ProfilePreferencesPanelView = ({
   isGuest,
   onSaved,
 }: ProfilePreferencesPanelProps) => {
@@ -37,21 +38,28 @@ const ProfilePreferencesPanel = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isGuest) return;
-
     let active = true;
-    UserApi.getPreferences()
+    const session = useAuthStore.getState();
+    if (session.isGuest !== isGuest) return;
+    const isCurrentSession = () => {
+      const current = useAuthStore.getState();
+      return active && current.isGuest === session.isGuest && current.userId === session.userId && current.token === session.token;
+    };
+    const request = isGuest
+      ? demoTransaction((data): UserPreferences => ({ avatarId: data.avatarId, aiTone: "calm", focusBetaEnabled: false, canUseFocusFeatures: false, focusBetaAvailable: false }), false)
+      : UserApi.getPreferences();
+    request
       .then((loaded) => {
-        if (!active) return;
+        if (!isCurrentSession()) return;
         setPreferences(loaded);
         setProfilePreferences(loaded.avatarId, loaded.aiTone);
         setError(null);
       })
       .catch(() => {
-        if (active) setError("Не удалось загрузить настройки профиля.");
+        if (isCurrentSession()) setError("Не удалось загрузить настройки профиля.");
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        if (isCurrentSession()) setIsLoading(false);
       });
 
     return () => {
@@ -62,7 +70,12 @@ const ProfilePreferencesPanel = ({
   const updatePreference = async (
     patch: { avatarId: AvatarId } | { aiTone: AiTone }
   ) => {
-    if (!preferences || isGuest || isSaving) return;
+    if (!preferences || isSaving || (isGuest && "aiTone" in patch)) return;
+    const session = useAuthStore.getState();
+    const isCurrentSession = () => {
+      const current = useAuthStore.getState();
+      return current.userId === session.userId && current.isGuest === session.isGuest && current.token === session.token;
+    };
 
     const previous = preferences;
     const optimistic = { ...preferences, ...patch };
@@ -72,11 +85,16 @@ const ProfilePreferencesPanel = ({
     setError(null);
 
     try {
-      const saved = await UserApi.updatePreferences(patch);
+      const saved = isGuest ? await demoTransaction((data) => {
+        if ("avatarId" in patch) data.avatarId = patch.avatarId;
+        return { ...optimistic, avatarId: data.avatarId };
+      }) : await UserApi.updatePreferences(patch);
+      if (!isCurrentSession()) return;
       setPreferences(saved);
       setProfilePreferences(saved.avatarId, saved.aiTone);
       onSaved();
     } catch {
+      if (!isCurrentSession()) return;
       setPreferences(previous);
       setProfilePreferences(previous.avatarId, previous.aiTone);
       setError("Не удалось сохранить настройку. Попробуй ещё раз.");
@@ -106,7 +124,7 @@ const ProfilePreferencesPanel = ({
       <AvatarPicker
         value={preferences.avatarId}
         onChange={(avatarId) => updatePreference({ avatarId })}
-        disabled={isGuest || isSaving}
+        disabled={isSaving}
       />
 
       <fieldset disabled={isGuest || isSaving || !preferences.canUseFocusFeatures}>
@@ -161,8 +179,7 @@ const ProfilePreferencesPanel = ({
 
       {isGuest && (
         <p className="text-sm text-amber-700 dark:text-amber-300">
-          В демо-режиме выбор показан для знакомства. После регистрации он
-          будет сохраняться между устройствами.
+          Аватар сохраняется только в этом браузере. AI недоступен в демо-режиме.
         </p>
       )}
       {error && (
@@ -172,6 +189,11 @@ const ProfilePreferencesPanel = ({
       )}
     </div>
   );
+};
+
+const ProfilePreferencesPanel = (props: ProfilePreferencesPanelProps) => {
+  const scope = useAuthStore((state) => `${state.isGuest}:${state.userId}`);
+  return <ProfilePreferencesPanelView key={scope} {...props} />;
 };
 
 export default ProfilePreferencesPanel;

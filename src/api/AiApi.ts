@@ -16,6 +16,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
 import { trackProductEventOnce } from "../utils/analytics";
+import { assertAccountAi, DEMO_AI_MESSAGE } from "../demo/demoStorage";
 
 export type {
   AiUsage,
@@ -33,7 +34,7 @@ const aiInstance = axios.create({
 
 const getGuestRegistrationResponse = (): MindHubResponse => ({
   drafts: [],
-  reply: "Чтобы пользоваться Glowy AI, зарегистрируйся или войди в аккаунт.",
+  reply: DEMO_AI_MESSAGE,
 });
 
 aiInstance.interceptors.request.use((config) => {
@@ -50,6 +51,7 @@ attachUnauthorizedInterceptor(aiInstance);
 
 export default class AiApi {
   static async getAiUsage(): Promise<AiUsage | null> {
+    if (useAuthStore.getState().isGuest) return null;
     try {
       const response = await aiInstance.get("/usage");
       return aiUsageSchema.parse(response.data);
@@ -59,6 +61,7 @@ export default class AiApi {
   }
 
   static async getAdvice() {
+    if (useAuthStore.getState().isGuest) return { message: DEMO_AI_MESSAGE };
     try {
       const response = await aiInstance.post("/analyze");
       return response.data;
@@ -104,10 +107,7 @@ export default class AiApi {
   }
 
   static async createSubtaskDraft(input: SubtaskDraftRequest): Promise<SubtaskDraftResponse> {
-    const authStore = useAuthStore.getState();
-    if (authStore.isGuest) {
-      throw new Error("Чтобы пользоваться Glowy AI, зарегистрируйся или войди в аккаунт.");
-    }
+    assertAccountAi();
 
     try {
       const payload = subtaskDraftRequestSchema.parse(input);

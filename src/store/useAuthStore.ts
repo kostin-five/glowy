@@ -81,6 +81,8 @@ export const useAuthStore = create<AuthStore>()(
           isChecking: false,
           name: name,
           email: email,
+          avatarId: "orbit-indigo",
+          aiTone: "calm",
           token: token,
         }));
       },

@@ -36,7 +36,6 @@ import {
   type TaskFormMode,
 } from "../store/useSettingsStore";
 import {
-  GUEST_REQUEST_LIMIT,
   useAuthStore,
   useEmail,
   useIsGuest,
@@ -110,7 +109,6 @@ const SettingsPage = () => {
   const name = useName();
   const email = useEmail();
   const isGuest = useIsGuest();
-  const guestRequestsCount = useAuthStore((state) => state.guestRequestsCount);
   const handleLogout = useLogout();
   const themeMode = useThemeMode();
   const setThemeMode = useSetThemeMode();
@@ -198,12 +196,7 @@ const SettingsPage = () => {
     const loadAiUsage = async () => {
       if (isGuest) {
         if (!isMounted) return;
-        setAiUsage({
-          plan: "demo",
-          used: guestRequestsCount,
-          limit: GUEST_REQUEST_LIMIT,
-          remaining: Math.max(0, GUEST_REQUEST_LIMIT - guestRequestsCount),
-        });
+        setAiUsage(null);
         setAiUsageUnavailable(false);
         return;
       }
@@ -225,7 +218,7 @@ const SettingsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [guestRequestsCount, isGuest]);
+  }, [isGuest]);
 
   const handleThemeModeChange = (themeMode: ThemeMode) => {
     setThemeMode(themeMode);
@@ -366,7 +359,7 @@ const SettingsPage = () => {
               </p>
               {isGuest && (
                 <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                  Демо-режим (функции ограничены)
+                  Локальное демо · без AI
                 </span>
               )}
             </div>
@@ -402,7 +395,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        {isGuest ? <p className="text-sm text-slate-600 dark:text-slate-400">Все локальные не-AI функции доступны без подписки. AI, регистрация, оплата, подключение Telegram и облачная синхронизация в демо отключены.</p> : <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-950/40">
@@ -439,7 +432,7 @@ const SettingsPage = () => {
           >
             Перейти к тарифам
           </Link>
-        </div>
+        </div>}
       </section>
 
       <section id="interface" className="min-w-0 scroll-mt-28 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:p-5 md:p-6">

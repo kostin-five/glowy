@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from "react";
+import { useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -6,9 +6,7 @@ import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
 import useMediaQuery from "../hooks/useMediaQuery";
 import ReadOnlyTaskCard from "../components/tasks/ReadOnlyTaskCard";
-import DayPlanReviewDialog from "../components/dashboard/DayPlanReviewDialog";
 import { buildDayPlan } from "../dashboard/dayPlan";
-import { trackProductEvent } from "../utils/analytics";
 
 const getTodayLocalDate = () => {
   const today = new Date();
@@ -24,9 +22,7 @@ const DashboardPage = () => {
   const userName = useAuthStore((state) => state.name);
   const currentEnergy = useAuthStore((state) => state.currentEnergy);
   const tasks = useTaskStore((state) => state.tasks);
-  const updateTask = useTaskStore((state) => state.updateTask);
-  const [isPlanOpen, setIsPlanOpen] = useState(false);
-  const [planNotice, setPlanNotice] = useState<string | null>(null);
+  const isGuest = useAuthStore((state) => state.isGuest);
 
   const { todayTasks, dayPlan } = useMemo(() => {
     const active = tasks.filter((t) => !t.completed);
@@ -52,41 +48,6 @@ const DashboardPage = () => {
       block: "center",
     });
     window.requestAnimationFrame(() => mindHubInputRef.current?.focus());
-  };
-
-  const openPlan = () => {
-    setPlanNotice(null);
-    setIsPlanOpen(true);
-    trackProductEvent("day_plan_opened");
-  };
-
-  const applyPlan = async (selectedTaskIds: number[]) => {
-    const today = getTodayLocalDate();
-    const tasksById = new Map(tasks.map((task) => [task.id, task]));
-    const failedIds: number[] = [];
-
-    await Promise.all(selectedTaskIds.map(async (taskId) => {
-      const task = tasksById.get(taskId);
-      if (!task || task.completed) {
-        failedIds.push(taskId);
-        return;
-      }
-      if (task.date === today) return;
-
-      try {
-        const updated = await updateTask(taskId, { date: today });
-        if (!updated) failedIds.push(taskId);
-      } catch {
-        failedIds.push(taskId);
-      }
-    }));
-
-    return failedIds;
-  };
-
-  const finishPlan = () => {
-    setPlanNotice("План на сегодня готов. Начни с первого спокойного шага.");
-    trackProductEvent("day_plan_applied");
   };
 
   const renderFocusSection = () => (
@@ -116,32 +77,19 @@ const DashboardPage = () => {
                 </div>
               ))}
             </div>
-            {planNotice && (
-              <p aria-live="polite" className="mt-4 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm leading-5 text-emerald-700 dark:text-emerald-200">
-                {planNotice}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={openPlan}
-              className="mt-4 min-h-11 w-full rounded-xl border border-indigo-400/50 bg-indigo-500/10 px-4 py-2.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-500/15 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-indigo-200"
-            >
-              Настроить план
-            </button>
           </>
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
             <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-              Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при
-              необходимости предложу первый шаг как черновик.
+              {isGuest ? "Задач пока нет. Добавь первый шаг в разделе «Задачи»." : "Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при необходимости предложу первый шаг как черновик."}
             </p>
-            <button
+            {isGuest ? <Link to="/tasks" className="mt-2 inline-flex text-sm font-bold text-indigo-500">Добавить задачу</Link> : <button
               type="button"
               onClick={focusMindHubInput}
               className="mt-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
             >
               Выгрузить мысли
-            </button>
+            </button>}
           </div>
         )}
       </div>
@@ -214,15 +162,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {isPlanOpen && (
-        <DayPlanReviewDialog
-          isOpen
-          candidates={dayPlan}
-          onClose={() => setIsPlanOpen(false)}
-          onApply={applyPlan}
-          onApplied={finishPlan}
-        />
-      )}
     </div>
   );
 };

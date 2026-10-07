@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { Note, Task } from "../../types";
+import { useIsGuest } from "../../store/useAuthStore";
 
 type Props = {
   note: Note | null;
@@ -49,6 +50,7 @@ const wordLabel = (count: number) => {
 };
 
 export default function NoteEditor(props: Props) {
+  const isGuest = useIsGuest();
   const textRef = useRef<HTMLTextAreaElement>(null);
   const linkedIds = new Set(props.note?.taskLinks.map((link) => link.task.id) ?? []);
   const availableTasks = props.tasks.filter((task) => !linkedIds.has(task.id));
@@ -164,11 +166,11 @@ export default function NoteEditor(props: Props) {
               <h2 className="font-display font-bold">Из мысли в задачу</h2>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-400">
-              Выделите фрагмент текста. Ассистент подготовит черновик, а сохранить его сможете только вы.
+              {isGuest ? "AI недоступен в демо-режиме" : "Выделите фрагмент текста. Ассистент подготовит черновик, а сохранить его сможете только вы."}
             </p>
             <button
               type="button"
-              disabled={props.loading || !props.note}
+              disabled={isGuest || props.loading || !props.note}
               onClick={requestDraft}
               className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-indigo-500 disabled:opacity-40"
             >

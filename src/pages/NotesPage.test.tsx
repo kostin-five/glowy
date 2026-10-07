@@ -7,6 +7,7 @@ import { NoteApi } from "../api/NoteApi";
 import NoteTaskDraftDialog from "../components/notes/NoteTaskDraftDialog";
 import type { Note, TaskDraft } from "../types";
 import NotesPage from "./NotesPage";
+import { useAuthStore } from "../store/useAuthStore";
 
 vi.mock("../api/NoteApi", () => ({
   NoteApi: {
@@ -56,6 +57,7 @@ const expectMobileSurface = (surface: "list" | "editor") => {
 };
 
 beforeEach(() => {
+  useAuthStore.setState({ isGuest: false, userId: 7, token: null });
   vi.clearAllMocks();
   vi.mocked(NoteApi.list).mockResolvedValue([note]);
   vi.mocked(NoteApi.get).mockResolvedValue(note);
@@ -72,6 +74,20 @@ beforeEach(() => {
 });
 
 describe("NotesPage mobile navigation", () => {
+  it("keeps guest notes open and AI disabled, with an honest storage error", async () => {
+    useAuthStore.setState({ isGuest: true, userId: null, token: "demo-token-test" });
+    renderPage("/notes/7");
+    await waitFor(() => expect(screen.getByLabelText("Заголовок заметки")).toHaveProperty("value", note.title));
+    expect(screen.getByRole("button", { name: "Предложить задачу" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("AI недоступен в демо-режиме")).toBeTruthy();
+    vi.mocked(NoteApi.update).mockRejectedValueOnce(new Error("Storage failed"));
+    fireEvent.change(screen.getByLabelText("Заголовок заметки"), { target: { value: "Не сохранено" } });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(await screen.findByText("Не удалось сохранить. Попробуйте ещё раз")).toBeTruthy();
+    expect(screen.queryByText("Сохранено", { exact: true })).toBeNull();
+    expect(screen.getByTestId("location").textContent).toBe("/notes/7");
+    expect(NoteApi.generateTaskDraft).not.toHaveBeenCalled();
+  });
   it("disables the editor until a direct note route finishes loading", async () => {
     let finishList: (value: Note[]) => void = () => undefined;
     vi.mocked(NoteApi.list).mockReturnValueOnce(new Promise((resolve) => {

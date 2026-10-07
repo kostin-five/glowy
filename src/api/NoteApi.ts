@@ -3,6 +3,9 @@ import { API_BASE_URL } from "./config";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { useAuthStore } from "../store/useAuthStore";
 import { schemaNote, schemaNoteTaskLink, schemaTask, type Note, type TaskDraft } from "../types";
+import { DemoNotes } from "../demo/demoNotes";
+import { assertAccountAi } from "../demo/demoStorage";
+import { useTaskStore } from "../store/useTaskStore";
 
 const api = axios.create({ baseURL: `${API_BASE_URL}/notes`, withCredentials: true });
 api.interceptors.request.use((config) => {
@@ -14,30 +17,46 @@ attachUnauthorizedInterceptor(api);
 
 export const NoteApi = {
   async list(query = "", archived = false): Promise<Note[]> {
+    if (useAuthStore.getState().isGuest) return DemoNotes.list(query, archived, useTaskStore.getState().tasks);
     const response = await api.get("", { params: { query, archived } });
     return schemaNote.array().parse(response.data);
   },
   async create(data: { title: string; content: string }): Promise<Note> {
+    if (useAuthStore.getState().isGuest) return DemoNotes.create(data);
     return schemaNote.parse((await api.post("", data)).data);
   },
   async get(id: number): Promise<Note> {
+    if (useAuthStore.getState().isGuest) return DemoNotes.get(id, useTaskStore.getState().tasks);
     return schemaNote.parse((await api.get(`/${id}`)).data);
   },
   async update(id: number, data: Partial<Pick<Note, "title" | "content" | "archived">>): Promise<Note> {
+    if (useAuthStore.getState().isGuest) return DemoNotes.update(id, data);
     return schemaNote.parse((await api.put(`/${id}`, data)).data);
   },
   async linkTask(noteId: number, taskId: number) {
+    if (useAuthStore.getState().isGuest) {
+      const task = useTaskStore.getState().tasks.find((item) => item.id === taskId);
+      if (!task) throw new Error("Задача не найдена");
+      return DemoNotes.link(noteId, task);
+    }
     return schemaNoteTaskLink.parse((await api.post(`/${noteId}/task-links`, { taskId })).data);
   },
   async unlinkTask(noteId: number, taskId: number) {
+    if (useAuthStore.getState().isGuest) return DemoNotes.unlink(noteId, taskId);
     await api.delete(`/${noteId}/task-links/${taskId}`);
   },
   async generateTaskDraft(noteId: number, fragment: string): Promise<TaskDraft> {
+    assertAccountAi();
     const response = await api.post(`/${noteId}/task-draft`, { fragment });
     return response.data.draft as TaskDraft;
   },
   async confirmTask(noteId: number, draft: TaskDraft) {
+    assertAccountAi();
     const response = await api.post(`/${noteId}/tasks`, draft);
     return schemaTask.parse(response.data.task);
+  },
+  async deleteLocal(id: number) {
+    if (!useAuthStore.getState().isGuest) throw new Error("Удаление доступно только для локальной заметки демо");
+    await DemoNotes.delete(id);
   },
 };

@@ -8,6 +8,9 @@ import {
 import { useAuthStore } from "../store/useAuthStore";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
 import { API_BASE_URL } from "./config";
+import { DemoProgress } from "../demo/demoProgress";
+import { useTaskStore } from "../store/useTaskStore";
+import { assertAccountAi } from "../demo/demoStorage";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/analytics`,
@@ -29,6 +32,7 @@ export const AnalyticsApi = {
     period: AnalyticsPeriodKind,
     anchor: string
   ): Promise<AnalyticsSnapshot> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.analytics(useTaskStore.getState(), period, anchor);
     const response = await api.get("", { params: { period, anchor } });
     return schemaAnalyticsSnapshot.parse(response.data);
   },
@@ -37,6 +41,7 @@ export const AnalyticsApi = {
     period: AnalyticsPeriodKind,
     anchor: string
   ): Promise<AnalyticsInsight> {
+    assertAccountAi();
     const response = await api.post("/insight", { period, anchor });
     return schemaAnalyticsInsight.parse(response.data);
   },

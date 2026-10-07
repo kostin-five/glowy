@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProgressApi } from "../../api/ProgressApi";
+import { useAuthStore } from "../../store/useAuthStore";
 import { createAppQueryClient } from "../../query/queryClient";
 import type { Habit, ProgressOverview } from "../../types";
 import { useProgressMutations } from "./progressMutations";
@@ -73,7 +74,7 @@ const readOverview = (
   client: ReturnType<typeof createAppQueryClient>
 ) => client.getQueryData<ProgressOverview>(getProgressOverviewKey(scope));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); useAuthStore.setState({ userId: 7, isGuest: false }); });
 afterEach(cleanup);
 
 describe("useProgressMutations", () => {

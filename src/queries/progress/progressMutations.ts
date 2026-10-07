@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { ProgressApi } from "../../api/ProgressApi";
 import { accountQueryKeys } from "../../query/accountQueryKeys";
 import type { Habit, ProgressOverview } from "../../types";
+import { useAuthStore } from "../../store/useAuthStore";
 import {
   getProgressOverviewKey,
   type ProgressQueryScope,
@@ -50,9 +51,12 @@ export const progressMutationKeys = {
 export const useProgressMutations = (scope: ProgressQueryScope) => {
   const queryClient = useQueryClient();
   const overviewKey = getProgressOverviewKey(scope);
+  const habitKeys = scope.isGuest ? ["demo", "progress", scope.sessionKey, "mutation", "habit"] : progressMutationKeys.habits(scope.userId);
+  const habitKey = (action: string) => [...habitKeys, action];
 
   const ensureAccount = () => {
-    if (scope.userId === null || !scope.enabled) {
+    const auth = useAuthStore.getState();
+    if (!scope.enabled || (scope.isGuest ? !auth.isGuest || (scope.sessionKey !== undefined && scope.sessionKey !== (auth.token ?? "guest")) : auth.isGuest || scope.userId === null || scope.userId !== auth.userId)) {
       throw new Error("Progress mutation requires an authenticated account");
     }
   };
@@ -66,7 +70,8 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
   };
 
   const createHabit = useMutation({
-    mutationKey: progressMutationKeys.habit(scope.userId, "create"),
+    networkMode: scope.isGuest ? "always" : "online",
+    mutationKey: habitKey("create"),
     mutationFn: ({ title }: CreateHabitVariable) => {
       ensureAccount();
       return ProgressApi.createHabit(title, scope.today);
@@ -116,7 +121,8 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
   });
 
   const toggleHabit = useMutation({
-    mutationKey: progressMutationKeys.habit(scope.userId, "toggle"),
+    networkMode: scope.isGuest ? "always" : "online",
+    mutationKey: habitKey("toggle"),
     mutationFn: ({ habit, date }: ToggleHabitVariable) => {
       ensureAccount();
       const completed = habit.checkDates.includes(date);
@@ -165,7 +171,8 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
     optimisticHabit: (variables: RenameHabitVariable | HabitVariable) => Habit
   ) =>
     useMutation({
-      mutationKey: progressMutationKeys.habit(scope.userId, action),
+      networkMode: scope.isGuest ? "always" : "online",
+      mutationKey: habitKey(action),
       mutationFn: (variables: RenameHabitVariable | HabitVariable) => {
         ensureAccount();
         return mutationFn(variables);
@@ -214,7 +221,8 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
   );
 
   const deleteHabit = useMutation({
-    mutationKey: progressMutationKeys.habit(scope.userId, "delete"),
+    networkMode: scope.isGuest ? "always" : "online",
+    mutationKey: habitKey("delete"),
     mutationFn: async ({ habit }: HabitVariable) => {
       ensureAccount();
       await ProgressApi.deleteHabit(habit.id);
@@ -247,7 +255,8 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
   });
 
   const applyRescue = useMutation({
-    mutationKey: progressMutationKeys.rescue(scope.userId),
+    networkMode: scope.isGuest ? "always" : "online",
+    mutationKey: scope.isGuest ? ["demo", "progress", scope.sessionKey, "mutation", "rescue"] : progressMutationKeys.rescue(scope.userId),
     mutationFn: ({ protectedOn }: RescueVariable) => {
       ensureAccount();
       return ProgressApi.applyRescue(
@@ -269,7 +278,7 @@ export const useProgressMutations = (scope: ProgressQueryScope) => {
 
   const pendingHabitIds = useMutationState({
     filters: {
-      mutationKey: progressMutationKeys.habits(scope.userId),
+      mutationKey: habitKeys,
       status: "pending",
     },
     select: (mutation) =>

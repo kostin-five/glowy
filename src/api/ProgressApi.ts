@@ -8,6 +8,8 @@ import {
 } from "../types";
 import { API_BASE_URL } from "./config";
 import { attachUnauthorizedInterceptor } from "./unauthorizedInterceptor";
+import { DemoProgress } from "../demo/demoProgress";
+import { useTaskStore } from "../store/useTaskStore";
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/progress`,
@@ -28,6 +30,7 @@ export const ProgressApi = {
     month?: string,
     signal?: AbortSignal
   ): Promise<ProgressOverview> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.overview(useTaskStore.getState(), today, month);
     const response = await api.get("", { params: { today, month }, signal });
     return schemaProgressOverview.parse(response.data);
   },
@@ -37,16 +40,19 @@ export const ProgressApi = {
     today: string,
     month?: string
   ): Promise<ProgressOverview> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.rescue(useTaskStore.getState(), protectedOn, today, month);
     const response = await api.post("/rescues", { protectedOn, today, month });
     return schemaProgressOverview.parse(response.data);
   },
 
   async createHabit(title: string, today: string): Promise<Habit> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.createHabit(title, today);
     const response = await api.post("/habits", { title, today });
     return schemaHabit.parse(response.data);
   },
 
   async archiveHabit(id: number, today: string): Promise<Habit> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.updateHabit(id, { archived: true }, today);
     const response = await api.patch(`/habits/${id}`, {
       archived: true,
       today,
@@ -55,11 +61,13 @@ export const ProgressApi = {
   },
 
   async updateHabit(id: number, title: string, today: string): Promise<Habit> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.updateHabit(id, { title }, today);
     const response = await api.patch(`/habits/${id}`, { title, today });
     return schemaHabit.parse(response.data);
   },
 
   async restoreHabit(id: number, today: string): Promise<Habit> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.updateHabit(id, { archived: false }, today);
     const response = await api.patch(`/habits/${id}`, {
       archived: false,
       today,
@@ -68,6 +76,7 @@ export const ProgressApi = {
   },
 
   async deleteHabit(id: number): Promise<void> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.deleteHabit(id);
     await api.delete(`/habits/${id}`);
   },
 
@@ -77,6 +86,7 @@ export const ProgressApi = {
     completed: boolean,
     today: string
   ): Promise<Habit> {
+    if (useAuthStore.getState().isGuest) return DemoProgress.checkHabit(id, date, completed, today);
     if (completed) {
       const response = await api.put(`/habits/${id}/checks/${date}`, null, {
         params: { today },

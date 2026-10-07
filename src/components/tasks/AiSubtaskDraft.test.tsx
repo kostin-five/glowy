@@ -2,9 +2,12 @@
 
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AiApi from "../../api/AiApi";
 import AiSubtaskDraft from "./AiSubtaskDraft";
+import { useAuthStore } from "../../store/useAuthStore";
+
+beforeEach(() => useAuthStore.setState({ isGuest: false, userId: 7 }));
 
 afterEach(() => {
   cleanup();
@@ -14,6 +17,17 @@ afterEach(() => {
 const task = { title: "Подготовить запуск", category: "Работа", priority: "⚡️ P2" as const, energyLevel: "med" as const, estimatedMinutes: 60, existingSubtasks: [] };
 
 describe("AiSubtaskDraft", () => {
+  it("disables guest AI without invoking the provider or applying steps", () => {
+    useAuthStore.setState({ isGuest: true, userId: null });
+    const provider = vi.spyOn(AiApi, "createSubtaskDraft");
+    const onApply = vi.fn();
+    render(<AiSubtaskDraft task={task} onApply={onApply} />);
+    expect(screen.getByRole("button", { name: "AI шаги" })).toBeDisabled();
+    expect(screen.getByText(/AI недоступен в демо-режиме/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "AI шаги" }));
+    expect(provider).not.toHaveBeenCalled();
+    expect(onApply).not.toHaveBeenCalled();
+  });
   it("keeps provider output local until explicit apply", async () => {
     vi.spyOn(AiApi, "createSubtaskDraft").mockResolvedValue({
       subtasks: [{ title: "Собрать требования" }, { title: "Проверить сценарий" }],

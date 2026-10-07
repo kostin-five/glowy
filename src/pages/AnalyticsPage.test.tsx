@@ -81,11 +81,12 @@ beforeEach(() => {
 });
 
 describe("AnalyticsPage report", () => {
-  it("makes no analytics or AI requests for a guest", () => {
+  it("loads local analytics and disables AI for a guest", async () => {
     useAuthStore.setState({ userId: null, isGuest: true, isAuthenticated: false });
     renderPage();
-    expect(screen.getByText("Аналитика сохраняется в аккаунте")).toBeTruthy();
-    expect(AnalyticsApi.getSnapshot).not.toHaveBeenCalled();
+    expect(await screen.findByText("AI недоступен в демо-режиме")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "AI-разбор недоступен" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(AnalyticsApi.getSnapshot).toHaveBeenCalledTimes(1);
     expect(AnalyticsApi.requestInsight).not.toHaveBeenCalled();
   });
 
@@ -164,8 +165,8 @@ describe("AnalyticsPage report", () => {
     expect(screen.queryByText("Синтетический поздний отчёт")).toBeNull();
     expect(Object.keys(localStorage).filter((key) => key.startsWith("glowy-analytics-report"))).toEqual([]);
     if (transition === "guest") {
-      expect(screen.getByText("Аналитика сохраняется в аккаунте")).toBeTruthy();
-      expect(AnalyticsApi.getSnapshot).toHaveBeenCalledTimes(1);
+      expect(await screen.findByText("AI недоступен в демо-режиме")).toBeTruthy();
+      expect(AnalyticsApi.getSnapshot).toHaveBeenCalledTimes(2);
     }
   });
 

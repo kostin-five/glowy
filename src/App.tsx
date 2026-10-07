@@ -42,6 +42,7 @@ import {
 } from "./offline/taskOfflineSync";
 import { TelegramMiniAppProvider } from "./telegram/TelegramMiniAppProvider";
 import type { TaskCompletionOutcome, UserProgress } from "./types";
+import { demoTransaction } from "./demo/demoStorage";
 
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const NotesPage = lazy(() => import("./pages/NotesPage"));
@@ -227,10 +228,17 @@ function App() {
     };
 
     if (isGuest) {
+      let active = true;
+      void demoTransaction(data => data.avatarId, false).then(avatarId => {
+        if (active && useAuthStore.getState().isGuest) useAuthStore.getState().setProfilePreferences(avatarId, "calm");
+      }).catch(() => {
+        // Feature screens display storage errors; keep the default avatar here.
+      });
       if (getActiveOfflineOwnerKey()) {
-        void initializeTaskOfflineSync(null, adapter);
+        // Detach account sync without clearing the restored local demo snapshot.
+        void initializeTaskOfflineSync(null, { ...adapter, setTasks: () => undefined });
       }
-      return;
+      return () => { active = false; };
     }
 
     if (!isAuthenticated || userId === null) {

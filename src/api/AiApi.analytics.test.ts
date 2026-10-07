@@ -58,6 +58,6 @@ describe("AI activation analytics", () => {
     expect(post).not.toHaveBeenCalled();
     expect(trackProductEventOnce).not.toHaveBeenCalled();
     expect(result.drafts).toEqual([]);
-    expect(result.reply).toMatch(/зарегистрируйся|войдите|войти/i);
+    expect(result.reply).toBe("AI недоступен в демо-режиме");
   });
 });

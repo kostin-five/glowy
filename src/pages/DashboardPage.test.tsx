@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store/useAuthStore";
@@ -89,7 +89,7 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
   });
 
-  it("reviews the plan and updates only a selected task outside today", async () => {
+  it("keeps the focus suggestions without the removed plan flow", () => {
     useTaskStore.setState((state) => ({
       tasks: [
         ...state.tasks,
@@ -108,15 +108,10 @@ describe("DashboardPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Настроить план" }));
-    expect(screen.getByRole("dialog", { name: "План на сегодня" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Настроить план" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "План на сегодня" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/План на сегодня готов/)).not.toBeInTheDocument();
+    expect(screen.getByText("Подготовить следующий шаг")).toBeVisible();
     expect(updateTask).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("checkbox", { name: /Подготовить план недели/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Добавить в план" }));
-
-    await waitFor(() => expect(updateTask).toHaveBeenCalledOnce());
-    expect(updateTask).toHaveBeenCalledWith(2, { date: today() });
-    expect(await screen.findByText(/План на сегодня готов/)).toBeVisible();
   });
 });

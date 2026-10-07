@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -37,9 +36,6 @@ import useTypewriter from "../../hooks/useTypewriter";
 import useNetworkStatus from "../../hooks/useNetworkStatus";
 import MindHubDraftCard from "./MindHubDraftCard";
 import {
-  GUEST_REQUEST_LIMIT,
-  useGuestRequestsCount,
-  useGuestRequestsResetDate,
   useIsGuest,
   useUserId,
 } from "../../store/useAuthStore";
@@ -297,22 +293,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const voiceSessionFinalTextRef = useRef("");
   const voiceSessionInterimTextRef = useRef("");
   const isOnline = useNetworkStatus();
-  const guestRequestsCount = useGuestRequestsCount();
-  const guestRequestsResetDate = useGuestRequestsResetDate();
-
-  const guestAiLimit = useMemo<MindHubLimit | null>(() => {
-    if (!isGuest || !guestRequestsResetDate) return null;
-
-    return {
-      limit: GUEST_REQUEST_LIMIT,
-      remaining: Math.max(0, GUEST_REQUEST_LIMIT - guestRequestsCount),
-      resetAt: new Date(
-        new Date(guestRequestsResetDate).getTime() + 24 * 60 * 60 * 1000
-      ).toISOString(),
-    };
-  }, [guestRequestsCount, guestRequestsResetDate, isGuest]);
-
-  const activeAiLimit = isGuest ? guestAiLimit : registeredAiLimit;
+  const activeAiLimit = isGuest ? null : registeredAiLimit;
   const shouldShowAiLimit =
     Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
 
@@ -570,7 +551,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
     event.preventDefault();
 
     const message = text.trim();
-    if (!message || isSending || isListening || !isOnline) return;
+    if (isGuest || !message || isSending || isListening || !isOnline) return;
 
     const userMessage: MindHubChatMessage = {
       id: Date.now() + messages.length,
@@ -743,6 +724,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                     key={starter.title}
                     type="button"
                     onClick={() => applyStarterPrompt(starter.prompt)}
+                    disabled={isGuest}
                     className="min-h-24 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-slate-700 dark:bg-slate-950/50 dark:hover:border-indigo-400/40 dark:hover:bg-indigo-500/10"
                   >
                     <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -936,12 +918,12 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                 : "cursor-not-allowed text-slate-500 placeholder:text-amber-700/80 dark:text-slate-500 dark:placeholder:text-amber-200/70"
             }`}
             readOnly={isListening}
-            disabled={isSending || !isOnline}
+            disabled={isGuest || isSending || !isOnline}
           />
           <button
             type="button"
             onClick={handleVoiceInput}
-            disabled={isSending || (!isOnline && !isListening)}
+            disabled={isGuest || isSending || (!isOnline && !isListening)}
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
               isListening
                 ? "animate-pulse bg-rose-500 text-white hover:bg-rose-400"
@@ -957,13 +939,14 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
           </button>
           <button
             type="submit"
-            disabled={!text.trim() || isSending || isListening || !isOnline}
+            disabled={isGuest || !text.trim() || isSending || isListening || !isOnline}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Отправить мысли"
           >
             <Send size={18} />
           </button>
         </div>
+        {isGuest && <p className="mt-2 text-sm text-slate-500" role="status">AI недоступен в демо-режиме</p>}
         {voiceInputError && (
           <p className="mt-2 text-xs text-rose-600 dark:text-rose-300" role="status">
             {voiceInputError}

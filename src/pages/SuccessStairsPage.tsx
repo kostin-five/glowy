@@ -168,6 +168,7 @@ const SuccessStairsPage = () => {
   const tasks = useTasks() as TaskWithTimestamps[];
   const isGuest = useIsGuest();
   const userId = useAuthStore((state) => state.userId);
+  const sessionKey = useAuthStore((state) => state.token ?? "guest");
   const today = useMemo(() => formatLocalDateOnly(), []);
   const [activeTab, setActiveTab] = useState<ProgressTab>("xp");
   const [selectedMonth, setSelectedMonth] = useState(today.slice(0, 7));
@@ -178,7 +179,10 @@ const SuccessStairsPage = () => {
     userId,
     today,
     month: selectedMonth,
-    enabled: !isGuest && userId !== null,
+    enabled: isGuest || userId !== null,
+    isGuest,
+    sessionKey,
+    taskRevision: isGuest ? JSON.stringify(tasks) : undefined,
   };
   const progressQuery = useProgressOverview(queryScope);
   const progressMutations = useProgressMutations(queryScope);
@@ -322,14 +326,14 @@ const SuccessStairsPage = () => {
           onOpenHelp={() => setIsXpHelpOpen(true)}
         />
       )}
-      {activeTab !== "xp" && (isGuest || isLoading || !progress) && (
+      {activeTab !== "xp" && (isLoading || !progress) && (
         <ServerProgressPlaceholder
-          isGuest={isGuest}
+          isGuest={false}
           isLoading={isLoading}
           onRetry={() => void progressQuery.refetch()}
         />
       )}
-      {activeTab === "streak" && progress && !isGuest && (
+      {activeTab === "streak" && progress && (
         <StreakPanel
           progress={progress}
           isApplyingRescue={progressMutations.applyRescue.isPending}
@@ -337,7 +341,7 @@ const SuccessStairsPage = () => {
           onMonthChange={setSelectedMonth}
         />
       )}
-      {activeTab === "habits" && progress && !isGuest && (
+      {activeTab === "habits" && progress && (
         <HabitsPanel
           habits={progress.habits}
           today={today}

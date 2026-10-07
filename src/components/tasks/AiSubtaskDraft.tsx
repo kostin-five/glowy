@@ -2,6 +2,7 @@ import { LoaderCircle, Plus, RotateCcw, Sparkles, Trash2, X } from "lucide-react
 import { useState } from "react";
 import AiApi from "../../api/AiApi";
 import type { SubtaskDraftRequest } from "@glowy/contracts";
+import { useIsGuest } from "../../store/useAuthStore";
 
 interface AiSubtaskDraftProps {
   task: SubtaskDraftRequest;
@@ -9,6 +10,7 @@ interface AiSubtaskDraftProps {
 }
 
 const AiSubtaskDraft = ({ task, onApply }: AiSubtaskDraftProps) => {
+  const isGuest = useIsGuest();
   const [open, setOpen] = useState(false);
   const [drafts, setDrafts] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +70,7 @@ const AiSubtaskDraft = ({ task, onApply }: AiSubtaskDraftProps) => {
     }
   };
 
+  if (isGuest) return <span className="text-xs text-slate-500"><button type="button" disabled className="rounded-lg px-2 py-1 opacity-50">AI шаги</button> AI недоступен в демо-режиме</span>;
   if (!open) {
     return <button type="button" onClick={() => void requestDraft()} className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-2 py-1 text-[11px] font-medium text-indigo-500 transition-colors hover:bg-indigo-500/10 dark:text-indigo-300 sm:text-xs"><Sparkles size={14} />AI шаги</button>;
   }

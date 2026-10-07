@@ -106,7 +106,8 @@ test("creates one title-only task with the responsive sheet", async ({ page }) =
 
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Записаться к врачу").first()).toBeVisible();
-  expect(payloads).toHaveLength(1);
+  // Optimistic UI appears before the offline queue sends the create request.
+  await expect.poll(() => payloads.length).toBe(1);
   expect(payloads[0]).toMatchObject({
     title: "Записаться к врачу",
     date: "",

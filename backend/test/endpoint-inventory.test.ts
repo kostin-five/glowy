@@ -41,7 +41,7 @@ const readImplementedOperations = async () => {
 
 const readDocumentedOperations = async () => {
   const inventory = await readFile(
-    new URL("specs/012-contracts-observability/contracts/endpoint-inventory.md", repositoryRoot),
+    new URL("docs/api-endpoints.md", repositoryRoot),
     "utf8"
   );
   const operationPattern = /\| `(GET|POST|PUT|PATCH|DELETE) (\/api\/[^`]+)`/g;

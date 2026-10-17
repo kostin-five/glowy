@@ -1,121 +1,121 @@
-# Дизайн-система Glowy: foundations и primitives
+# Дизайн-система Glowy: основы и базовые компоненты
 
-Semantic token layer в `src/styles/design-tokens.css` — публичная визуальная основа для следующих
-shared UI primitives и экранов. Он не меняет существующие product components: это намеренная
-постепенная миграция, а не второй набор стилей рядом с текущим интерфейсом.
+В `src/styles/design-tokens.css` находятся переменные оформления: цвета, размеры,
+отступы и параметры анимации. Их имена описывают назначение, например фон карточки
+или основной текст. Это позволяет менять тему без правок каждого компонента.
+Существующие экраны переходят на эти переменные постепенно.
 
-## Роли токенов
+## Роли переменных
 
-| Группа | Semantic roles | Когда использовать |
+| Группа | Имена в коде | Когда использовать |
 | --- | --- | --- |
-| Холст и поверхности | `canvas`, `surface`, `surface-raised` | Фон экрана, карточка, приподнятая карточка/контейнер |
+| Холст и поверхности | `canvas`, `surface`, `surface-raised` | Фон экрана, карточка, приподнятая карточка или контейнер |
 | Текст | `text-primary`, `text-secondary`, `text-muted` | Основной контент, пояснение, вторичная подпись |
-| Границы | `border-subtle`, `border-strong` | Разделитель или спокойная интерактивная граница |
-| Действие | `primary`, `primary-foreground`, `accent`, `accent-foreground` | Главное действие и редкий выразительный акцент |
-| Статусы | `status-success`, `status-warning`, `status-danger` и их `-foreground` роли | Успех, внимание и ошибка с читаемым текстом |
-| Основа интерфейса | `font-*`, `space-*`, `radius-*`, `elevation-*`, `focus-*`, `motion-*`, `touch-target` | Типографика, ритм, форма, глубина, доступное взаимодействие |
+| Границы | `border-subtle`, `border-strong` | Разделитель или заметная граница |
+| Действия | `primary`, `primary-foreground`, `accent`, `accent-foreground` | Главное действие и отдельный выразительный акцент |
+| Статусы | `status-success`, `status-warning`, `status-danger` и их `-foreground` | Успех, предупреждение и ошибка |
+| Основа интерфейса | `font-*`, `space-*`, `radius-*`, `elevation-*`, `focus-*`, `motion-*`, `touch-target` | Типографика, отступы, форма, глубина, фокус, анимация и область нажатия |
 
-Значения live в CSS custom properties `--glowy-*`; Tailwind 4 bridge публикует их как utilities
-`bg-glowy-surface`, `text-glowy-text-primary`, `rounded-glowy-panel`, `shadow-glowy-panel`,
-`min-h-glowy-touch-target` и аналогичные. Для shared surfaces нельзя выбирать primitive palette
-или локальные hex-значения: выбирайте роль, а значение останется управляемым темой.
+Значения заданы в CSS-переменных `--glowy-*`. Через Tailwind 4 доступны классы
+`bg-glowy-surface`, `text-glowy-text-primary`, `rounded-glowy-panel`,
+`shadow-glowy-panel`, `min-h-glowy-touch-target` и другие.
+В общих компонентах используйте эти роли, а не отдельные цвета или значения HEX.
 
-## Допустимые пары и доступность
+## Сочетания цветов и доступность
 
-Текст используем только в документированных foreground/background парах:
+Текст и фон должны соответствовать документированным сочетаниям:
 
 - `text-primary` или `text-secondary` на `surface`; `text-muted` на `canvas`;
 - `primary-foreground` на `primary`, `accent-foreground` на `accent`;
 - соответствующий `status-*-foreground` на своём `status-*`;
-- `border-strong` и `focus` на `surface` — для интерактивной границы и focus-индикатора.
+- `border-strong` и `focus` на `surface` — для границы и выделения фокуса.
 
-Обычный текст держит контраст не ниже 4.5:1; крупный текст, интерактивные границы и focus — не
-ниже 3:1. Полный machine-readable catalog и проверяемые пары находятся в
-`src/design-system/tokens.ts`; тест защищает от расхождения каталога и CSS.
+Контраст обычного текста — не ниже 4.5:1, крупного текста и интерактивных границ —
+не ниже 3:1. Каталог переменных и проверяемые пары находятся в
+`src/design-system/tokens.ts`. Тест сверяет каталог с CSS.
 
-Shared control должен пользоваться классом `foundation-token-focus` (или эквивалентным
-семантическим focus-state), иметь цель не меньше `44 × 44 CSS px`, а необязательная анимация
-должна отключаться в `prefers-reduced-motion: reduce`.
+Интерактивный компонент должен использовать `foundation-token-focus` или
+равнозначное выделение фокуса. Область нажатия — не меньше `44 × 44 CSS px`.
+Необязательная анимация отключается при `prefers-reduced-motion: reduce`.
 
-## Тема и постепенная миграция
+## Темы и постепенный переход
 
-`light` живёт в `:root`, а `dark` — в существующем class-based selector `.dark`. Режим `system`
-по-прежнему разрешается в `src/App.tsx`, поэтому token layer не хранит и не меняет пользовательскую
-настройку темы. Telegram variables и существующие product styles не являются частью этого слоя.
+Светлая тема `light` задана в `:root`, тёмная `dark` — через класс `.dark`.
+Системный режим `system` обрабатывается в `src/App.tsx`; переменные оформления
+не хранят и не меняют настройку пользователя. Переменные Telegram и прежние стили
+экранов остаются отдельными.
 
-При новом UI change сначала используйте semantic role; перенос уже существующего экрана делайте
-только в рамках его отдельного проверяемого change. Существующие Headless UI consumers не являются
-неявными потребителями этого слоя и не мигрируются вместе с новым экраном.
+Для нового интерфейса выбирайте переменную по её назначению. Перевод существующего
+экрана проверяйте отдельно. Компоненты Headless UI не меняются автоматически вместе
+с новыми компонентами.
 
-## Glowy primitives
+## Базовые компоненты
 
-Новый public namespace — `src/components/ui/primitives/`. Импортируйте новый control из его
-`index.ts`, а не из внутренних файлов:
+Общие компоненты находятся в `src/components/ui/primitives/`.
+Импортируйте их из `index.ts`, а не из внутренних файлов:
 
 ```tsx
 import { Button, Dialog, DialogContent, DialogTrigger, Field, Input } from "../components/ui/primitives";
 ```
 
-| Группа | Public primitives | Граница использования |
+| Группа | Компоненты | Особенности |
 | --- | --- | --- |
-| Действия и форма | `Button`, `IconButton`, `Input`, `Textarea`, `Label`, `Field` | Native HTML props сохраняются; `IconButton` требует `aria-label`, а `Field` сам связывает label, description и error с control. |
-| Surfaces и feedback | `Card`, `Badge`, `Skeleton`, `EmptyState`, `Alert`, `Toast` | `ToastProvider` размещается в конкретном feature subtree. Глобальный toast store намеренно отсутствует. |
-| Overlay и выбор | `Dialog`, `Sheet`, `Popover`, `Select`, `Tabs`, `Tooltip` | Новые overlay/selection controls используют Radix. Root поддерживает controlled callbacks (`open`/`onOpenChange`, `value`/`onValueChange`), Escape и focus return обрабатывает Radix. |
+| Действия и формы | `Button`, `IconButton`, `Input`, `Textarea`, `Label`, `Field` | Стандартные HTML-свойства сохраняются. `IconButton` требует `aria-label`; `Field` связывает подпись, описание и ошибку с полем. |
+| Карточки и сообщения | `Card`, `Badge`, `Skeleton`, `EmptyState`, `Alert`, `Toast` | `ToastProvider` размещается в нужной части интерфейса; глобального хранилища уведомлений нет. |
+| Окна и выбор | `Dialog`, `Sheet`, `Popover`, `Select`, `Tabs`, `Tooltip` | Используется Radix. Состояние управляется через `open`/`onOpenChange` или `value`/`onValueChange`. Radix обрабатывает Escape и возврат фокуса. |
 
-Каждый primitive использует только semantic tokens, `foundation-token-focus` и минимум `44 × 44`
-для интерактивной цели. Для Dialog и Sheet добавляйте доступные `Title` и `Description`; Sheet
-сохраняет safe-area на компактных экранах. Не смешивайте эти Radix wrappers с Headless UI в одном
-новом control и не заменяйте ими работающие legacy dialogs без отдельного OpenSpec change.
+Каждый компонент использует переменные по назначению, выделение фокуса и область
+нажатия не меньше `44 × 44 CSS px`. Для `Dialog` и `Sheet` нужны доступные
+`Title` и `Description`. `Sheet` учитывает безопасные отступы на небольших экранах.
+Не смешивайте оболочки Radix и Headless UI внутри одного нового элемента.
+Замена работающих диалогов требует отдельной проверки.
 
-## Локальный Storybook-каталог
+## Локальный каталог Storybook
 
-Storybook — только локальный каталог состояний, не product route. Он импортирует тот же CSS entry,
-но не запускает PWA/service worker, `App`, stores или API clients. В toolbar выберите светлую или
-тёмную тему и desktop либо compact ширину 390 px; accessibility addon показывает базовые проблемы
-в Canvas каждой story.
+Storybook показывает состояния компонентов отдельно от приложения. Он использует
+общий CSS, но не запускает PWA, сервис-воркер, `App`, хранилища или API-клиенты.
+На панели можно выбрать светлую или тёмную тему и ширину 390 px.
+Дополнение для проверки доступности показывает проблемы в примерах компонентов.
 
 ```bash
-# Открыть каталог локально на http://127.0.0.1:6006
+# Открыть каталог на http://127.0.0.1:6006
 npm run storybook
 
-# Собрать локальный статический артефакт (storybook-static/ игнорируется Git)
+# Собрать статический каталог; storybook-static/ не отслеживается Git
 npm run build-storybook
 
-# Browser smoke: API isolation, Escape/focus return и touch target в desktop/mobile
+# Проверить изоляцию API, клавиатуру, возврат фокуса и области нажатия
 npm run test:storybook
 
-# Public API и accessibility associations
+# Проверить доступные свойства компонентов и связи подписей с полями
 npm run test -- src/components/ui/primitives/primitives.test.tsx
 ```
 
-Перед review shared primitive проверьте соответствующую story в light/dark и compact viewport,
-откройте a11y panel и пройдите keyboard flow. Не публикуйте `storybook-static/`, не добавляйте его
-в PWA и не подключайте внешний visual-regression service без решения владельца.
+Перед изменением общего компонента проверьте его примеры в обеих темах и на узком
+экране. Откройте панель доступности и пройдите сценарий с клавиатурой.
+Не публикуйте `storybook-static/`, не включайте его в PWA и не подключайте внешний
+сервис сравнения изображений без отдельного решения владельца.
 
-## Локальная showcase и visual baseline
+## Проверочный экран и эталонные снимки
 
-Технический read-only экран находится на
-`/__design-system/foundations?theme=light` или `?theme=dark`. Он не добавлен в пользовательскую
-навигацию, не загружает авторизацию или product data и существует только для проверки tokens.
-
-Проверить foundation локально:
+Экран `/__design-system/foundations?theme=light` или `?theme=dark` предназначен
+только для проверки оформления. Он не добавлен в пользовательскую навигацию,
+не загружает данные аккаунта и не позволяет их менять.
 
 ```bash
 npm run test -- src/design-system/tokens.test.ts src/design-system/FoundationShowcase.test.tsx
 npx playwright test e2e/design-system-foundations.spec.ts
 ```
 
-Первый запуск Playwright создаёт baseline screenshots в
-`e2e/design-system-foundations.spec.ts-snapshots/`; они намеренно хранятся в репозитории. Для
-осознанного обновления после визуального review:
+Эталонные снимки хранятся в `e2e/design-system-foundations.spec.ts-snapshots/`.
+Для осознанного обновления после проверки внешнего вида:
 
 ```bash
 npx playwright test e2e/design-system-foundations.spec.ts --update-snapshots
 ```
 
-Не обновляйте baseline только ради зелёного CI: в review нужно явно сверить light и dark в desktop
-и mobile, объяснить изменение semantic role и оставить обновлённые snapshots в том же change.
-Текущие raster baseline записаны локальным Chromium на macOS и сравниваются на этой же платформе;
-на Linux CI spec сохраняет все DOM/accessibility проверки, но не сравнивает raster, чтобы различия
-рендеринга шрифтов не создавали ложные падения. Визуальный review следует выполнять локально по
-сохранённым baseline.
+Не обновляйте снимки только ради успешного CI. Сверьте обе темы на широком и узком
+экранах, объясните изменение и сохраните обновлённые снимки вместе с ним.
+Эталоны записаны Chromium на macOS и сравниваются на этой же платформе.
+В Linux CI сохраняются проверки структуры страницы и доступности, но изображения
+не сравниваются, чтобы различия отрисовки шрифтов не вызывали ложных ошибок.

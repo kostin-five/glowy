@@ -59,3 +59,13 @@ backups/
 private-exports/
 private-docs/
 .aws/
+
+# Local development instructions and planning documents
+/.agents/
+/.specify/
+/openspec/
+/specs/
+/AGENTS.md
+/docs/product-roadmap.md
+/docs/history-cleanup.md
+/docs/publication-manifest.md

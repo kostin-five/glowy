@@ -24,7 +24,7 @@ const currentFiles = [
   "src/pages/TermsOfServicePage.tsx",
   "docs/ai-unit-economics.md",
   "docs/architecture.md",
-  "docs/product-roadmap.md",
+  "docs/demo-hosting.md",
 ];
 
 test("current product surfaces use Forever as the only lifetime-plan name", async () => {

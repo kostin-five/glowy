@@ -1,15 +1,14 @@
-# Backend JavaScript Migration Inventory
+# Перечень исходных файлов серверной части
 
-**Baseline date**: 2026-09-01
+**Дата исходного перечня**: 2026-09-01
 
-**Scope**: tracked JavaScript under `backend/`
+**Область проверки**: исходные файлы в `backend/`
 
-**Total**: 95 files — 46 runtime/support and 49 tests
+**Исходный перечень**: 95 файлов — 46 файлов приложения и вспомогательных модулей, 49 тестов
 
-**Excluded component**: `ai-proxy/server.js` (separate deployable rollback component)
+**Отдельный компонент**: `ai-proxy/server.js` развёртывается независимо и не входит в проверку серверной части.
 
-Pre-existing, migration-support, or post-migration TypeScript files outside the 95-file JavaScript baseline are
-also declared and checked by the automatic gate:
+Следующие TypeScript-файлы добавлены отдельно от исходного перечня и также проверяются:
 
 - `backend/prisma.config.ts`
 - `backend/services/tasks/task-contract.service.ts`
@@ -18,9 +17,9 @@ also declared and checked by the automatic gate:
 - `backend/types/express.d.ts`
 - `backend/types/request-context.ts`
 
-Status values: `pending`, `converted`, `excluded`. Core backend release target is 95 `converted`, 0 `pending`, 0 `excluded`.
+Служебные значения статуса: `pending`, `converted`, `excluded`. Проверка требует 95 записей `converted` и отсутствия записей `pending` и `excluded`.
 
-| Path | Category | Domain | Slice | Status |
+| Путь | Категория | Раздел | Группа | Статус |
 |---|---|---|---|---|
 | `backend/app.js` | runtime-support | entrypoint | entrypoint | converted |
 | `backend/constants/profile.constants.js` | runtime-support | auth-profile | auth | converted |
@@ -118,7 +117,7 @@ Status values: `pending`, `converted`, `excluded`. Core backend release target i
 | `backend/utils/ai-errors.utils.js` | runtime-support | ai | ai | converted |
 | `backend/utils/validation.utils.js` | runtime-support | foundation | foundation | converted |
 
-## TypeScript files added after the migration
+## Дополнительные TypeScript-файлы
 
-- `backend/services/ai/subtask-draft.service.ts` — typed AI draft service added in feature 021.
-- `backend/services/ai/subtask-draft.service.test.ts` — focused normalization tests for feature 021.
+- `backend/services/ai/subtask-draft.service.ts` — сервис подготовки черновиков подзадач.
+- `backend/services/ai/subtask-draft.service.test.ts` — тесты нормализации черновиков подзадач.

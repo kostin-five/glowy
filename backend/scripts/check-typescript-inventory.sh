@@ -3,7 +3,7 @@ set -eu
 
 backend_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 repository_root=$(CDPATH= cd -- "$backend_root/.." && pwd)
-inventory="$repository_root/specs/013-backend-typescript-migration/inventory.md"
+inventory="$repository_root/docs/backend-source-inventory.md"
 
 javascript_files=$(find \
   "$backend_root/constants" \

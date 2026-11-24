@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Info, LoaderCircle, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import HabitsPanel from "../components/progress/HabitsPanel";
 import StreakPanel from "../components/progress/StreakPanel";
 import Modal from "../components/ui/Modal";
@@ -170,7 +171,15 @@ const SuccessStairsPage = () => {
   const userId = useAuthStore((state) => state.userId);
   const sessionKey = useAuthStore((state) => state.token ?? "guest");
   const today = useMemo(() => formatLocalDateOnly(), []);
-  const [activeTab, setActiveTab] = useState<ProgressTab>("xp");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = tabs.find((tab) => tab.id === requestedTab)?.id ?? "xp";
+  const setActiveTab = (tab: ProgressTab) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === "xp") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    setSearchParams(nextParams, { replace: true });
+  };
   const [selectedMonth, setSelectedMonth] = useState(today.slice(0, 7));
   const [mutationError, setMutationError] = useState("");
   const [isXpHelpOpen, setIsXpHelpOpen] = useState(false);

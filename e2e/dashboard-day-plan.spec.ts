@@ -91,15 +91,18 @@ const prepareApp = async (page: Page) => {
   return updates;
 };
 
-test("keeps next steps without the removed day-plan flow or hidden updates", async ({ page }) => {
+test("shows the streak in place of focus without hidden task updates", async ({ page }) => {
   const updates = await prepareApp(page);
   await page.goto("/dashboard");
 
-  await expect(page.getByText("Следующий шаг", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Серия побед" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Фокус дня" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Настроить план" })).toHaveCount(0);
   await expect(page.getByRole("dialog", { name: "План на сегодня" })).toHaveCount(0);
   await expect(page.getByText(/План на сегодня готов/)).toHaveCount(0);
   await expect(page.getByText("Сегодня", { exact: true }).first()).toBeVisible();
   expect(updates).toHaveLength(0);
-  await expect(page.getByText("Не добавлять сегодня")).toBeVisible();
+  await expect(page.getByText("Не добавлять сегодня")).toHaveCount(0);
+  await page.getByRole("link", { name: "Весь прогресс" }).click();
+  await expect(page.getByRole("tab", { name: "Стрик побед" })).toHaveAttribute("aria-selected", "true");
 });

@@ -1,21 +1,17 @@
-import { useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { EnergySlider } from "../components/layout/EnergySlider";
 import MindHubChat from "../components/mind/MindHubChat";
-import useMediaQuery from "../hooks/useMediaQuery";
 import ReadOnlyTaskCard from "../components/tasks/ReadOnlyTaskCard";
-import { buildDayPlan } from "../dashboard/dayPlan";
+import { useProgressOverview } from "../queries/progress/progressQueries";
+import { formatLocalDateOnly } from "../utils/localDate";
 
-const getTodayLocalDate = () => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
+const dayCount = new Intl.NumberFormat("ru", {
+  style: "unit",
+  unit: "day",
+  unitDisplay: "long",
+});
 
 const DashboardPage = () => {
   const currentLevel = useTaskStore((state) => state.userLevel);
@@ -24,80 +20,23 @@ const DashboardPage = () => {
   const tasks = useTaskStore((state) => state.tasks);
   const isGuest = useAuthStore((state) => state.isGuest);
 
-  const { todayTasks, dayPlan } = useMemo(() => {
-    const active = tasks.filter((t) => !t.completed);
-    const todayStr = getTodayLocalDate();
-    const today = active.filter((t) => t.date === todayStr);
-
-    return {
-      todayTasks: today,
-      dayPlan: buildDayPlan(active, currentEnergy, todayStr),
-    };
-  }, [tasks, currentEnergy]);
-  const mindHubInputRef = useRef<HTMLTextAreaElement | null>(null);
-  const isDesktopLayout = useMediaQuery("(min-width: 1024px)");
-
-  const focusMindHubInput = () => {
-    if (!isDesktopLayout) {
-      window.dispatchEvent(new Event("glowy:open-mobile-ai"));
-      return;
-    }
-
-    mindHubInputRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-    window.requestAnimationFrame(() => mindHubInputRef.current?.focus());
-  };
-
-  const renderFocusSection = () => (
-    <section className="flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
-      <div className="custom-scrollbar min-h-0 overflow-y-auto pr-1">
-        <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
-          Фокус дня
-        </h2>
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Лучше начать с
-        </p>
-
-        {dayPlan.length > 0 ? (
-          <>
-            <div className="space-y-3">
-              {dayPlan.map((candidate, index) => (
-                <div key={candidate.task.id}>
-                  <p className="mb-1 text-xs font-bold uppercase tracking-wide text-indigo-500">
-                    {index === 0 ? "Следующий шаг" : "Потом"}
-                  </p>
-                  <ReadOnlyTaskCard task={candidate.task} />
-                  {index === 0 && (
-                    <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      {candidate.reason}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
-            <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-              {isGuest ? "Задач пока нет. Добавь первый шаг в разделе «Задачи»." : "Задач пока нет. Начни с Разгрузки мыслей: я отвечу и при необходимости предложу первый шаг как черновик."}
-            </p>
-            {isGuest ? <Link to="/tasks" className="mt-2 inline-flex text-sm font-bold text-indigo-500">Добавить задачу</Link> : <button
-              type="button"
-              onClick={focusMindHubInput}
-              className="mt-2 text-sm font-bold text-indigo-500 transition-colors hover:text-indigo-400"
-            >
-              Выгрузить мысли
-            </button>}
-          </div>
-        )}
-      </div>
-    </section>
-  );
+  const userId = useAuthStore((state) => state.userId);
+  const sessionKey = useAuthStore((state) => state.token ?? "guest");
+  const today = formatLocalDateOnly();
+  const todayTasks = tasks.filter((task) => !task.completed && task.date === today);
+  const progress = useProgressOverview({
+    userId,
+    today,
+    month: today.slice(0, 7),
+    enabled: isGuest || userId !== null,
+    isGuest,
+    sessionKey,
+    taskRevision: isGuest ? JSON.stringify(tasks) : undefined,
+  });
+  const streak = progress.data?.taskStreak.current;
 
   const renderTodaySection = () => (
-    <section className="flex min-h-0 flex-1 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+    <section className="flex min-h-64 min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
           Сегодня
@@ -111,7 +50,7 @@ const DashboardPage = () => {
       </div>
 
       {todayTasks.length > 0 ? (
-        <div className="custom-scrollbar max-h-80 space-y-3 overflow-y-auto pr-2 xl:max-h-none xl:flex-1">
+        <div className="custom-scrollbar max-h-96 space-y-3 overflow-y-auto pr-2">
           {todayTasks.map((task) => (
             <ReadOnlyTaskCard key={task.id} task={task} />
           ))}
@@ -144,24 +83,36 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:items-stretch">
-        <div className="xl:col-span-3 flex flex-col gap-6 xl:h-[calc(100vh-12rem)] xl:min-h-160 min-h-0">
-          {isDesktopLayout ? renderTodaySection() : renderFocusSection()}
-
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        {renderTodaySection()}
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
+            <h2 className="font-display text-2xl font-black text-slate-900 dark:text-slate-100">
+              Серия побед
+            </h2>
+            {streak !== undefined ? (
+              <p className="mt-3 text-3xl font-bold text-indigo-600 dark:text-indigo-300">
+                {dayCount.format(streak)} подряд
+              </p>
+            ) : (
+              <p role="status" className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                {progress.fetchStatus === "fetching" ? "Загружаем серию…" : "Серия пока недоступна."}
+              </p>
+            )}
+            <Link
+              to="/progress?tab=streak"
+              className="mt-4 inline-flex text-sm font-bold text-indigo-600 hover:underline dark:text-indigo-300"
+            >
+              Весь прогресс
+            </Link>
+          </section>
           <EnergySlider />
-        </div>
-
-        {isDesktopLayout && (
-          <div className="xl:col-span-5">
-            <MindHubChat inputRef={mindHubInputRef} />
-          </div>
-        )}
-
-        <div className="flex min-h-0 flex-col xl:col-span-4 xl:h-[calc(100vh-12rem)]">
-          {isDesktopLayout ? renderFocusSection() : renderTodaySection()}
         </div>
       </div>
 
+      <div className="hidden lg:block">
+        <MindHubChat />
+      </div>
     </div>
   );
 };

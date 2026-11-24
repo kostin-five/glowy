@@ -8,12 +8,11 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useTaskStore } from "../store/useTaskStore";
 import DashboardPage from "./DashboardPage";
 
-const mocks = vi.hoisted(() => ({ isDesktopLayout: false }));
+vi.mock("../queries/progress/progressQueries", () => ({
+  useProgressOverview: () => ({ data: { taskStreak: { current: 3 } } }),
+}));
 const updateTask = vi.fn();
 
-vi.mock("../hooks/useMediaQuery", () => ({
-  default: () => mocks.isDesktopLayout,
-}));
 vi.mock("../components/layout/EnergySlider", () => ({ EnergySlider: () => null }));
 vi.mock("../components/mind/MindHubChat", () => ({ default: () => null }));
 
@@ -29,7 +28,6 @@ beforeEach(() => {
     const current = useTaskStore.getState().tasks.find((task) => task.id === id);
     return current ? { ...current, ...data } : undefined;
   });
-  mocks.isDesktopLayout = false;
   useAuthStore.setState({ name: "Тест", currentEnergy: 60 });
   useTaskStore.setState({
     userLevel: 3,
@@ -63,33 +61,27 @@ describe("DashboardPage", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Привет, Тест" })).toBeVisible();
-    expect(screen.getAllByText("Подготовить план недели").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getAllByLabelText("Подзадачи: 1 из 2").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Подготовить план недели")).toBeVisible();
+    expect(screen.getByLabelText("Подзадачи: 1 из 2")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Отметить задачу выполненной" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Удалить задачу" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Редактировать задачу" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
-    expect(
-      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
-    ).toEqual(["Фокус дня", "Сегодня"]);
   });
 
-  it("shows Today before the full-height focus column on desktop", () => {
-    mocks.isDesktopLayout = true;
-
+  it("shows the existing streak and links directly to its details", () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     );
 
-    expect(
-      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)
-    ).toEqual(["Сегодня", "Фокус дня"]);
-    expect(screen.queryByRole("heading", { name: "Недавно добавлено" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Серия побед" })).toBeVisible();
+    expect(screen.getByText("3 дня подряд")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Весь прогресс" })).toHaveAttribute("href", "/progress?tab=streak");
   });
 
-  it("keeps the focus suggestions without the removed plan flow", () => {
+  it("shows only tasks scheduled for today without mutating them", () => {
     useTaskStore.setState((state) => ({
       tasks: [
         ...state.tasks,
@@ -111,7 +103,8 @@ describe("DashboardPage", () => {
     expect(screen.queryByRole("button", { name: "Настроить план" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "План на сегодня" })).not.toBeInTheDocument();
     expect(screen.queryByText(/План на сегодня готов/)).not.toBeInTheDocument();
-    expect(screen.getByText("Подготовить следующий шаг")).toBeVisible();
+    expect(screen.queryByText("Подготовить следующий шаг")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Фокус дня" })).not.toBeInTheDocument();
     expect(updateTask).not.toHaveBeenCalled();
   });
 });

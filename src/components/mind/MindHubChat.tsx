@@ -72,7 +72,8 @@ const STARTER_PROMPTS = [
 
 interface MindHubChatProps {
   inputRef?: MutableRefObject<HTMLTextAreaElement | null>;
-  variant?: "dashboard" | "quick" | "page";
+  variant?: "dashboard" | "quick" | "page" | "drawer";
+  onClose?: () => void;
 }
 
 interface SpeechRecognitionResultLike {
@@ -249,7 +250,7 @@ const ChatMessageBubble = ({
   );
 };
 
-const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
+const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatProps) => {
   const hubMode: MindHubMode = "auto";
   const isGuest = useIsGuest();
   const userId = useUserId();
@@ -612,7 +613,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
   const sectionClassName =
     variant === "quick"
       ? "flex h-[min(72dvh,44rem)] min-h-0 flex-col overflow-hidden bg-white dark:bg-slate-900"
-      : variant === "page"
+      : variant === "page" || variant === "drawer"
         ? "flex h-full min-h-0 flex-col overflow-hidden bg-transparent"
         : "flex h-[min(760px,calc(100svh-6rem))] min-h-128 max-h-[760px] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none xl:h-[calc(100vh-12rem)] xl:min-h-160 xl:max-h-none";
 
@@ -649,6 +650,16 @@ const MindHubChat = ({ inputRef, variant = "dashboard" }: MindHubChatProps) => {
                   aria-label="Очистить историю"
                 >
                   <Trash2 size={18} />
+                </button>
+              )}
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Закрыть чат"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                >
+                  <X size={20} />
                 </button>
               )}
             </div>

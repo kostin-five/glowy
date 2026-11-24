@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "../store/useAuthStore";
@@ -14,7 +14,14 @@ vi.mock("../queries/progress/progressQueries", () => ({
 const updateTask = vi.fn();
 
 vi.mock("../components/layout/EnergySlider", () => ({ EnergySlider: () => null }));
-vi.mock("../components/mind/MindHubChat", () => ({ default: () => null }));
+vi.mock("../components/mind/MindHubChat", () => ({
+  default: ({ onClose }: { onClose?: () => void }) => (
+    <div>
+      <textarea aria-label="Сообщение" />
+      <button type="button" onClick={onClose}>Закрыть чат</button>
+    </div>
+  ),
+}));
 
 const today = () => {
   const date = new Date();
@@ -106,5 +113,25 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Подготовить следующий шаг")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Фокус дня" })).not.toBeInTheDocument();
     expect(updateTask).not.toHaveBeenCalled();
+  });
+  it("retains the same chat input across closing and reopening", async () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    const trigger = screen.getByRole("button", { name: "ИИ-ассистент" });
+    fireEvent.click(trigger);
+
+    const dialog = await screen.findByRole("dialog", { name: "ИИ-ассистент" });
+    const input = within(dialog).getByRole("textbox", { name: "Сообщение" });
+    fireEvent.change(input, { target: { value: "Подготовить план" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Закрыть чат" }));
+    await waitFor(() => expect(dialog).not.toBeVisible());
+
+    fireEvent.click(trigger);
+    expect(await screen.findByRole("dialog", { name: "ИИ-ассистент" })).toBe(dialog);
+    expect(within(dialog).getByRole("textbox", { name: "Сообщение" })).toHaveValue("Подготовить план");
   });
 });

@@ -106,3 +106,23 @@ test("shows the streak in place of focus without hidden task updates", async ({ 
   await page.getByRole("link", { name: "Весь прогресс" }).click();
   await expect(page.getByRole("tab", { name: "Стрик побед" })).toHaveAttribute("aria-selected", "true");
 });
+
+test("opens the assistant over the dashboard and preserves input on reopening", async ({ page }) => {
+  await prepareApp(page);
+  await page.goto("/dashboard");
+  const launcher = page.getByRole("button", { name: "ИИ-ассистент" });
+  const dialog = page.getByRole("dialog", { name: "ИИ-ассистент" });
+
+  await expect(dialog).toHaveCount(0);
+  await launcher.click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("textbox").fill("Подготовить план");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(launcher).toBeFocused();
+
+  await launcher.click();
+  await expect(dialog.getByRole("textbox")).toHaveValue("Подготовить план");
+  await dialog.getByRole("button", { name: "Закрыть чат" }).click();
+  await expect(dialog).toBeHidden();
+});

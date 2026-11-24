@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTaskStore } from "../store/useTaskStore";
 import { useAuthStore } from "../store/useAuthStore";
@@ -14,6 +17,14 @@ const dayCount = new Intl.NumberFormat("ru", {
 });
 
 const DashboardPage = () => {
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasOpenedChat, setHasOpenedChat] = useState(false);
+  const openChat = () => {
+    setHasOpenedChat(true);
+    setIsChatOpen(true);
+  };
+  const closeChat = () => setIsChatOpen(false);
+
   const currentLevel = useTaskStore((state) => state.userLevel);
   const userName = useAuthStore((state) => state.name);
   const currentEnergy = useAuthStore((state) => state.currentEnergy);
@@ -107,12 +118,29 @@ const DashboardPage = () => {
             </Link>
           </section>
           <EnergySlider />
+          <button
+            type="button"
+            onClick={openChat}
+            aria-haspopup="dialog"
+            className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-5 py-3 text-left font-bold text-indigo-700 transition-colors hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-400/30 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25"
+          >
+            <Sparkles size={20} aria-hidden="true" />
+            ИИ-ассистент
+          </button>
         </div>
       </div>
 
-      <div className="hidden lg:block">
-        <MindHubChat />
-      </div>
+      {hasOpenedChat && (
+        <Dialog open={isChatOpen} onClose={closeChat} unmount={false} className="fixed inset-0 z-50">
+          <DialogBackdrop className="fixed inset-0 bg-slate-950/70" />
+          <div className="fixed inset-0 flex justify-end sm:p-3">
+            <DialogPanel className="flex h-dvh w-full min-w-0 flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900 sm:h-full sm:max-w-2xl sm:rounded-3xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
+              <DialogTitle className="sr-only">ИИ-ассистент</DialogTitle>
+              <MindHubChat variant="drawer" onClose={closeChat} />
+            </DialogPanel>
+          </div>
+        </Dialog>
+      )}
     </div>
   );
 };

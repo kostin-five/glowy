@@ -46,8 +46,6 @@ import {
   usePendingMindHubDrafts,
 } from "../../store/useMindHubStore";
 
-const WELCOME_MESSAGE =
-  "Выгрузи мысли или вопросы. Я отвечу и предложу черновик задачи — сохранять решаешь ты.";
 const VOICE_SILENCE_TIMEOUT_MS = 7_000;
 const STARTER_PROMPTS = [
   {
@@ -281,8 +279,8 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
   const [isClearConfirmationOpen, setIsClearConfirmationOpen] =
     useState(false);
   const [isJumpToLatestVisible, setIsJumpToLatestVisible] = useState(false);
-  const [registeredAiLimit, setRegisteredAiLimit] =
-    useState<MindHubLimit | null>(null);
+  const [receivedAiLimit, setReceivedAiLimit] =
+    useState<{ scope: string; limit: MindHubLimit | null } | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -294,7 +292,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
   const voiceSessionFinalTextRef = useRef("");
   const voiceSessionInterimTextRef = useRef("");
   const isOnline = useNetworkStatus();
-  const activeAiLimit = isGuest ? null : registeredAiLimit;
+  const activeAiLimit = receivedAiLimit?.scope === accountScope ? receivedAiLimit.limit : null;
   const shouldShowAiLimit =
     Boolean(activeAiLimit) && (activeAiLimit?.remaining ?? 0) <= 5;
 
@@ -552,7 +550,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
     event.preventDefault();
 
     const message = text.trim();
-    if (isGuest || !message || isSending || isListening || !isOnline) return;
+    if (!message || isSending || isListening || !isOnline) return;
 
     const userMessage: MindHubChatMessage = {
       id: Date.now() + messages.length,
@@ -580,7 +578,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
         hubMode,
         requestMessages
       );
-      setRegisteredAiLimit(result.limit ?? null);
+      setReceivedAiLimit({ scope: accountScope, limit: result.limit ?? null });
 
       appendMessage(accountScope, {
         role: "assistant",
@@ -664,9 +662,6 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
               )}
             </div>
           </div>
-          <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
-            {WELCOME_MESSAGE}
-          </p>
           {isClearConfirmationOpen && (
             <div
               role="dialog"
@@ -735,7 +730,6 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
                     key={starter.title}
                     type="button"
                     onClick={() => applyStarterPrompt(starter.prompt)}
-                    disabled={isGuest}
                     className="min-h-24 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 dark:border-slate-700 dark:bg-slate-950/50 dark:hover:border-indigo-400/40 dark:hover:bg-indigo-500/10"
                   >
                     <span className="block text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -918,6 +912,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
               }
             }}
             rows={1}
+            maxLength={isGuest ? 2000 : undefined}
             placeholder={
               !isOnline
                 ? "Ввод заблокирован до восстановления подключения..."
@@ -929,7 +924,7 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
                 : "cursor-not-allowed text-slate-500 placeholder:text-amber-700/80 dark:text-slate-500 dark:placeholder:text-amber-200/70"
             }`}
             readOnly={isListening}
-            disabled={isGuest || isSending || !isOnline}
+            disabled={isSending || !isOnline}
           />
           <button
             type="button"
@@ -950,14 +945,19 @@ const MindHubChat = ({ inputRef, variant = "dashboard", onClose }: MindHubChatPr
           </button>
           <button
             type="submit"
-            disabled={isGuest || !text.trim() || isSending || isListening || !isOnline}
+            disabled={!text.trim() || isSending || isListening || !isOnline}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Отправить мысли"
           >
             <Send size={18} />
           </button>
         </div>
-        {isGuest && <p className="mt-2 text-sm text-slate-500" role="status">AI недоступен в демо-режиме</p>}
+        {isGuest && (
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            До 5 запросов за 24 часа. ИИ-провайдер получает отправленный текст.
+            Не указывай персональные данные. Подтверждённые задачи сохраняются в браузере.
+          </p>
+        )}
         {voiceInputError && (
           <p className="mt-2 text-xs text-rose-600 dark:text-rose-300" role="status">
             {voiceInputError}

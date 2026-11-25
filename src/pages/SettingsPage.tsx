@@ -359,7 +359,7 @@ const SettingsPage = () => {
               </p>
               {isGuest && (
                 <span className="mt-3 inline-flex rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-600 dark:text-amber-300">
-                  Локальное демо · без AI
+                  Локальное демо
                 </span>
               )}
             </div>
@@ -395,7 +395,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {isGuest ? <p className="text-sm text-slate-600 dark:text-slate-400">Все локальные не-AI функции доступны без подписки. AI, регистрация, оплата, подключение Telegram и облачная синхронизация в демо отключены.</p> : <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        {isGuest ? <p className="text-sm text-slate-600 dark:text-slate-400">В чате доступно до 5 ИИ-запросов за 24 часа. Регистрация, оплата, подключение Telegram и облачная синхронизация в демо отключены.</p> : <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
               <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-700 dark:bg-slate-950/40">

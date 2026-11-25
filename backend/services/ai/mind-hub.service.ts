@@ -1,6 +1,7 @@
 import {
   chatWithAiProvider,
   generateContentWithAiProvider,
+  type DirectAiProvider,
 } from "./ai-provider.service.js";
 import {
   buildMindHubParsePrompt,
@@ -71,7 +72,8 @@ export const parseMindHubDrafts = async (
   currentEnergy: number | null = null,
   messages: ConversationMessage[] = [],
   aiTone = "calm",
-  accountingContext?: AccountingContext | null
+  accountingContext?: AccountingContext | null,
+  directProvider?: DirectAiProvider
 ) => {
   const activeTasksString = activeTasksContext.length
     ? `
@@ -138,7 +140,8 @@ ${conversationString}`
       `${conversationContext}${toneContext}`
     ),
     "Mind Hub parse",
-    accountingContext
+    accountingContext,
+    directProvider
   );
   const parsedPayload = parseJsonLoose(responseText);
 
@@ -231,7 +234,8 @@ export const getCoachReply = async (
   message: string,
   messages: ConversationMessage[],
   aiTone = "calm",
-  accountingContext?: AccountingContext | null
+  accountingContext?: AccountingContext | null,
+  directProvider?: DirectAiProvider
 ): Promise<string> => {
   const { text } = await chatWithAiProvider({
     message,
@@ -243,6 +247,7 @@ export const getCoachReply = async (
     },
     contextLabel: "Mind Hub chat",
     accountingContext,
+    directProvider,
   });
   const reply = text.trim();
 

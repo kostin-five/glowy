@@ -163,11 +163,10 @@ describe("local demo data and boundaries", () => {
     expect(month.completedTasks).toBe(2); expect(month.dailyCompleted).toHaveLength(31);
     expect(await DemoProgress.analytics(useTaskStore.getState(), "month", "2026-10-07")).toEqual(month);
   });
-  it("blocks every AI client before network without consuming quota", async () => {
+  it("blocks account-only AI clients before network without consuming quota", async () => {
     const before = useAuthStore.getState().guestRequestsCount;
     expect(await AiApi.getAiUsage()).toBeNull();
     expect(await AiApi.getAdvice()).toEqual({ message: "AI недоступен в демо-режиме" });
-    expect((await AiApi.parseMindHub("Тест")).reply).toBe("AI недоступен в демо-режиме");
     await expect(AiApi.createSubtaskDraft({ title: "Тест", category: "", estimatedMinutes: null, existingSubtasks: [], energyLevel: "low", priority: "💤 P3" })).rejects.toThrow("AI недоступен");
     await expect(NoteApi.generateTaskDraft(1, "Тест")).rejects.toThrow("AI недоступен");
     await expect(NoteApi.confirmTask(1, { title: "Тест", date: "", category: "", completed: false, energyLevel: "low", priority: "💤 P3", subtasks: [] })).rejects.toThrow("AI недоступен");

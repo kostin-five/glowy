@@ -109,21 +109,21 @@ const createMemoryDb = ({ count = 0, resetAt }: MemoryDbOptions = {}) => {
   };
 };
 
-test("uses the reduced 70 request daily limit for Focus and lifetime plans", () => {
+test("uses the 30 request daily limit for Focus and lifetime plans", () => {
   const foreverUser = {
     plan: "forever",
     subscriptionStatus: "active",
     planExpiresAt: null,
   };
 
-  assert.equal(AI_LIMITS_BY_PLAN.focus, 70);
-  assert.equal(AI_LIMITS_BY_PLAN.forever, 70);
+  assert.equal(AI_LIMITS_BY_PLAN.focus, 30);
+  assert.equal(AI_LIMITS_BY_PLAN.forever, 30);
   assert.deepEqual(Object.keys(AI_LIMITS_BY_PLAN), ["start", "focus", "forever"]);
-  assert.equal(getEffectiveAiLimit(foreverUser), 70);
+  assert.equal(getEffectiveAiLimit(foreverUser), 30);
 });
 
 test("allows exactly one of 20 concurrent reservations with one unit left", async () => {
-  const { db, state } = createMemoryDb({ count: 9 });
+  const { db, state } = createMemoryDb({ count: AI_LIMITS_BY_PLAN.start - 1 });
   const limits = createAiLimitService({
     db,
     now: () => new Date("2026-08-31T10:00:00.000Z"),
@@ -134,11 +134,11 @@ test("allows exactly one of 20 concurrent reservations with one unit left", asyn
   );
 
   assert.equal(results.filter((result) => result.allowed).length, 1);
-  assert.equal(state.aiRequestsCount, 10);
+  assert.equal(state.aiRequestsCount, 5);
 });
 
 test("releases a reservation only inside its original quota window", async () => {
-  const { db, state } = createMemoryDb({ count: 8 });
+  const { db, state } = createMemoryDb({ count: 3 });
   const limits = createAiLimitService({
     db,
     now: () => new Date("2026-08-31T10:00:00.000Z"),
@@ -148,7 +148,7 @@ test("releases a reservation only inside its original quota window", async () =>
   assert.equal(reservation.allowed, true);
   assert.ok(reservation.reservation);
   assert.equal((await limits.release(reservation.reservation)).released, true);
-  assert.equal(state.aiRequestsCount, 8);
+  assert.equal(state.aiRequestsCount, 3);
 
   state.aiRequestsCount = 1;
   state.aiRequestsResetAt = new Date("2026-09-01T12:00:00.000Z");

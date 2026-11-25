@@ -1,9 +1,11 @@
 import express from "express";
 import type { Request, Response } from "express";
-import type { ZodIssue } from "zod";
+import { z, type ZodIssue } from "zod";
+import { rateLimit, type RateLimitInfo } from "express-rate-limit";
 import {
   aiUsageSchema,
   mindHubRequestSchema,
+  mindHubModeSchema,
   mindHubResponseSchema,
   subtaskDraftRequestSchema,
   subtaskDraftResponseSchema,
@@ -12,7 +14,7 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 import { buildErrorEnvelope } from "../middleware/error.middleware.js";
 import { prisma } from "../lib/prisma.js";
 import { logger } from "../lib/logger.js";
-import { generateContentWithAiProvider } from "../services/ai/ai-provider.service.js";
+import { generateContentWithAiProvider, type DirectAiProvider } from "../services/ai/ai-provider.service.js";
 import {
   buildTaskAnalysisPrompt,
   getCoachReply,
@@ -21,6 +23,7 @@ import {
   stringifyActiveTasks,
 } from "../services/ai/mind-hub.service.js";
 import {
+  AI_REQUEST_WINDOW_MS,
   getAuthenticatedAiUsage,
   releaseAuthenticatedAiRequest,
   reserveAuthenticatedAiRequest,
@@ -143,9 +146,67 @@ const releaseReservation = async (
   }
 };
 
-router.use((req, _res, next) =>
-  req.path === "/mind-hub/public" ? next("router") : next()
-);
+const guestRequestSchema = z.strictObject({
+  message: z.string().trim().min(1).max(2000),
+  hubMode: mindHubModeSchema.default("auto"),
+});
+const guestLimit = (req: Request) => {
+  const { limit, remaining, resetTime } = (req as Request & { rateLimit: RateLimitInfo }).rateLimit;
+  return { limit, remaining, resetAt: resetTime?.toISOString() ?? null };
+};
+const perGuestLimiter = rateLimit({
+  windowMs: AI_REQUEST_WINDOW_MS,
+  limit: 5,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json(
+    buildAiError(req, "Лимит гостевого ИИ исчерпан.", "AI_LIMIT_EXHAUSTED", { limit: guestLimit(req) })
+  ),
+});
+const sharedGuestLimiter = rateLimit({
+  windowMs: AI_REQUEST_WINDOW_MS,
+  limit: 50,
+  legacyHeaders: false,
+  keyGenerator: () => "guest-ai",
+  requestPropertyName: "sharedGuestAiLimit",
+  handler: (req, res) => res.status(429).json(
+    buildAiError(req, "Общий лимит гостевого ИИ исчерпан. Попробуй позже.", "GUEST_AI_BUSY")
+  ),
+});
+
+router.post("/mind-hub/public", (req, res, next) => {
+  const provider = process.env.GUEST_AI_PROVIDER;
+  if (provider !== "deepseek" && provider !== "gigachat") return next("router");
+  const input = guestRequestSchema.safeParse(req.body);
+  if (!input.success) {
+    return res.status(400).json(buildAiError(
+      req, "Введи сообщение длиной до 2000 символов.", "AI_REQUEST_INVALID"
+    ));
+  }
+  res.locals.guestAi = { ...input.data, provider };
+  next();
+}, perGuestLimiter, sharedGuestLimiter, async (req, res) => {
+  const guest = res.locals.guestAi as z.infer<typeof guestRequestSchema> & {
+    provider: DirectAiProvider;
+  };
+  try {
+    const result = guest.hubMode === "chat"
+      ? { drafts: [], reply: await coachReply(guest.message, [], "calm", null, guest.provider) }
+      : await parseDrafts(guest.message, formatDateDDMMYYYY(new Date()), [], null, [], "calm", null, guest.provider);
+    return sendMindHubResponse(req, res, {
+      ...result,
+      reply: ensureMixedInputReply(guest.message, result.drafts, result.reply) ||
+        "Я рядом. Можешь продолжить мысль.",
+      limit: guestLimit(req),
+    });
+  } catch (error) {
+    logger.error("ai.mind_hub.guest_failed", { req, error, statusCode: getErrorStatus(error) || 500 });
+    return res.status(503).json(buildAiError(
+      req, "Гостевой ИИ временно недоступен. Попробуй позже.", "AI_PROVIDER_UNAVAILABLE",
+      { limit: guestLimit(req) }
+    ));
+  }
+});
+
 router.use(authenticate);
 
 router.get("/usage", async (req, res) => {

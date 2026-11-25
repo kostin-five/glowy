@@ -260,8 +260,8 @@ function LandingPage() {
         <div className="mt-20 grid gap-4 sm:grid-cols-3">
           {[
             ["3", "демо-запроса для быстрого старта"],
-            ["10+", "AI-запросов в день на Start"],
-            ["100", "запросов в день на Focus"],
+            ["5", "ИИ-запросов в день на Start"],
+            ["30", "запросов в день на Focus"],
           ].map(([value, label]) => (
             <div
               key={label}

@@ -85,13 +85,49 @@ test("authenticated Mind Hub rejects a missing session before validation", async
   assert.equal(response.body.message, "Пользователь не авторизован");
 });
 
-test("the removed public Mind Hub path cannot reach AI handling", async () => {
+test("public Mind Hub is unavailable without an explicitly selected provider", async () => {
   const response = await request(createApp())
     .post("/api/ai/mind-hub/public")
     .set("Origin", allowedOrigin)
     .send({});
 
   assert.equal(response.status, 404);
+});
+
+test("guest Mind Hub reserves five requests without using account services", async () => {
+  const previous = process.env.GUEST_AI_PROVIDER;
+  process.env.GUEST_AI_PROVIDER = "gigachat";
+  try {
+    let calls = 0;
+    const app = createIsolatedAiApp({
+      authenticate: () => assert.fail("Guest AI must bypass authentication"),
+      reserveRequest: () => assert.fail("Guest AI must bypass account quota"),
+      parseDrafts: async (message: string, _today: string, ...context: unknown[]) => {
+        calls++;
+        assert.equal(message, "Разобрать документы");
+        assert.deepEqual(context, [[], null, [], "calm", null, "gigachat"]);
+        return { drafts: [], reply: "Начни с сортировки." };
+      },
+    });
+    const guest = () => request(app).post("/api/ai/mind-hub/public");
+    const invalid = await guest().send({ message: "Тест", messages: [] });
+    assert.equal(invalid.status, 400);
+
+    for (let remaining = 4; remaining >= 0; remaining--) {
+      const response = await guest().send({ message: "Разобрать документы" });
+      assert.equal(response.status, 200);
+      assert.equal(response.body.limit.limit, 5);
+      assert.equal(response.body.limit.remaining, remaining);
+    }
+
+    const blocked = await guest().send({ message: "Разобрать документы" });
+    assert.equal(blocked.status, 429);
+    assert.equal(blocked.body.limit.remaining, 0);
+    assert.equal(calls, 5);
+  } finally {
+    if (previous === undefined) delete process.env.GUEST_AI_PROVIDER;
+    else process.env.GUEST_AI_PROVIDER = previous;
+  }
 });
 
 test("authenticated Mind Hub returns a safe request-ID validation error", async () => {

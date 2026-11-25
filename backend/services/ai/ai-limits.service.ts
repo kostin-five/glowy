@@ -1,12 +1,12 @@
 import { prisma } from "../../lib/prisma.js";
 import type { User } from "@prisma/client";
 
-export const DEFAULT_AI_REQUEST_LIMIT = 10;
+export const DEFAULT_AI_REQUEST_LIMIT = 5;
 export const AI_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const AI_LIMITS_BY_PLAN = {
-  start: 10,
-  focus: 70,
-  forever: 70,
+  start: DEFAULT_AI_REQUEST_LIMIT,
+  focus: 30,
+  forever: 30,
 } as const;
 
 type AiPlan = keyof typeof AI_LIMITS_BY_PLAN;

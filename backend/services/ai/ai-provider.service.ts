@@ -6,6 +6,8 @@ import { isUnknownRecord } from "../../types/boundaries.js";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const TOKEN_EXPIRY_SAFETY_MS = 60_000;
 
+export type DirectAiProvider = "deepseek" | "gigachat";
+
 interface ProviderBudget {
   deadline: number;
   remaining(): number;
@@ -168,6 +170,10 @@ export const createAiCircuitBreaker = ({
 };
 
 const providerCircuit = createAiCircuitBreaker();
+const guestProviderCircuits = {
+  deepseek: createAiCircuitBreaker(),
+  gigachat: createAiCircuitBreaker(),
+};
 
 export const createAiProviderError = ({
   code,
@@ -674,14 +680,16 @@ const runDirectProviders = async (
 const runProviderRequest = async (
   request: ProviderRequest,
   contextLabel: string,
-  accountingContext?: AccountingContext | null
+  accountingContext?: AccountingContext | null,
+  directProvider?: DirectAiProvider
 ): Promise<ProviderResult> => {
   const startedAt = Date.now();
-  const circuitPermission = providerCircuit.beforeRequest();
+  const circuit = directProvider ? guestProviderCircuits[directProvider] : providerCircuit;
+  const circuitPermission = circuit.beforeRequest();
   if (!circuitPermission.allowed) {
     logger.info("ai.provider.circuit_rejected", {
       code: "AI_PROVIDER_CIRCUIT_OPEN",
-      status: providerCircuit.getState().state,
+      status: circuit.getState().state,
       retryable: true,
       durationMs: 0,
     });
@@ -697,20 +705,24 @@ const runProviderRequest = async (
   let result;
 
   try {
-    result =
-      (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
+    if (directProvider) {
+      const callProvider = directProvider === "deepseek" ? callDeepSeek : callGigaChat;
+      result = await callProvider(request, budget);
+    } else {
+      result = (process.env.AI_PROVIDER_MODE || "direct").toLowerCase() === "proxy"
         ? await callAiProxy(request, budget)
         : await runDirectProviders(request, contextLabel, budget);
-    providerCircuit.recordSuccess();
+    }
+    circuit.recordSuccess();
   } catch (error) {
     const typedError = isAiProviderError(error) ? error : null;
-    providerCircuit.recordFailure(Boolean(typedError?.retryable));
+    circuit.recordFailure(Boolean(typedError?.retryable));
     logger.info("ai.provider.failed", {
       provider: typedError?.provider || "unknown",
       operation: typedError?.operation || "unknown",
       code: typedError?.code || "AI_PROVIDER_UNKNOWN_ERROR",
       statusCode: typedError?.status || 503,
-      status: providerCircuit.getState().state,
+      status: circuit.getState().state,
       retryable: Boolean(typedError?.retryable),
       durationMs: Date.now() - startedAt,
       remaining: budget.remaining(),
@@ -736,12 +748,14 @@ const runProviderRequest = async (
 export const generateContentWithAiProvider = async (
   prompt: string,
   contextLabel: string,
-  accountingContext?: AccountingContext | null
+  accountingContext?: AccountingContext | null,
+  directProvider?: DirectAiProvider
 ): Promise<ProviderResult> =>
   runProviderRequest(
     { messages: buildMessages({ prompt }), generationConfig: {} },
     contextLabel,
-    accountingContext
+    accountingContext,
+    directProvider
   );
 
 export const chatWithAiProvider = async ({
@@ -751,6 +765,7 @@ export const chatWithAiProvider = async ({
   generationConfig,
   contextLabel,
   accountingContext,
+  directProvider,
 }: {
   message: string;
   history?: unknown;
@@ -758,6 +773,7 @@ export const chatWithAiProvider = async ({
   generationConfig?: GenerationConfig;
   contextLabel: string;
   accountingContext?: AccountingContext | null;
+  directProvider?: DirectAiProvider;
 }): Promise<ProviderResult> =>
   runProviderRequest(
     {
@@ -765,7 +781,8 @@ export const chatWithAiProvider = async ({
       generationConfig: generationConfig || {},
     },
     contextLabel,
-    accountingContext
+    accountingContext,
+    directProvider
   );
 
 export const isRetryableAiProviderError = (error: unknown): boolean =>
@@ -774,4 +791,6 @@ export const isRetryableAiProviderError = (error: unknown): boolean =>
 export const resetAiProviderStateForTests = () => {
   gigaChatTokenCache = null;
   providerCircuit.reset();
+  guestProviderCircuits.deepseek.reset();
+  guestProviderCircuits.gigachat.reset();
 };

@@ -5,7 +5,7 @@ import { API_BASE_URL } from "../api/config";
 import { AuthApi } from "../api/AuthApi";
 import type { AiTone, AvatarId } from "../types";
 
-export const GUEST_REQUEST_LIMIT = 3;
+export const GUEST_REQUEST_LIMIT = 5;
 const GUEST_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 let authSessionVersion = 0;
 

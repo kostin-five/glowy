@@ -15,6 +15,7 @@ const axiosInstance = {
 vi.mock("axios", () => ({
   default: {
     create: () => axiosInstance,
+    post,
     isAxiosError: () => false,
   },
 }));
@@ -46,18 +47,24 @@ describe("AI activation analytics", () => {
     expect(result.drafts).toEqual([]);
   });
 
-  it("does not send a network request for a stale guest AI session", async () => {
+  it("sends only the current guest message and mode without recording a milestone", async () => {
     useAuthStore.setState({
       isAuthenticated: true,
       isGuest: true,
       guestRequestsCount: 0,
       guestRequestsResetDate: null,
     });
-    const result = await AiApi.parseMindHub("Помоги выбрать следующую задачу");
+    post.mockResolvedValue({ data: { drafts: [], reply: "Готово" } });
+    const result = await AiApi.parseMindHub("Помоги выбрать следующую задачу", "chat", [
+      { role: "user", text: "История остаётся в браузере" },
+    ]);
 
-    expect(post).not.toHaveBeenCalled();
+    expect(post).toHaveBeenCalledExactlyOnceWith(expect.stringMatching(/\/ai\/mind-hub\/public$/), {
+      message: "Помоги выбрать следующую задачу",
+      hubMode: "chat",
+    });
     expect(trackProductEventOnce).not.toHaveBeenCalled();
     expect(result.drafts).toEqual([]);
-    expect(result.reply).toBe("AI недоступен в демо-режиме");
+    expect(result.reply).toBe("Готово");
   });
 });

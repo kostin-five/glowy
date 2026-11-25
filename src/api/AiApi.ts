@@ -32,11 +32,6 @@ const aiInstance = axios.create({
   withCredentials: true,
 });
 
-const getGuestRegistrationResponse = (): MindHubResponse => ({
-  drafts: [],
-  reply: DEMO_AI_MESSAGE,
-});
-
 aiInstance.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
 
@@ -77,27 +72,29 @@ export default class AiApi {
   ): Promise<MindHubResponse> {
     const authStore = useAuthStore.getState();
 
-    if (authStore.isGuest) {
-      return getGuestRegistrationResponse();
-    }
-
     try {
-      const response = await aiInstance.post("/mind-hub", {
-        message,
-        hubMode,
-        messages,
-        currentEnergy: authStore.currentEnergy,
-      });
+      const response = authStore.isGuest
+        ? await axios.post(`${API_BASE_URL}/ai/mind-hub/public`, { message, hubMode })
+        : await aiInstance.post("/mind-hub", {
+            message,
+            hubMode,
+            messages,
+            currentEnergy: authStore.currentEnergy,
+          });
       if (authStore.isAuthenticated && !authStore.isGuest) {
         trackProductEventOnce("first_ai_request");
       }
       return mindHubResponseSchema.parse(response.data);
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const limitError = aiLimitErrorSchema.safeParse(error.response.data);
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      if (authStore.isGuest && status === 404) {
+        return { drafts: [], reply: "Гостевой ИИ пока недоступен." };
+      }
+      if (axios.isAxiosError(error) && (status === 429 || (authStore.isGuest && status === 503))) {
+        const limitError = aiLimitErrorSchema.safeParse(error.response?.data);
         return {
           drafts: [],
-          reply: error.response.data?.error ?? "Лимит запросов исчерпан.",
+          reply: error.response?.data?.error ?? "Лимит запросов исчерпан.",
           limit: limitError.success ? limitError.data.limit : undefined,
         };
       }

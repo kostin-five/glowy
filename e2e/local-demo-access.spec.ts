@@ -69,10 +69,9 @@ test("guest notes, habits, analytics and avatar persist locally without API requ
   await page.getByRole("tab", { name: "Стрик побед", exact: true }).click();
   await expect(page.getByLabel("Календарь ритма", { exact: true })).toBeVisible();
   await page.goto("/analytics");
-  await expect(page.getByText("AI недоступен в демо-режиме")).toBeVisible();
-  await expect(page.getByRole("button", { name: "AI-разбор недоступен" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Глубокий разбор Glowy" })).toHaveCount(0);
   await page.getByRole("button", { name: "Месяц", exact: true }).click();
-  await expect(page.getByText("AI недоступен в демо-режиме")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Глубокий разбор Glowy" })).toHaveCount(0);
   await page.goto("/settings");
   await page.getByRole("button", { name: "Мята", exact: true }).click();
   await expect(page.getByText("Настройки сохранены", { exact: true })).toBeVisible();
@@ -94,8 +93,8 @@ test("guest notes, habits, analytics and avatar persist locally without API requ
   await page.getByRole("button", { name: /Локальная заметка/ }).click();
   await expect(page.getByLabel("Текст заметки", { exact: true })).toHaveValue("Сохранено без сети");
   await page.goto("/ai");
-  await expect(page.locator("textarea")).toBeDisabled();
-  await expect(page.getByText("AI недоступен в демо-режиме")).toBeVisible();
+  await expect(page.locator("textarea")).toBeEnabled();
+  await expect(page.getByText(/До 5 запросов за 24 часа/)).toBeVisible();
   expect(requests).toEqual([]);
 });
 
@@ -159,4 +158,46 @@ test("guest task and note data never appear in or upload to an account", async (
   await page.goto("/notes");
   await expect(page.getByRole("button", { name: /Только для гостя/ })).toBeVisible();
   expect(writes).toEqual([]);
+});
+
+test("a guest can confirm an AI draft without syncing the task", async ({ page }) => {
+  const sent: unknown[] = [];
+  await page.route(/^http:\/\/localhost:3001\/api\//, (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/auth/me") return route.fulfill({ status: 401, json: {} });
+    if (path !== "/api/ai/mind-hub/public") {
+      sent.push(path);
+      return route.fulfill({ status: 401, json: {} });
+    }
+    sent.push(request.postDataJSON());
+    return route.fulfill({
+      status: 200,
+      json: {
+        reply: "Подготовил черновик.",
+        drafts: [{
+          title: "Разобрать документы",
+          date: "",
+          priority: "⚡️ P2",
+          category: "",
+          completed: false,
+          energyLevel: "med",
+          subtasks: [{ title: "Собрать документы", completed: false, position: 0 }],
+        }],
+        limit: { limit: 5, remaining: 4, resetAt: null },
+      },
+    });
+  });
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Открыть демо без регистрации" }).click();
+  await page.goto("/ai");
+  await page.locator("textarea").fill("Помоги разобрать документы");
+  await page.getByRole("button", { name: "Отправить мысли" }).click();
+  await expect(page.getByText("Осталось 4 запроса")).toBeVisible();
+  await page.getByRole("button", { name: "Добавить задачу" }).click();
+  await page.goto("/tasks");
+  await page.reload();
+  await expect(page.getByText("Разобрать документы", { exact: true }).first()).toBeVisible();
+  expect(sent).toEqual([{ message: "Помоги разобрать документы", hubMode: "auto" }]);
 });

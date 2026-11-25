@@ -78,6 +78,7 @@ test("retries the current period without stale metrics at compact and desktop wi
 });
 
 test("keeps a report readable during regeneration and visibly restores controls after failure", async ({ page }) => {
+    test.skip(process.env.VITE_ANALYTICS_AI_REPORT_ENABLED !== "true", "Проверка скрытого блока отчёта");
   const server = await prepareApp(page);
   await page.goto("/analytics");
   await page.getByRole("button", { name: "Разобрать неделю · 5 запросов" }).click();

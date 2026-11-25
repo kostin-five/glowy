@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnalyticsApi } from "../api/AnalyticsApi";
 import { useAuthStore } from "../store/useAuthStore";
 import AnalyticsPage from "./AnalyticsPage";
@@ -64,7 +64,10 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
+afterEach(() => vi.unstubAllEnvs());
+
 beforeEach(() => {
+  vi.stubEnv("VITE_ANALYTICS_AI_REPORT_ENABLED", "true");
   vi.resetAllMocks();
   localStorage.clear();
   useAuthStore.setState({ userId: 42, isGuest: false, isAuthenticated: true });
@@ -81,6 +84,14 @@ beforeEach(() => {
 });
 
 describe("AnalyticsPage report", () => {
+  it("hides the report by default while showing ordinary analytics", async () => {
+    vi.stubEnv("VITE_ANALYTICS_AI_REPORT_ENABLED", undefined);
+    renderPage();
+    expect(await screen.findByText("Плановое время")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Глубокий разбор Glowy" })).toBeNull();
+    expect(AnalyticsApi.requestInsight).not.toHaveBeenCalled();
+  });
+
   it("loads local analytics and disables AI for a guest", async () => {
     useAuthStore.setState({ userId: null, isGuest: true, isAuthenticated: false });
     renderPage();

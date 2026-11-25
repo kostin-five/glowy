@@ -205,6 +205,7 @@ test.describe("personal progress releases", () => {
   });
 
   test("shows a weighted Focus insight after an explicit request", async ({ page }) => {
+    test.skip(process.env.VITE_ANALYTICS_AI_REPORT_ENABLED !== "true", "Проверка скрытого блока отчёта");
     await page.goto("/analytics");
 
     await expect(page.getByText("4", { exact: true }).first()).toBeVisible();

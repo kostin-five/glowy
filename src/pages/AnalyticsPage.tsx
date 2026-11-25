@@ -419,122 +419,126 @@ const AnalyticsView = ({ ownerId, isGuest, period, anchor, changePeriod }: {
             </div>
           </section>
 
-          <section className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4 md:p-5">
-            <div className="flex items-start gap-3">
-              <Sparkles className="mt-0.5 shrink-0 text-indigo-500" size={20} />
-              <div className="min-w-0 flex-1">
-                <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
-                {isGuest && <p className="mt-2 text-sm text-slate-500">AI недоступен в демо-режиме</p>}
-                {isInsightLoading && (
-                  <div role="status" aria-live="polite" className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p className="flex items-center gap-2 font-semibold">
-                      <LoaderCircle size={16} className="shrink-0 animate-spin" />
-                      Готовлю глубокий разбор…
-                    </p>
-                    <p className="mt-1 text-xs leading-5">
-                      Уход со страницы или смена периода не отменяет уже отправленный AI-запрос и его расход лимита.
-                    </p>
-                  </div>
-                )}
-                {isGuest ? (
-                  <button type="button" disabled className="mt-4 rounded-xl border px-4 py-2 text-sm opacity-50">AI-разбор недоступен</button>
-                ) : insight ? (
-                  <div className="mt-3">
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={copyInsight}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-indigo-500/30 px-3 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-300"
-                      >
-                        <Copy size={16} />
-                        Копировать
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsRegenerateConfirmOpen(true)}
-                        disabled={isInsightLoading || !snapshot.canRequestAiInsight}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
-                      >
-                        <RotateCcw size={16} />
-                        Новый отчёт
-                      </button>
-                      <button
-                        type="button"
-                        onClick={deleteInsight}
-                        disabled={isInsightLoading}
-                        className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-rose-600 disabled:opacity-50 dark:text-rose-300"
-                      >
-                        <Trash2 size={16} />
-                        Удалить отчёт
-                      </button>
-                      {copyFeedback && (
-                        <span className="text-sm text-slate-600 dark:text-slate-400" role="status">
-                          {copyFeedback}
-                        </span>
-                      )}
+          {import.meta.env.VITE_ANALYTICS_AI_REPORT_ENABLED === "true" && (
+            <section className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-4 md:p-5">
+              <div className="flex items-start gap-3">
+                <Sparkles className="mt-0.5 shrink-0 text-indigo-500" size={20} />
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-bold text-slate-950 dark:text-slate-100">Глубокий разбор Glowy</h2>
+                  {isGuest && <p className="mt-2 text-sm text-slate-500">AI недоступен в демо-режиме</p>}
+                  {isInsightLoading && (
+                    <div role="status" aria-live="polite" className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                      <p className="flex items-center gap-2 font-semibold">
+                        <LoaderCircle size={16} className="shrink-0 animate-spin" />
+                        Готовлю глубокий разбор…
+                      </p>
+                      <p className="mt-1 text-xs leading-5">
+                        Уход со страницы или смена периода не отменяет уже отправленный AI-запрос и его расход лимита.
+                      </p>
                     </div>
-                    <SafeReportMarkdown text={insight} />
-                  </div>
-                ) : !snapshot.canUseFocusFeatures ? (
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Forever.</p>
-                ) : !snapshot.hasActivity ? (
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Выполни хотя бы одну задачу за период, чтобы получить разбор.</p>
-                ) : (
-                  <div className="mt-2">
-                    <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
-                      Glowy использует только сводные показатели периода, без названий задач и текста заметок.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={requestInsight}
-                      disabled={isGuest || isInsightLoading || !snapshot.canRequestAiInsight}
-                      className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
-                    >
-                      {isInsightLoading
-                        ? "Готовлю глубокий разбор..."
-                        : period === "month"
-                          ? "Разобрать месяц · 10 запросов"
-                          : "Разобрать неделю · 5 запросов"}
-                    </button>
-                  </div>
-                )}
+                  )}
+                  {isGuest ? (
+                    <button type="button" disabled className="mt-4 rounded-xl border px-4 py-2 text-sm opacity-50">AI-разбор недоступен</button>
+                  ) : insight ? (
+                    <div className="mt-3">
+                      <div className="mb-4 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={copyInsight}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-md border border-indigo-500/30 px-3 py-2 text-sm font-bold text-indigo-600 dark:text-indigo-300"
+                        >
+                          <Copy size={16} />
+                          Копировать
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsRegenerateConfirmOpen(true)}
+                          disabled={isInsightLoading || !snapshot.canRequestAiInsight}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"
+                        >
+                          <RotateCcw size={16} />
+                          Новый отчёт
+                        </button>
+                        <button
+                          type="button"
+                          onClick={deleteInsight}
+                          disabled={isInsightLoading}
+                          className="inline-flex min-h-10 items-center gap-2 rounded-md px-3 py-2 text-sm font-bold text-rose-600 disabled:opacity-50 dark:text-rose-300"
+                        >
+                          <Trash2 size={16} />
+                          Удалить отчёт
+                        </button>
+                        {copyFeedback && (
+                          <span className="text-sm text-slate-600 dark:text-slate-400" role="status">
+                            {copyFeedback}
+                          </span>
+                        )}
+                      </div>
+                      <SafeReportMarkdown text={insight} />
+                    </div>
+                  ) : !snapshot.canUseFocusFeatures ? (
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Глубокий AI-разбор доступен в Focus и Forever.</p>
+                  ) : !snapshot.hasActivity ? (
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">Выполни хотя бы одну задачу за период, чтобы получить разбор.</p>
+                  ) : (
+                    <div className="mt-2">
+                      <p className="text-xs leading-5 text-slate-600 dark:text-slate-400">
+                        Glowy использует только сводные показатели периода, без названий задач и текста заметок.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={requestInsight}
+                        disabled={isGuest || isInsightLoading || !snapshot.canRequestAiInsight}
+                        className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                      >
+                        {isInsightLoading
+                          ? "Готовлю глубокий разбор..."
+                          : period === "month"
+                            ? "Разобрать месяц · 10 запросов"
+                            : "Разобрать неделю · 5 запросов"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
         </>
       ) : (
         <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           Аналитика пока недоступна.
         </div>
       )}
-      <Modal
-        isOpen={isRegenerateConfirmOpen}
-        onClose={() => setIsRegenerateConfirmOpen(false)}
-        title="Сделать новый отчёт?"
-      >
-        <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Новый разбор потратит ещё {period === "month" ? "10" : "5"} AI-запросов. Текущий отчёт заменится только после успешного ответа Glowy.
-        </p>
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={() => setIsRegenerateConfirmOpen(false)}
-            className="min-h-10 rounded-md border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegenerateConfirmOpen(false);
-              void requestInsight();
-            }}
-            className="min-h-10 rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white"
-          >
-            Сделать новый
-          </button>
-        </div>
-      </Modal>
+      {import.meta.env.VITE_ANALYTICS_AI_REPORT_ENABLED === "true" && (
+        <Modal
+          isOpen={isRegenerateConfirmOpen}
+          onClose={() => setIsRegenerateConfirmOpen(false)}
+          title="Сделать новый отчёт?"
+        >
+          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Новый разбор потратит ещё {period === "month" ? "10" : "5"} AI-запросов. Текущий отчёт заменится только после успешного ответа Glowy.
+          </p>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setIsRegenerateConfirmOpen(false)}
+              className="min-h-10 rounded-md border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 dark:border-slate-700 dark:text-slate-300"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegenerateConfirmOpen(false);
+                void requestInsight();
+              }}
+              className="min-h-10 rounded-md bg-indigo-500 px-4 py-2 text-sm font-bold text-white"
+            >
+              Сделать новый
+            </button>
+          </div>
+        </Modal>
+      )}
     </section>
   );
 };

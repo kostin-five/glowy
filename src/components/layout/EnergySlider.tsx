@@ -9,7 +9,7 @@ export const EnergySlider: React.FC = () => {
   const updateCurrentEnergy = useUpdateCurrentEnergy();
 
   return (
-    <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-900/50 dark:shadow-none">
+    <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700/50 dark:bg-slate-800/50 dark:shadow-none">
       <div className="flex flex-col gap-1">
         <h2 className="font-display text-2xl font-black text-slate-950 dark:text-slate-100">
           Энергия на сегодня
